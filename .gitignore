@@ -1,0 +1,12 @@
+dist/*
+output/*
+.vs
+
+*.exe
+*.json
+*.sublime-project
+*.sublime-workspace
+*.pdb
+*.obj
+
+imgui.ini
