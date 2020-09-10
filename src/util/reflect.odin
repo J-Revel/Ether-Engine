@@ -19,9 +19,11 @@ imgui_editor :: proc(var : any)
             structInfo, ok := type_info.variant.(runtime.Type_Info_Struct);
             for _, i in structInfo.names
             {
+                imgui.push_id(structInfo.names[i]);
                 imgui.text_unformatted(structInfo.names[i]);
                 field := rawptr(uintptr(var.data) + structInfo.offsets[i]);
                 imgui_editor({field, structInfo.types[i].id});
+                imgui.pop_id();
             }
             imgui.text_unformatted("}");
             return;
@@ -39,7 +41,7 @@ imgui_editor :: proc(var : any)
             imgui.slider_int("x", cast(^i32) var.data, 0, 100);
             return;
         case runtime.Type_Info_Float:
-            imgui.text_unformatted("Float");
+            imgui.slider_float("x", cast(^f32) var.data, 0, 100);
             return;
     }
     //imgui.text_unformatted(type_info.variant);

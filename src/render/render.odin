@@ -3,8 +3,9 @@ package render
 import "core:mem";
 import "core:log";
 import "core:strings";
+import math "../math";
 
-import gl  "shared:odin-gl";
+import gl "shared:odin-gl";
 
 @(private="package")
 fragmentShaderSrc :: `
@@ -39,6 +40,24 @@ RendererState :: struct
 
     vao: u32,
     vbo: u32,
+    elementBuffer: u32,
+}
+
+VertexData :: struct
+{
+    pos: math.v2,
+    color: math.v4
+}
+
+INDEX_BUFFER_SIZE :: 5000;
+VERTEX_BUFFER_SIZE :: 2000;
+
+RenderBuffer :: struct
+{
+    vertex: [2000]VertexData,
+    vertexCount: u32,
+    index: [5000]u32,
+    indexCount: u32,
 }
 
 initRenderer :: proc (result: ^RendererState) -> bool
@@ -80,6 +99,47 @@ initRenderer :: proc (result: ^RendererState) -> bool
     
     gl.GenBuffers(1, &result.vao);
     gl.GenBuffers(1, &result.vbo);
+
+    gl.BindVertexArray(result.vao);
+    gl.BindBuffer(gl.ARRAY_BUFFER, result.vbo);
+    gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_SIZE * size_of(VertexData), nil, gl.DYNAMIC_DRAW);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.elementBuffer);
+    gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
+    gl.VertexAttribPointer(0, 3, gl.FLOAT, 0, size_of(VertexData), nil);
+    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(VertexData), rawptr(uintptr(size_of(f32) * 3)));
+    gl.EnableVertexAttribArray(0);
+    gl.EnableVertexAttribArray(1);
+
+    gl.BindBuffer(gl.ARRAY_BUFFER, 0);
+    gl.BindVertexArray(0);
+
     return true;
 }
 
+pushMeshData :: proc(renderBuffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
+{
+    for v in vertex
+    {
+        renderBuffer.vertex[renderBuffer.vertexCount] = v;
+    }
+    renderBuffer.vertexCount += cast(u32) len(vertex);
+
+    for i in index
+    {
+        renderBuffer.index[renderBuffer.indexCount] = i;
+    }
+    renderBuffer.indexCount += cast(u32) len(index);
+}
+
+renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuffer)
+{
+    gl.BindVertexArray(renderer.vao);
+    gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) renderBuffer.vertexCount * size_of(VertexData), &renderBuffer.vertex);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.elementBuffer);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
+
+    gl.UseProgram(renderer.shader);
+    gl.DrawElements(gl.TRIANGLES, cast(i32)renderBuffer.indexCount, gl.UNSIGNED_INT, nil);
+    gl.BindVertexArray(0);
+}

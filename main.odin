@@ -12,37 +12,20 @@ import imgui "imgui";
 import imgl  "impl/opengl";
 import imsdl "impl/sdl";
 
-import "src/render";
-
-import "src/util"
+import render "src/render";
+import "src/util";
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
 
-vec2 :: struct
-{
-    x: f32,
-    y: f32
-}
-
-testStruct :: struct 
-{
-    a: int,
-    b: f32,
-    c: vec2
-}
-
 main :: proc() {
     
-    testVar : testStruct;
-    testVar.a = 5;
     logger_opts := log.Options {
         .Level,
         .Line,
         .Procedure,
     };
     context.logger = log.create_console_logger(opt = logger_opts);
-    x : testStruct;
 
     log.info("Starting SDL Example...");
     init_err := sdl.init(.Video);
@@ -81,6 +64,17 @@ main :: proc() {
 
         imgui_state := init_imgui_state(window);
 
+        renderer: render.RendererState;
+        renderBuffer: render.RenderBuffer;
+        render.pushMeshData(&renderBuffer, []VertexData {
+                VertexData{{0, 0}, {1, 1, 1, 1}}, 
+                VertexData{{1, 0}, {1, 1, 1, 1}}, 
+                VertexData{{1, 0}, {1, 1, 1, 1}}
+            },
+            {0, 1, 2}
+        );
+        render.initRenderer(&renderer);
+
         running := true;
         show_demo_window := false;
         e := sdl.Event{};
@@ -106,6 +100,8 @@ main :: proc() {
                         }
                 }
             }
+            
+            render.renderBufferContent(&renderer, &renderBuffer);
 
             imgui_new_frame(window, &imgui_state);
             imgui.new_frame();
@@ -117,7 +113,6 @@ main :: proc() {
                 input_text_test_window();
                 misc_test_window();
                 combo_test_window();
-                util.imgui_editor(testVar);
             }
             imgui.render();
 
