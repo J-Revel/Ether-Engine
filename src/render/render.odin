@@ -14,7 +14,7 @@ in vec4 frag_color;
 layout (location = 0) out vec4 out_color;
 void main()
 {
-    out_color = Frag_Color;
+    out_color = frag_color;
 }
 `;
 
@@ -140,6 +140,6 @@ renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuf
     gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
 
     gl.UseProgram(renderer.shader);
-    gl.DrawElements(gl.TRIANGLES, cast(i32)renderBuffer.indexCount, gl.UNSIGNED_INT, nil);
+    gl.DrawElements(gl.TRIANGLES, cast(i32)renderBuffer.indexCount, gl.UNSIGNED_INT, &renderBuffer.index);
     gl.BindVertexArray(0);
 }

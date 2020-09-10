@@ -66,10 +66,10 @@ main :: proc() {
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
-        render.pushMeshData(&renderBuffer, []VertexData {
-                VertexData{{0, 0}, {1, 1, 1, 1}}, 
-                VertexData{{1, 0}, {1, 1, 1, 1}}, 
-                VertexData{{1, 0}, {1, 1, 1, 1}}
+        render.pushMeshData(&renderBuffer, []render.VertexData {
+                render.VertexData{{0, 0}, {1, 1, 1, 1}}, 
+                render.VertexData{{1, 0}, {1, 1, 1, 1}}, 
+                render.VertexData{{1, 0}, {1, 1, 1, 1}}
             },
             {0, 1, 2}
         );
