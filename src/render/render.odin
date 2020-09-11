@@ -150,8 +150,8 @@ renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuf
     gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo);
     
     gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) renderBuffer.vertexCount * size_of(VertexData), &renderBuffer.vertex);
-    //gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.elementBuffer);
-    //gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.elementBuffer);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
     gl.BindVertexArray(0);
 
     gl.UseProgram(renderer.shader);
@@ -159,7 +159,7 @@ renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuf
     gl.Uniform2f(renderer.screenSizeAttrib, screenSize.x, screenSize.y);
 
     gl.BindVertexArray(renderer.vao);
-    gl.DrawArrays(gl.TRIANGLES, 0, cast(i32) renderBuffer.vertexCount);
+    gl.DrawElements(gl.TRIANGLES, cast(i32) renderBuffer.indexCount, gl.UNSIGNED_INT, nil);
     gl.BindVertexArray(0);
     gl.UseProgram(0);
 }

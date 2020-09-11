@@ -16,6 +16,8 @@ import render "src/render";
 import math "src/math";
 import "src/util";
 
+import "src/gameplay/planet"
+
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
 
@@ -67,13 +69,7 @@ main :: proc() {
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
-        render.pushMeshData(&renderBuffer, []render.VertexData {
-                render.VertexData{{0, 0}, {1, 0, 1, 1}}, 
-                render.VertexData{{640, 0}, {1, 0, 0, 1}}, 
-                render.VertexData{{640, 100}, {1, 0, 1, 1}}
-            },
-            {0, 2, 1}
-        );
+        planet.generatePlanet(&renderBuffer, 100, 100);
         camera : render.Camera;
         camera.zoom = 1;
         render.initRenderer(&renderer);
@@ -81,6 +77,9 @@ main :: proc() {
         running := true;
         show_demo_window := false;
         e := sdl.Event{};
+        mousePressed := false;
+        lastMousePos := math.v2{0, 0};
+        io := imgui.get_io();
         for running {
             for sdl.poll_event(&e) != 0 {
                 imsdl.process_event(e, &imgui_state.sdl_state);
@@ -96,11 +95,16 @@ main :: proc() {
                             sdl.push_event(&qe);
                         }
                         if is_key_down(e, .Tab) {
-                            io := imgui.get_io();
                             if io.want_capture_keyboard == false {
                                 show_demo_window = true;
                             }
                         }
+                    case .Mouse_Button_Down:
+                    if !io.want_capture_mouse do
+                        mousePressed = true;
+                    case .Mouse_Button_Up:
+                    if !io.want_capture_mouse do
+                        mousePressed = false;
                 }
             }
             
@@ -118,12 +122,16 @@ main :: proc() {
             }
             imgui.render();
 
-            io := imgui.get_io();
             gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
-            camera.pos = math.v2{-io.mouse_pos.x, io.mouse_pos.y};
+            mousePos := math.v2{-io.mouse_pos.x, io.mouse_pos.y};
+            if(mousePressed)
+            {
+                camera.pos += mousePos - lastMousePos;
+            }
+            lastMousePos = mousePos;
             render.renderBufferContent(&renderer, &renderBuffer, &camera, math.v2{io.display_size.x, io.display_size.y});
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
