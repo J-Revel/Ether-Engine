@@ -69,7 +69,16 @@ main :: proc() {
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
-        planet.generatePlanet(&renderBuffer, 100, 100);
+
+        planetConfig: planet.PlanetConfig;
+        planetConfig.r = 500;
+        harmonic :=  planet.PlanetShapeHarmonic{0.2, 1};
+        append(&planetConfig.harmonics, harmonic);
+        append(&planetConfig.harmonics, harmonic);
+        append(&planetConfig.harmonics, harmonic);
+        append(&planetConfig.harmonics, harmonic);
+        append(&planetConfig.harmonics, harmonic); 
+        
         camera : render.Camera;
         camera.zoom = 1;
         render.initRenderer(&renderer);
@@ -115,6 +124,21 @@ main :: proc() {
                 info_overlay();
 
                 if show_demo_window do imgui.show_demo_window(&show_demo_window);
+                
+                imgui.begin("planet test");
+                    for harmonic, i in &planetConfig.harmonics
+                    {
+                        imgui.push_id(cast(i32)i);
+                        imgui.slider_float("harmonics f", &(harmonic.f), 0, 1);
+                        imgui.slider_float("harmonics offset", &(harmonic.offset), 0, 10);
+                        imgui.pop_id();
+                    }
+                    if(imgui.button("add"))
+                    {
+                        append(&planetConfig.harmonics, planet.PlanetShapeHarmonic{0, 0});
+                        log.info(len(planetConfig.harmonics));
+                    }
+                imgui.end();
                 text_test_window();
                 input_text_test_window();
                 misc_test_window();
@@ -132,7 +156,10 @@ main :: proc() {
                 camera.pos += mousePos - lastMousePos;
             }
             lastMousePos = mousePos;
+            planet.generatePlanet(&renderBuffer, planetConfig, 500);
             render.renderBufferContent(&renderer, &renderBuffer, &camera, math.v2{io.display_size.x, io.display_size.y});
+            renderBuffer.vertexCount = 0;
+            renderBuffer.indexCount = 0;
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }

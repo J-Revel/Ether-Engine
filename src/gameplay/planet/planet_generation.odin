@@ -4,13 +4,13 @@ import "core:math"
 
 PlanetShapeHarmonic :: struct
 {
-    a, b, c : f32;
+    f, offset: f32
 }
 
 PlanetConfig :: struct
 {
-    r: f32;
-    harmonics: []PlanetShapeHarmonic;
+    r: f32,
+    harmonics: [dynamic]PlanetShapeHarmonic
 }
 
 radius :: proc(meanRadius: f32, angle: f32) -> f32
@@ -18,7 +18,7 @@ radius :: proc(meanRadius: f32, angle: f32) -> f32
     return meanRadius + meanRadius / 30 * math.cos(angle * 10) + meanRadius / 10 * math.sin(angle * 3) + meanRadius / 50 * math.cos( 5 + angle * 12);
 }
 
-generatePlanet :: proc(renderBuffer: ^render.RenderBuffer, r: f32, subdivisions: u32)
+generatePlanet :: proc(renderBuffer: ^render.RenderBuffer, planet: PlanetConfig, subdivisions: u32)
 {
     vertex: []render.VertexData = make([]render.VertexData, subdivisions + 1);
     defer delete(vertex);
@@ -26,7 +26,12 @@ generatePlanet :: proc(renderBuffer: ^render.RenderBuffer, r: f32, subdivisions:
     for i : u32 = 0; i<subdivisions; i += 1
     {
         angle := (cast(f32)i * 2) * math.PI / (cast(f32)subdivisions);
-        vertex[i] = render.VertexData{{radius(r, angle) * math.cos(angle), radius(r, angle) * math.sin(angle)}, {1, 1, 1, 1}};
+        r := planet.r;
+        for harmonic, hIndex in planet.harmonics
+        {
+            r += harmonic.f * planet.r * math.sin(harmonic.offset + angle * cast(f32)hIndex);
+        }
+        vertex[i] = render.VertexData{{r * math.cos(angle), r * math.sin(angle)}, {0, 0, 0, 1}};
     }
     vertex[subdivisions] = render.VertexData{{0, 0}, {1, 1, 1, 1}};
     for i : u32 = 0; i<subdivisions; i+=1
