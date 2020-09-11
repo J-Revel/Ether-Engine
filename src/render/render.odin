@@ -24,10 +24,16 @@ vertexShaderSrc :: `
 layout (location = 0) in vec2 pos;
 layout (location = 1) in vec4 color;
 out vec4 frag_color;
+
+uniform vec2 screenSize;
+uniform vec3 camPosZoom;
+
 void main()
 {
     frag_color = color;
-    gl_Position = vec4(pos.xy,0,1);
+    float zoom = camPosZoom.z;
+    vec2 camPos = camPosZoom.xy;
+    gl_Position = vec4((pos.xy - camPos) * 2 / screenSize * camPosZoom.z,0,1);
 }
 `;
 
@@ -35,8 +41,8 @@ RendererState :: struct
 {
     shader: u32,
 
-    pos_attrib: i32,
-    color_attrib: i32,
+    camPosZoomAttrib: i32,
+    screenSizeAttrib: i32,
 
     vao: u32,
     vbo: u32,
@@ -47,6 +53,12 @@ VertexData :: struct
 {
     pos: math.v2,
     color: math.v4
+}
+
+Camera :: struct
+{
+    pos: math.v2,
+    zoom: f32,
 }
 
 INDEX_BUFFER_SIZE :: 5000;
@@ -94,19 +106,20 @@ initRenderer :: proc (result: ^RendererState) -> bool
         return true;
     }
 
-    result.pos_attrib = gl.GetUniformLocation(result.shader, "pos");
-    result.color_attrib = gl.GetUniformLocation(result.shader, "color");
+    result.camPosZoomAttrib = gl.GetUniformLocation(result.shader, "camPosZoom");
+    result.screenSizeAttrib = gl.GetUniformLocation(result.shader, "screenSize");
     
-    gl.GenBuffers(1, &result.vao);
+    gl.GenVertexArrays(1, &result.vao);
     gl.GenBuffers(1, &result.vbo);
+    gl.GenBuffers(1, &result.elementBuffer);
 
     gl.BindVertexArray(result.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, result.vbo);
     gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_SIZE * size_of(VertexData), nil, gl.DYNAMIC_DRAW);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.elementBuffer);
     gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
-    gl.VertexAttribPointer(0, 3, gl.FLOAT, 0, size_of(VertexData), nil);
-    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(VertexData), rawptr(uintptr(size_of(f32) * 3)));
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, 0, size_of(VertexData), nil);
+    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(VertexData), rawptr(uintptr(size_of(math.v2))));
     gl.EnableVertexAttribArray(0);
     gl.EnableVertexAttribArray(1);
 
@@ -121,25 +134,32 @@ pushMeshData :: proc(renderBuffer: ^RenderBuffer, vertex: []VertexData, index: [
     for v in vertex
     {
         renderBuffer.vertex[renderBuffer.vertexCount] = v;
+        renderBuffer.vertexCount += 1;
     }
-    renderBuffer.vertexCount += cast(u32) len(vertex);
 
     for i in index
     {
         renderBuffer.index[renderBuffer.indexCount] = i;
+        renderBuffer.indexCount += 1;
     }
-    renderBuffer.indexCount += cast(u32) len(index);
 }
 
-renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuffer)
+renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuffer, camera: ^Camera, screenSize: math.v2)
 {
     gl.BindVertexArray(renderer.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo);
+    
     gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) renderBuffer.vertexCount * size_of(VertexData), &renderBuffer.vertex);
-    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.elementBuffer);
-    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
+    //gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.elementBuffer);
+    //gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
+    gl.BindVertexArray(0);
 
     gl.UseProgram(renderer.shader);
-    gl.DrawElements(gl.TRIANGLES, cast(i32)renderBuffer.indexCount, gl.UNSIGNED_INT, &renderBuffer.index);
+    gl.Uniform3f(renderer.camPosZoomAttrib, camera.pos.x, camera.pos.y, camera.zoom);
+    gl.Uniform2f(renderer.screenSizeAttrib, screenSize.x, screenSize.y);
+
+    gl.BindVertexArray(renderer.vao);
+    gl.DrawArrays(gl.TRIANGLES, 0, cast(i32) renderBuffer.vertexCount);
     gl.BindVertexArray(0);
+    gl.UseProgram(0);
 }

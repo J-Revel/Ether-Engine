@@ -13,6 +13,7 @@ import imgl  "impl/opengl";
 import imsdl "impl/sdl";
 
 import render "src/render";
+import math "src/math";
 import "src/util";
 
 DESIRED_GL_MAJOR_VERSION :: 4;
@@ -67,12 +68,14 @@ main :: proc() {
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
         render.pushMeshData(&renderBuffer, []render.VertexData {
-                render.VertexData{{0, 0}, {1, 1, 1, 1}}, 
-                render.VertexData{{1, 0}, {1, 1, 1, 1}}, 
-                render.VertexData{{1, 0}, {1, 1, 1, 1}}
+                render.VertexData{{0, 0}, {1, 0, 1, 1}}, 
+                render.VertexData{{640, 0}, {1, 0, 0, 1}}, 
+                render.VertexData{{640, 100}, {1, 0, 1, 1}}
             },
-            {0, 1, 2}
+            {0, 2, 1}
         );
+        camera : render.Camera;
+        camera.zoom = 1;
         render.initRenderer(&renderer);
 
         running := true;
@@ -101,7 +104,6 @@ main :: proc() {
                 }
             }
             
-            render.renderBufferContent(&renderer, &renderBuffer);
 
             imgui_new_frame(window, &imgui_state);
             imgui.new_frame();
@@ -121,6 +123,8 @@ main :: proc() {
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
+            camera.pos = math.v2{-io.mouse_pos.x, io.mouse_pos.y};
+            render.renderBufferContent(&renderer, &renderBuffer, &camera, math.v2{io.display_size.x, io.display_size.y});
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }
