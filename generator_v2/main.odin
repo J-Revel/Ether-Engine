@@ -19,7 +19,7 @@ main :: proc() {
 
     log.info("Generating odin source...");
     
-    predefined_entities := process_predefined("./generator_v2/predefined/imgui_predefined.odin");
+    predefined_entities := process_predefined("./generator_Vector2/predefined/imgui_predefined.odin");
     output_predefined_copies("./output/copies.odin", predefined_entities);
 
     output_enums(STRUCTS_AND_ENUM_JSON_PATH, "./output/enums.odin");

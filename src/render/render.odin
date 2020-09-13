@@ -3,7 +3,7 @@ package render
 import "core:mem";
 import "core:log";
 import "core:strings";
-import math "../math";
+import "core:math";
 
 import gl "shared:odin-gl";
 
@@ -11,7 +11,9 @@ import gl "shared:odin-gl";
 fragmentShaderSrc :: `
 #version 450
 in vec4 frag_color;
+in vec2 frag_pos;
 layout (location = 0) out vec4 out_color;
+
 void main()
 {
     out_color = frag_color;
@@ -24,6 +26,7 @@ vertexShaderSrc :: `
 layout (location = 0) in vec2 pos;
 layout (location = 1) in vec4 color;
 out vec4 frag_color;
+out vec2 frag_pos;
 
 uniform vec2 screenSize;
 uniform vec3 camPosZoom;
@@ -31,11 +34,15 @@ uniform vec3 camPosZoom;
 void main()
 {
     frag_color = color;
+    frag_pos = pos;
     float zoom = camPosZoom.z;
     vec2 camPos = camPosZoom.xy;
     gl_Position = vec4((pos.xy - camPos) * 2 / screenSize * camPosZoom.z,0,1);
 }
 `;
+
+vec2 :: [2]f32;
+Color :: [4]f32;
 
 RendererState :: struct
 {
@@ -51,13 +58,13 @@ RendererState :: struct
 
 VertexData :: struct
 {
-    pos: math.v2,
-    color: math.v4
+    pos: vec2,
+    color: Color
 }
 
 Camera :: struct
 {
-    pos: math.v2,
+    pos: vec2,
     zoom: f32,
 }
 
@@ -119,7 +126,7 @@ initRenderer :: proc (result: ^RendererState) -> bool
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.elementBuffer);
     gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
     gl.VertexAttribPointer(0, 2, gl.FLOAT, 0, size_of(VertexData), nil);
-    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(VertexData), rawptr(uintptr(size_of(math.v2))));
+    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(VertexData), rawptr(uintptr(size_of(vec2))));
     gl.EnableVertexAttribArray(0);
     gl.EnableVertexAttribArray(1);
 
@@ -131,6 +138,7 @@ initRenderer :: proc (result: ^RendererState) -> bool
 
 pushMeshData :: proc(renderBuffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
 {
+    startIndex := renderBuffer.vertexCount;
     for v in vertex
     {
         renderBuffer.vertex[renderBuffer.vertexCount] = v;
@@ -139,12 +147,18 @@ pushMeshData :: proc(renderBuffer: ^RenderBuffer, vertex: []VertexData, index: [
 
     for i in index
     {
-        renderBuffer.index[renderBuffer.indexCount] = i;
+        renderBuffer.index[renderBuffer.indexCount] = startIndex + i;
         renderBuffer.indexCount += 1;
     }
 }
 
-renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuffer, camera: ^Camera, screenSize: math.v2)
+clearRenderBuffer :: proc(renderBuffer: ^RenderBuffer)
+{
+    renderBuffer.indexCount = 0;
+    renderBuffer.vertexCount = 0;
+}
+
+renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuffer, camera: ^Camera, screenSize: vec2)
 {
     gl.BindVertexArray(renderer.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo);

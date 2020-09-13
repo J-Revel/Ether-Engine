@@ -4,6 +4,8 @@ import "core:mem";
 import "core:log";
 import "core:strings";
 import "core:runtime";
+import "core:math";
+import "core:math/linalg"
 
 import sdl "shared:odin-sdl2";
 import gl  "shared:odin-gl";
@@ -13,13 +15,16 @@ import imgl  "impl/opengl";
 import imsdl "impl/sdl";
 
 import render "src/render";
-import math "src/math";
 import "src/util";
 
 import "src/gameplay/planet"
+import "src/gameplay/entity"
+import "src/geometry"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
+
+vec2 :: [2]f32;
 
 main :: proc() {
     
@@ -71,7 +76,7 @@ main :: proc() {
         renderBuffer: render.RenderBuffer;
 
         planetConfig: planet.PlanetConfig;
-        planetConfig.r = 500;
+        planetConfig.r = 200;
         harmonic :=  planet.PlanetShapeHarmonic{0.2, 1};
         append(&planetConfig.harmonics, harmonic);
         append(&planetConfig.harmonics, harmonic);
@@ -79,6 +84,10 @@ main :: proc() {
         append(&planetConfig.harmonics, harmonic);
         append(&planetConfig.harmonics, harmonic); 
         
+        building: entity.Building;
+        building.size = vec2{20, 20};
+        building.planet = &planetConfig;
+
         camera : render.Camera;
         camera.zoom = 1;
         render.initRenderer(&renderer);
@@ -87,7 +96,7 @@ main :: proc() {
         show_demo_window := false;
         e := sdl.Event{};
         mousePressed := false;
-        lastMousePos := math.v2{0, 0};
+        lastMousePos := vec2{0, 0};
         io := imgui.get_io();
         for running {
             for sdl.poll_event(&e) != 0 {
@@ -126,6 +135,7 @@ main :: proc() {
                 if show_demo_window do imgui.show_demo_window(&show_demo_window);
                 
                 imgui.begin("planet test");
+                    imgui.slider_float("building alpha", &building.angle, 0, 2 * math.PI);
                     for harmonic, i in &planetConfig.harmonics
                     {
                         imgui.push_id(cast(i32)i);
@@ -150,16 +160,20 @@ main :: proc() {
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
-            mousePos := math.v2{-io.mouse_pos.x, io.mouse_pos.y};
+            mousePos := vec2{-io.mouse_pos.x, io.mouse_pos.y};
             if(mousePressed)
             {
                 camera.pos += mousePos - lastMousePos;
             }
             lastMousePos = mousePos;
-            planet.generatePlanet(&renderBuffer, planetConfig, 500);
-            render.renderBufferContent(&renderer, &renderBuffer, &camera, math.v2{io.display_size.x, io.display_size.y});
-            renderBuffer.vertexCount = 0;
-            renderBuffer.indexCount = 0;
+            worldMousePos := [2]f32{io.mouse_pos.y - camera.pos.y - io.display_size.y / 2, io.mouse_pos.x + camera.pos.x - io.display_size.x / 2};
+            log.info(worldMousePos.x, worldMousePos.y);
+            building.angle = math.atan2_f32(-worldMousePos.x, worldMousePos.y);
+            planet.generatePlanet(&renderBuffer, &planetConfig, 500);
+            entity.renderBuilding(&building, &renderBuffer);
+            entity.renderBuilding(&building, &renderBuffer);
+            render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{io.display_size.x, io.display_size.y});
+            render.clearRenderBuffer(&renderBuffer);
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }
