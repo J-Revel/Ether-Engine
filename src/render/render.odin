@@ -68,14 +68,14 @@ Camera :: struct
     zoom: f32,
 }
 
-INDEX_BUFFER_SIZE :: 5000;
-VERTEX_BUFFER_SIZE :: 2000;
+INDEX_BUFFER_SIZE :: 50000;
+VERTEX_BUFFER_SIZE :: 20000;
 
 RenderBuffer :: struct
 {
-    vertex: [2000]VertexData,
+    vertex: [20000]VertexData,
     vertexCount: u32,
-    index: [5000]u32,
+    index: [50000]u32,
     indexCount: u32,
 }
 

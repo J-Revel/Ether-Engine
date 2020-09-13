@@ -5,7 +5,8 @@ import "core:log";
 import "core:strings";
 import "core:runtime";
 import "core:math";
-import "core:math/linalg"
+import "core:math/linalg";
+import "core:math/rand";
 
 import sdl "shared:odin-sdl2";
 import gl  "shared:odin-gl";
@@ -75,18 +76,27 @@ main :: proc() {
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
 
-        planetConfig: planet.PlanetConfig;
-        planetConfig.r = 200;
-        harmonic :=  planet.PlanetShapeHarmonic{0.2, 1};
-        append(&planetConfig.harmonics, harmonic);
-        append(&planetConfig.harmonics, harmonic);
-        append(&planetConfig.harmonics, harmonic);
-        append(&planetConfig.harmonics, harmonic);
-        append(&planetConfig.harmonics, harmonic); 
+        planets: [dynamic]planet.Instance;
+        for j := 0; j<100; j += 1
+        {
+            planetConfig : planet.Instance;
+            planetConfig.pos = vec2{cast(f32)((j % 10) * 500), cast(f32)((j / 10) * 500)};
+            planetConfig.r = 200;
+            harmonic :=  planet.ShapeHarmonic{0.2, 1};
+            for i := 0; i<10; i+=1
+            {
+                harmonic.f = rand.float32() / cast(f32) (i + 1) / 4;
+                harmonic.offset = rand.float32() * 2 * math.PI;
+                append(&planetConfig.harmonics, harmonic);
+                    
+            }
+            append(&planets, planetConfig);
+                
+        }
         
         building: entity.Building;
         building.size = vec2{20, 20};
-        building.planet = &planetConfig;
+        building.planet = &planets[0];
 
         camera : render.Camera;
         camera.zoom = 1;
@@ -134,21 +144,6 @@ main :: proc() {
 
                 if show_demo_window do imgui.show_demo_window(&show_demo_window);
                 
-                imgui.begin("planet test");
-                    imgui.slider_float("building alpha", &building.angle, 0, 2 * math.PI);
-                    for harmonic, i in &planetConfig.harmonics
-                    {
-                        imgui.push_id(cast(i32)i);
-                        imgui.slider_float("harmonics f", &(harmonic.f), 0, 1);
-                        imgui.slider_float("harmonics offset", &(harmonic.offset), 0, 10);
-                        imgui.pop_id();
-                    }
-                    if(imgui.button("add"))
-                    {
-                        append(&planetConfig.harmonics, planet.PlanetShapeHarmonic{0, 0});
-                        log.info(len(planetConfig.harmonics));
-                    }
-                imgui.end();
                 text_test_window();
                 input_text_test_window();
                 misc_test_window();
@@ -169,7 +164,8 @@ main :: proc() {
             worldMousePos := [2]f32{io.mouse_pos.y - camera.pos.y - io.display_size.y / 2, io.mouse_pos.x + camera.pos.x - io.display_size.x / 2};
             log.info(worldMousePos.x, worldMousePos.y);
             building.angle = math.atan2_f32(-worldMousePos.x, worldMousePos.y);
-            planet.generatePlanet(&renderBuffer, &planetConfig, 500);
+            for planetInstance in &planets do
+                planet.render(&renderBuffer, &(planetInstance), 100);
             entity.renderBuilding(&building, &renderBuffer);
             entity.renderBuilding(&building, &renderBuffer);
             render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{io.display_size.x, io.display_size.y});

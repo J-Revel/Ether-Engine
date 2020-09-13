@@ -9,7 +9,7 @@ import "core:log"
 
 Building :: struct
 {
-    planet: ^planet.PlanetConfig,
+    planet: ^planet.Config,
     size: vec2,
     angle: f32,
 }
