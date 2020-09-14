@@ -80,8 +80,8 @@ main :: proc() {
         for j := 0; j<100; j += 1
         {
             planetConfig : planet.Instance;
-            planetConfig.pos = vec2{cast(f32)((j % 10) * 500), cast(f32)((j / 10) * 500)};
-            planetConfig.r = 200;
+            planetConfig.pos = vec2{cast(f32)((j % 10) * 1000), cast(f32)((j / 10) * 1000)};
+            planetConfig.r = 400;
             harmonic :=  planet.ShapeHarmonic{0.2, 1};
             for i := 0; i<10; i+=1
             {
@@ -91,7 +91,6 @@ main :: proc() {
                     
             }
             append(&planets, planetConfig);
-                
         }
         
         building: entity.Building;
@@ -161,12 +160,19 @@ main :: proc() {
                 camera.pos += mousePos - lastMousePos;
             }
             lastMousePos = mousePos;
-            worldMousePos := [2]f32{io.mouse_pos.y - camera.pos.y - io.display_size.y / 2, io.mouse_pos.x + camera.pos.x - io.display_size.x / 2};
-            log.info(worldMousePos.x, worldMousePos.y);
-            building.angle = math.atan2_f32(-worldMousePos.x, worldMousePos.y);
+            worldMousePos := [2]f32{io.mouse_pos.x + camera.pos.x - io.display_size.x / 2, -io.mouse_pos.y + camera.pos.y + io.display_size.y / 2};
+            for planetInstance in &planets
+            {
+                if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
+                {
+                    building.planet = &planetInstance;
+                    log.info(planetInstance.pos);
+                }
+            }
+            planetDir := worldMousePos - building.planet.pos;
+            building.angle = math.atan2_f32(planetDir.y, planetDir.x);
             for planetInstance in &planets do
                 planet.render(&renderBuffer, &(planetInstance), 100);
-            entity.renderBuilding(&building, &renderBuffer);
             entity.renderBuilding(&building, &renderBuffer);
             render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{io.display_size.x, io.display_size.y});
             render.clearRenderBuffer(&renderBuffer);
