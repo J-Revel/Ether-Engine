@@ -71,7 +71,7 @@ main :: proc() {
                       proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
-        imgui_state := init_imgui_state(window);
+        //imgui_state := init_imgui_state(window);
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
@@ -80,12 +80,12 @@ main :: proc() {
         for j := 0; j<100; j += 1
         {
             planetConfig : planet.Instance;
-            planetConfig.pos = vec2{cast(f32)((j % 10) * 1000), cast(f32)((j / 10) * 1000)};
-            planetConfig.r = 400;
+            planetConfig.pos = vec2{cast(f32)((j % 10) * 10000), cast(f32)((j / 10) * 10000)};
+            planetConfig.r = 1000;
             harmonic :=  planet.ShapeHarmonic{0.2, 1};
             for i := 0; i<10; i+=1
             {
-                harmonic.f = rand.float32() / cast(f32) (i + 1) / 4;
+                harmonic.f = rand.float32() / cast(f32) (i + 1);
                 harmonic.offset = rand.float32() * 2 * math.PI;
                 append(&planetConfig.harmonics, harmonic);
                     
@@ -106,11 +106,21 @@ main :: proc() {
         e := sdl.Event{};
         mousePressed := false;
         lastMousePos := vec2{0, 0};
-        io := imgui.get_io();
+        //io := imgui.get_io();
+        mousePos : vec2;
+        screenSize : vec2;
         for running {
+            mx, my: i32;
+            sdl.get_mouse_state(&mx, &my);
+            mousePos.x = cast(f32)mx;
+            mousePos.y = cast(f32)my;
+            sdl.gl_get_drawable_size(window, &mx, &my);
+
+            screenSize.x = cast(f32)mx;
+            screenSize.y = cast(f32)my;
             for sdl.poll_event(&e) != 0 {
-                imsdl.process_event(e, &imgui_state.sdl_state);
                 #partial switch e.type {
+
                     case .Quit:
                         log.info("Got SDL_QUIT event!");
                         running = false;
@@ -119,24 +129,34 @@ main :: proc() {
                         if is_key_down(e, .Escape) {
                             qe := sdl.Event{};
                             qe.type = .Quit;
-                            sdl.push_event(&qe);
+                            //sdl.push_event(&qe);
                         }
                         if is_key_down(e, .Tab) {
-                            if io.want_capture_keyboard == false {
+                            //if io.want_capture_keyboard == false {
                                 show_demo_window = true;
-                            }
+                            //}
                         }
                     case .Mouse_Button_Down:
-                    if !io.want_capture_mouse do
+                    //if !io.want_capture_mouse do
                         mousePressed = true;
                     case .Mouse_Button_Up:
-                    if !io.want_capture_mouse do
+                    //if !io.want_capture_mouse do
                         mousePressed = false;
+                    case .Mouse_Wheel: {
+                    }
+
+                    case .Text_Input: {
+                        //text := e.text;
+                        //imgui.ImGuiIO_AddInputCharactersUTF8(io, cstring(&text.text[0]));
+                    }
+                }
+                //imsdl.process_event(e, &imgui_state.sdl_state);
+                #partial switch e.type {
                 }
             }
             
 
-            imgui_new_frame(window, &imgui_state);
+            /*imgui_new_frame(window, &imgui_state);
             imgui.new_frame();
             {
                 info_overlay();
@@ -149,18 +169,20 @@ main :: proc() {
                 combo_test_window();
             }
             imgui.render();
-
-            gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
-            gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
+*/
+            //gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
+            //gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
-            mousePos := vec2{-io.mouse_pos.x, io.mouse_pos.y};
+            //mousePos := vec2{-io.mouse_pos.x, io.mouse_pos.y};
             if(mousePressed)
             {
-                camera.pos += mousePos - lastMousePos;
+                offset := mousePos - lastMousePos;
+                camera.pos.x -= offset.x;
+                camera.pos.y += offset.y;
             }
             lastMousePos = mousePos;
-            worldMousePos := [2]f32{io.mouse_pos.x + camera.pos.x - io.display_size.x / 2, -io.mouse_pos.y + camera.pos.y + io.display_size.y / 2};
+            worldMousePos := [2]f32{mousePos.x + camera.pos.x - screenSize.x / 2, -mousePos.y + camera.pos.y + screenSize.y / 2};
             for planetInstance in &planets
             {
                 if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
@@ -169,14 +191,13 @@ main :: proc() {
                     log.info(planetInstance.pos);
                 }
             }
-            planetDir := worldMousePos - building.planet.pos;
-            building.angle = math.atan2_f32(planetDir.y, planetDir.x);
+            building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos);
             for planetInstance in &planets do
-                planet.render(&renderBuffer, &(planetInstance), 100);
+                planet.render(&renderBuffer, &(planets[0]), 100);
             entity.renderBuilding(&building, &renderBuffer);
-            render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{io.display_size.x, io.display_size.y});
+            render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{screenSize.x, screenSize.y});
             render.clearRenderBuffer(&renderBuffer);
-            imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
+            //imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }
         log.info("Shutting down...");

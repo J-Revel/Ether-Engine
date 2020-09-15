@@ -2,6 +2,7 @@ package planet;
 import render "../../render";
 import math "core:math"
 import geometry "core:math/linalg"
+import console "core:log"
 
 vec2 :: [2]f32;
 
@@ -32,11 +33,12 @@ render :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Instance, subdivisio
     vertex: []render.VertexData = make([]render.VertexData, subdivisions + 1);
     defer delete(vertex);
     index: []u32 = make([]u32, subdivisions * 3);
+    defer delete(index);
     for i : u32 = 0; i<subdivisions; i += 1
     {
         angle := (cast(f32)i * 2) * math.PI / (cast(f32)subdivisions);
         
-        vertex[i] = render.VertexData{planetSurfacePoint(planet, angle), {0, 0, 0, 1}};
+        vertex[i] = render.VertexData{surfacePoint(planet, angle), {0, 0, 0, 1}};
     }
     vertex[subdivisions] = render.VertexData{planet.pos, {1, 1, 1, 1}};
     for i : u32 = 0; i<subdivisions; i+=1
@@ -48,42 +50,76 @@ render :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Instance, subdivisio
     render.pushMeshData(renderBuffer, vertex, index);
 }
 
-planetSurfacePoint :: proc(planet: ^Instance, angle: f32) -> vec2
+r :: proc(planet: ^Instance, angle: f32) -> f32
 {
     r := planet.r;
     for harmonic, hIndex in planet.harmonics
     {
         r += harmonic.f * planet.r * math.sin(harmonic.offset + angle * cast(f32)(hIndex + 1));
     }
-    return planet.pos + vec2{r * math.cos(angle), r * math.sin(angle)};
+    return r;
 }
 
-planetSurfaceNormal :: proc(planet: ^Config, angle: f32) -> vec2
+rdr :: proc(planet: ^Config, angle: f32) -> (f32, f32)
 {
     using math;
     using geometry;
-    dr:f32 = 0;
     r := planet.r;
+    dr : f32 = 0;
     for harmonic, hIndex in planet.harmonics
     {
         r += harmonic.f * planet.r * sin(harmonic.offset + angle * cast(f32)(hIndex + 1));
         dr += harmonic.f * planet.r * cast(f32)(hIndex+1) * cos(harmonic.offset + angle * cast(f32)(hIndex + 1));
     }
+    return r, dr;
+}
+
+surfacePoint :: proc(planet: ^Instance, angle: f32) -> vec2
+{
+    r := r(planet, angle);
+    return planet.pos + vec2{r * math.cos(angle), r * math.sin(angle)};
+}
+
+surfaceNormal :: proc(planet: ^Config, angle: f32) -> vec2
+{
+    using math;
+    using geometry;
+    r,dr := rdr(planet, angle);
+    cosa := cos(angle);
+    sina := sin(angle);
+
     return vector_normalize(vec2 {
-        dr * cos(angle) - r * sin(angle),
-        dr * sin(angle) + r * cos(angle)
+        dr * cosa - r * sina,
+        dr * sina + r * cosa
     });
 }
 
-planetSurfaceDistance :: proc(planet: ^Instance, point: vec2) -> float
+pointSlopeTest :: proc(planet: ^Instance, angle: f32, M: vec2) -> f32
 {
-    using linalg;
-
-    angle := math.atan2_f32(planetDir.y, planetDir.x);
-    r := planet.r;
-    for harmonic, hIndex in planet.harmonics
-    {
-        r += harmonic.f * planet.r * math.sin(harmonic.offset + angle * cast(f32)(hIndex + 1));
-    }
-    return vector_length(point - planet.pos) - ;
+    using math;
+    MO := planet.pos - M;
+    r, dr := rdr(planet, angle);
+    cosa := cos(angle);
+    sina := sin(angle);
+    return 2 * dr *(MO.x * cosa + MO.y * sina) + 2 * r * (MO.y * cosa - MO.x * sina) + 2 * r * dr;
 }
+
+closestSurfaceAngle :: proc(planet: ^Instance, M: vec2) -> f32
+{
+    using math;
+    OM := M - planet.pos;
+    angle := math.atan2_f32(OM.y, OM.x);
+    delta : f32 = PI / 500;
+    slopeValue := pointSlopeTest(planet, angle, M);
+    lastSlopeValue := slopeValue;
+        console.info(slopeValue, lastSlopeValue);
+    for steps:=0; steps<10 && slopeValue * lastSlopeValue > 0; steps += 1
+    {
+        console.info(slopeValue, angle);
+        if slopeValue < 0 do angle += delta; else do angle -= delta;
+        lastSlopeValue = slopeValue;
+        slopeValue = pointSlopeTest(planet, angle, M);
+    }
+    return angle;
+}
+

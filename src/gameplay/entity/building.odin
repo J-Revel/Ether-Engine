@@ -16,8 +16,8 @@ Building :: struct
 
 renderBuilding :: proc(building: ^Building, renderBuffer: ^render.RenderBuffer)
 {
-    pos := planet.planetSurfacePoint(building.planet, building.angle);
-    surfaceTangent := planet.planetSurfaceNormal(building.planet, building.angle) * 50;
+    pos := planet.surfacePoint(building.planet, building.angle);
+    surfaceTangent := planet.surfaceNormal(building.planet, building.angle) * 50;
     surfaceNormal := vec2 {surfaceTangent.y, -surfaceTangent.x};
 
     vertex: []render.VertexData = {
