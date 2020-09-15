@@ -1,0 +1,6 @@
+{
+	"cmd": "odin run main.odin -debug",
+	"selector": "*.odin",
+	"file_regex": "^(.*?)\\((\\d+):(\\d+)\\)\\s(.*?)$",
+	"working_dir": "$folder"
+}

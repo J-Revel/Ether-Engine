@@ -21,9 +21,16 @@ import "src/util";
 import "src/gameplay/planet"
 import "src/gameplay/entity"
 import "src/geometry"
+import "src/input"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
+
+
+running := true;
+mouse_pressed := false;
+buildings: [dynamic]entity.Building;
+building: entity.Building;
 
 vec2 :: [2]f32;
 
@@ -98,8 +105,6 @@ main :: proc() {
             append(&planets, planetConfig);
         }
         
-        buildings: [dynamic]entity.Building;
-        building: entity.Building;
         building.size = vec2{20, 20};
         building.planet = &planets[0];
 
@@ -107,14 +112,16 @@ main :: proc() {
         camera.zoom = 1;
         render.initRenderer(&renderer);
 
-        running := true;
         show_demo_window := false;
         e := sdl.Event{};
-        mousePressed := false;
         lastMousePos := vec2{0, 0};
         //io := imgui.get_io();
         mousePos : vec2;
         screenSize : vec2;
+
+        append(&input.active_delegates.quit, on_quit);
+        append(&input.active_delegates.key_state_changed, on_key_press);
+        append(&input.active_delegates.button_state_changed, on_button_press);
         for running {
             mx, my: i32;
             sdl.get_mouse_state(&mx, &my);
@@ -124,6 +131,8 @@ main :: proc() {
 
             screenSize.x = cast(f32)mx;
             screenSize.y = cast(f32)my;
+            input.handle_input();
+
             for sdl.poll_event(&e) != 0 {
                 #partial switch e.type {
 
@@ -145,10 +154,10 @@ main :: proc() {
                     case .Mouse_Button_Down:
                     //if !io.want_capture_mouse do
                         append(&buildings, building);
-                        mousePressed = true;
+                        mouse_pressed = true;
                     case .Mouse_Button_Up:
                     //if !io.want_capture_mouse do
-                        mousePressed = false;
+                        mouse_pressed = false;
                     case .Mouse_Wheel: {
                     }
 
@@ -182,7 +191,7 @@ main :: proc() {
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
             //mousePos := vec2{-io.mouse_pos.x, io.mouse_pos.y};
-            if(mousePressed)
+            if(mouse_pressed)
             {
                 offset := mousePos - lastMousePos;
                 camera.pos.x -= offset.x;
@@ -213,6 +222,27 @@ main :: proc() {
     } else {
         log.debugf("Error during SDL init: (%d)%s", init_err, sdl.get_error());
     }
+}
+
+on_quit :: proc() {
+    running = false;
+}
+
+on_key_press :: proc(key: sdl.Keysym, state: input.Input_State) -> bool
+{
+    if(key.scancode == .Escape)
+    {
+        running = false;
+        return true;
+    }
+    return false;
+}
+
+on_button_press :: proc(button: u8, pos: vec2, state: input.Input_State) -> bool
+{
+    append(&buildings, building);
+    mouse_pressed = (state == .Down);
+    return true;
 }
 
 info_overlay :: proc() {
