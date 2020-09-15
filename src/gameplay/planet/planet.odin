@@ -113,13 +113,14 @@ closestSurfaceAngle :: proc(planet: ^Instance, M: vec2) -> f32
     slopeValue := pointSlopeTest(planet, angle, M);
     lastSlopeValue := slopeValue;
         console.info(slopeValue, lastSlopeValue);
-    for steps:=0; steps<10 && slopeValue * lastSlopeValue > 0; steps += 1
+    steps:=0;
+    for steps=0; steps < 100 && slopeValue * lastSlopeValue > 0; steps += 1
     {
-        console.info(slopeValue, angle);
         if slopeValue < 0 do angle += delta; else do angle -= delta;
         lastSlopeValue = slopeValue;
         slopeValue = pointSlopeTest(planet, angle, M);
     }
+    console.info(steps);
     return angle;
 }
 
