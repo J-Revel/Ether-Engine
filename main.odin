@@ -27,6 +27,8 @@ DESIRED_GL_MINOR_VERSION :: 5;
 
 vec2 :: [2]f32;
 
+test :: proc() -> int { return 50;}
+
 main :: proc() {
     
     logger_opts := log.Options {
@@ -36,6 +38,9 @@ main :: proc() {
     };
     context.logger = log.create_console_logger(opt = logger_opts);
 
+    log.info(test);
+    testFunc : proc() -> int = test;
+    log.info(testFunc());
     log.info("Starting SDL Example...");
     init_err := sdl.init(.Video);
     defer sdl.quit();
@@ -93,6 +98,7 @@ main :: proc() {
             append(&planets, planetConfig);
         }
         
+        buildings: [dynamic]entity.Building;
         building: entity.Building;
         building.size = vec2{20, 20};
         building.planet = &planets[0];
@@ -138,6 +144,7 @@ main :: proc() {
                         }
                     case .Mouse_Button_Down:
                     //if !io.want_capture_mouse do
+                        append(&buildings, building);
                         mousePressed = true;
                     case .Mouse_Button_Up:
                     //if !io.want_capture_mouse do
@@ -188,13 +195,14 @@ main :: proc() {
                 if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
                 {
                     building.planet = &planetInstance;
-                    log.info(planetInstance.pos);
                 }
             }
-            building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos);
+            building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos, 100);
             for planetInstance in &planets do
                 planet.render(&renderBuffer, &(planets[0]), 100);
             entity.renderBuilding(&building, &renderBuffer);
+            for building in &buildings do
+                entity.renderBuilding(&building, &renderBuffer);
             render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{screenSize.x, screenSize.y});
             render.clearRenderBuffer(&renderBuffer);
             //imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);

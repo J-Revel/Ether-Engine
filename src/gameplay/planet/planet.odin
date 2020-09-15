@@ -104,7 +104,7 @@ pointSlopeTest :: proc(planet: ^Instance, angle: f32, M: vec2) -> f32
     return 2 * dr *(MO.x * cosa + MO.y * sina) + 2 * r * (MO.y * cosa - MO.x * sina) + 2 * r * dr;
 }
 
-closestSurfaceAngle :: proc(planet: ^Instance, M: vec2) -> f32
+closestSurfaceAngle :: proc(planet: ^Instance, M: vec2, prcSteps: int) -> f32
 {
     using math;
     OM := M - planet.pos;
@@ -112,15 +112,15 @@ closestSurfaceAngle :: proc(planet: ^Instance, M: vec2) -> f32
     delta : f32 = PI / 500;
     slopeValue := pointSlopeTest(planet, angle, M);
     lastSlopeValue := slopeValue;
-        console.info(slopeValue, lastSlopeValue);
     steps:=0;
-    for steps=0; steps < 100 && slopeValue * lastSlopeValue > 0; steps += 1
+    for steps=0; steps < prcSteps && slopeValue * lastSlopeValue > 0; steps += 1
     {
-        if slopeValue < 0 do angle += delta; else do angle -= delta;
+        stepCount := cast(f32) prcSteps;
+        stepRatio := cast(f32)steps / stepCount;
+        if slopeValue < 0 do angle += delta * cast(f32)(1 - stepRatio); else do angle -= delta * cast(f32)(1 - stepRatio);
         lastSlopeValue = slopeValue;
         slopeValue = pointSlopeTest(planet, angle, M);
     }
-    console.info(steps);
     return angle;
 }
 
