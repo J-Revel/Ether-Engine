@@ -34,26 +34,19 @@ building: entity.Building;
 
 vec2 :: [2]f32;
 
-test :: proc() -> int { return 50;}
-
 main :: proc() {
-    
     logger_opts := log.Options {
         .Level,
         .Line,
         .Procedure,
     };
     context.logger = log.create_console_logger(opt = logger_opts);
-
-    log.info(test);
-    testFunc : proc() -> int = test;
-    log.info(testFunc());
     log.info("Starting SDL Example...");
     init_err := sdl.init(.Video);
     defer sdl.quit();
     if init_err == 0 {
         log.info("Setting up the window...");
-        window := sdl.create_window("odin-imgui SDL+OpenGL example", 100, 100, 1280, 720, .Open_GL|.Mouse_Focus|.Shown|.Resizable);
+        window := sdl.create_window("Ether", 100, 100, 1280, 720, .Open_GL|.Mouse_Focus|.Shown|.Resizable);
         if window == nil {
             log.debugf("Error during window creation: %s", sdl.get_error());
             sdl.quit();
@@ -83,13 +76,13 @@ main :: proc() {
                       proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
-        //imgui_state := init_imgui_state(window);
+        imgui_state := init_imgui_state(window);
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
 
         planets: [dynamic]planet.Instance;
-        for j := 0; j<100; j += 1
+        for j := 0; j<10; j += 1
         {
             planetConfig : planet.Instance;
             planetConfig.pos = vec2{cast(f32)((j % 10) * 10000), cast(f32)((j / 10) * 10000)};
@@ -113,9 +106,8 @@ main :: proc() {
         render.initRenderer(&renderer);
 
         show_demo_window := false;
-        e := sdl.Event{};
         lastMousePos := vec2{0, 0};
-        //io := imgui.get_io();
+        io := imgui.get_io();
         mousePos : vec2;
         screenSize : vec2;
 
@@ -132,47 +124,9 @@ main :: proc() {
             screenSize.x = cast(f32)mx;
             screenSize.y = cast(f32)my;
             input.handle_input();
-
-            for sdl.poll_event(&e) != 0 {
-                #partial switch e.type {
-
-                    case .Quit:
-                        log.info("Got SDL_QUIT event!");
-                        running = false;
-
-                    case .Key_Down:
-                        if is_key_down(e, .Escape) {
-                            qe := sdl.Event{};
-                            qe.type = .Quit;
-                            //sdl.push_event(&qe);
-                        }
-                        if is_key_down(e, .Tab) {
-                            //if io.want_capture_keyboard == false {
-                                show_demo_window = true;
-                            //}
-                        }
-                    case .Mouse_Button_Down:
-                    //if !io.want_capture_mouse do
-                        append(&buildings, building);
-                        mouse_pressed = true;
-                    case .Mouse_Button_Up:
-                    //if !io.want_capture_mouse do
-                        mouse_pressed = false;
-                    case .Mouse_Wheel: {
-                    }
-
-                    case .Text_Input: {
-                        //text := e.text;
-                        //imgui.ImGuiIO_AddInputCharactersUTF8(io, cstring(&text.text[0]));
-                    }
-                }
-                //imsdl.process_event(e, &imgui_state.sdl_state);
-                #partial switch e.type {
-                }
-            }
             
 
-            /*imgui_new_frame(window, &imgui_state);
+            imgui_new_frame(window, &imgui_state);
             imgui.new_frame();
             {
                 info_overlay();
@@ -185,9 +139,9 @@ main :: proc() {
                 combo_test_window();
             }
             imgui.render();
-*/
-            //gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
-            //gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
+
+            gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
+            gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
             //mousePos := vec2{-io.mouse_pos.x, io.mouse_pos.y};
@@ -208,13 +162,13 @@ main :: proc() {
             }
             building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos, 100);
             for planetInstance in &planets do
-                planet.render(&renderBuffer, &(planets[0]), 100);
+                planet.render(&renderBuffer, &(planets[0]), 500);
             entity.renderBuilding(&building, &renderBuffer);
             for building in &buildings do
                 entity.renderBuilding(&building, &renderBuffer);
             render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{screenSize.x, screenSize.y});
             render.clearRenderBuffer(&renderBuffer);
-            //imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
+            imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }
         log.info("Shutting down...");
