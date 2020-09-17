@@ -28,11 +28,11 @@ DESIRED_GL_MINOR_VERSION :: 5;
 
 
 running := true;
-mouse_pressed := false;
 buildings: [dynamic]entity.Building;
 building: entity.Building;
 
 vec2 :: [2]f32;
+ivec2 :: [2]i32;
 
 main :: proc() {
     logger_opts := log.Options {
@@ -77,6 +77,8 @@ main :: proc() {
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
+        input_state : input.Input_State;
+        input.setup_state(&input_state);
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
@@ -106,27 +108,21 @@ main :: proc() {
         render.initRenderer(&renderer);
 
         show_demo_window := false;
-        lastMousePos := vec2{0, 0};
+        lastMousePos := ivec2{0, 0};
         io := imgui.get_io();
-        mousePos : vec2;
         screenSize : vec2;
 
-        append(&input.active_delegates.quit, on_quit);
-        append(&input.active_delegates.key_state_changed, on_key_press);
-        append(&input.active_delegates.button_state_changed, on_button_press);
         for running {
             mx, my: i32;
-            sdl.get_mouse_state(&mx, &my);
-            mousePos.x = cast(f32)mx;
-            mousePos.y = cast(f32)my;
             sdl.gl_get_drawable_size(window, &mx, &my);
 
             screenSize.x = cast(f32)mx;
             screenSize.y = cast(f32)my;
-            input.handle_input();
-            
+            input.new_frame(&input_state);
+            input.process_events(&input_state);
+            input.update_mouse(&input_state, window);
+            input.update_display_size(window);
 
-            imgui_new_frame(window, &imgui_state);
             imgui.new_frame();
             {
                 info_overlay();
@@ -144,15 +140,21 @@ main :: proc() {
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
-            //mousePos := vec2{-io.mouse_pos.x, io.mouse_pos.y};
-            if(mouse_pressed)
+            if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed)
+                do running = false;
+            if(!io.want_capture_mouse && input_state.mouse_states[0] == .Down)
             {
-                offset := mousePos - lastMousePos;
-                camera.pos.x -= offset.x;
-                camera.pos.y += offset.y;
+                offset := input_state.mouse_pos - lastMousePos;
+                camera.pos.x -= cast(f32)offset.x;
+                camera.pos.y += cast(f32)offset.y;
             }
-            lastMousePos = mousePos;
-            worldMousePos := [2]f32{mousePos.x + camera.pos.x - screenSize.x / 2, -mousePos.y + camera.pos.y + screenSize.y / 2};
+
+            lastMousePos = input_state.mouse_pos;
+            worldMousePos := [2]f32{
+                cast(f32)input_state.mouse_pos.x + camera.pos.x - screenSize.x / 2,
+                -cast(f32)input_state.mouse_pos.y + camera.pos.y + screenSize.y / 2
+            };
+            log.info(input_state.mouse_pos);
             for planetInstance in &planets
             {
                 if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
@@ -180,23 +182,6 @@ main :: proc() {
 
 on_quit :: proc() {
     running = false;
-}
-
-on_key_press :: proc(key: sdl.Keysym, state: input.Input_State) -> bool
-{
-    if(key.scancode == .Escape)
-    {
-        running = false;
-        return true;
-    }
-    return false;
-}
-
-on_button_press :: proc(button: u8, pos: vec2, state: input.Input_State) -> bool
-{
-    append(&buildings, building);
-    mouse_pressed = (state == .Down);
-    return true;
 }
 
 info_overlay :: proc() {
@@ -281,12 +266,7 @@ combo_test_window :: proc() {
     imgui.end();
 }
 
-is_key_down :: proc(e: sdl.Event, sc: sdl.Scancode) -> bool {
-    return e.key.type == .Key_Down && e.key.keysym.scancode == sc;
-}
-
 Imgui_State :: struct {
-    sdl_state: imsdl.SDL_State,
     opengl_state: imgl.OpenGL_State,
 }
 
@@ -295,16 +275,8 @@ init_imgui_state :: proc(window: ^sdl.Window) -> Imgui_State {
 
     imgui.create_context();
     imgui.style_colors_dark();
-
-    imsdl.setup_state(&res.sdl_state);
     
     imgl.setup_state(&res.opengl_state);
 
     return res;
-}
-
-imgui_new_frame :: proc(window: ^sdl.Window, state: ^Imgui_State) {
-    imsdl.update_display_size(window);
-    imsdl.update_mouse(&state.sdl_state, window);
-    imsdl.update_dt(&state.sdl_state);
 }
