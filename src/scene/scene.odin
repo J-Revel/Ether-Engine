@@ -4,6 +4,7 @@ import "src:gameplay/planet"
 import "src:render"
 import "core:log"
 import "src:gameplay/tool"
+import "src:input"
 
 
 Instance :: struct
@@ -11,7 +12,6 @@ Instance :: struct
 	buildings: [dynamic]entity.Building,
 	planets: [dynamic]planet.Instance,
 	camera: render.Camera,
-	tool_type: tool.Tool_Type,
 	tool_state: tool.Tool_State,
 }
 
@@ -27,18 +27,22 @@ init :: proc(using scene: ^Instance)
 	}
 }
 
-update_and_render :: proc(using scene: ^Instance, deltaTime: f32, renderBuffer: ^render.RenderBuffer)
+update_and_render :: proc(using scene: ^Instance, deltaTime: f32, render_system: ^render.Render_System, input_state: ^input.State)
 {
-
-    tool.update_display_tool(&tool_type, &tool_state, &camera, input_state);
+	worldMousePos := [2]f32{
+        cast(f32)input_state.mouse_pos.x + camera.pos.x - render_system.screen_size.x / 2,
+        -cast(f32)input_state.mouse_pos.y + camera.pos.y + render_system.screen_size.y / 2
+    };
+    tool.update_display_tool(&tool_state, &camera, input_state);
 	for b in &buildings
 	{
-		entity.renderBuilding(&b, renderBuffer);
+		entity.renderBuilding(&b, render_system);
 	}
 	for p in &planets
 	{
-		planet.render(renderBuffer, &p, 200);
+		planet.render(render_system, &p, 200);
 	}
+    render.renderBufferContent(render_system, &camera);
 }
 
 

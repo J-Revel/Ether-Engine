@@ -44,7 +44,7 @@ void main()
 vec2 :: [2]f32;
 Color :: [4]f32;
 
-RendererState :: struct
+Render_State :: struct
 {
     shader: u32,
 
@@ -79,7 +79,14 @@ RenderBuffer :: struct
     indexCount: u32,
 }
 
-initRenderer :: proc (result: ^RendererState) -> bool
+Render_System :: struct
+{
+    screen_size: vec2,
+    using buffer: RenderBuffer,
+    render_state: Render_State,
+}
+
+initRenderer :: proc (result: ^Render_State) -> bool
 {
     vertexShader := gl.CreateShader(gl.VERTEX_SHADER);
     fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER);
@@ -136,44 +143,44 @@ initRenderer :: proc (result: ^RendererState) -> bool
     return true;
 }
 
-pushMeshData :: proc(renderBuffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
+pushMeshData :: proc(render_buffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
 {
-    startIndex := renderBuffer.vertexCount;
+    startIndex := render_buffer.vertexCount;
     for v in vertex
     {
-        renderBuffer.vertex[renderBuffer.vertexCount] = v;
-        renderBuffer.vertexCount += 1;
+        render_buffer.vertex[render_buffer.vertexCount] = v;
+        render_buffer.vertexCount += 1;
     }
 
     for i in index
     {
-        renderBuffer.index[renderBuffer.indexCount] = startIndex + i;
-        renderBuffer.indexCount += 1;
+        render_buffer.index[render_buffer.indexCount] = startIndex + i;
+        render_buffer.indexCount += 1;
     }
 }
 
-clearRenderBuffer :: proc(renderBuffer: ^RenderBuffer)
+clearRenderBuffer :: proc(render_buffer: ^RenderBuffer)
 {
-    renderBuffer.indexCount = 0;
-    renderBuffer.vertexCount = 0;
+    render_buffer.indexCount = 0;
+    render_buffer.vertexCount = 0;
 }
 
-renderBufferContent :: proc(renderer : ^RendererState, renderBuffer : ^RenderBuffer, camera: ^Camera, screenSize: vec2)
+renderBufferContent :: proc(render_buffer : ^Render_System, camera: ^Camera)
 {
-    gl.BindVertexArray(renderer.vao);
-    gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo);
+    gl.BindVertexArray(render_buffer.render_state.vao);
+    gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
     
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) renderBuffer.vertexCount * size_of(VertexData), &renderBuffer.vertex);
-    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.elementBuffer);
-    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) renderBuffer.indexCount * size_of(u32), &renderBuffer.index);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) render_buffer.vertexCount * size_of(VertexData), &render_buffer.vertex);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) render_buffer.indexCount * size_of(u32), &render_buffer.index);
     gl.BindVertexArray(0);
 
-    gl.UseProgram(renderer.shader);
-    gl.Uniform3f(renderer.camPosZoomAttrib, camera.pos.x, camera.pos.y, camera.zoom);
-    gl.Uniform2f(renderer.screenSizeAttrib, screenSize.x, screenSize.y);
+    gl.UseProgram(render_buffer.render_state.shader);
+    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.pos.x, camera.pos.y, camera.zoom);
+    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, render_buffer.screen_size.x, render_buffer.screen_size.y);
 
-    gl.BindVertexArray(renderer.vao);
-    gl.DrawElements(gl.TRIANGLES, cast(i32) renderBuffer.indexCount, gl.UNSIGNED_INT, nil);
+    gl.BindVertexArray(render_buffer.render_state.vao);
+    gl.DrawElements(gl.TRIANGLES, cast(i32) render_buffer.indexCount, gl.UNSIGNED_INT, nil);
     gl.BindVertexArray(0);
     gl.UseProgram(0);
 }

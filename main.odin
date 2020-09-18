@@ -77,15 +77,14 @@ main :: proc() {
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
-        State : input.State;
-        input.setup_state(&State);
+        input_state : input.State;
+        input.setup_state(&input_state);
 
-        renderer: render.RendererState;
-        renderBuffer: render.RenderBuffer;
+        render_buffer: render.Render_System;
         
         //building.size = vec2{20, 20};
 
-        render.initRenderer(&renderer);
+        render.initRenderer(&render_buffer.render_state);
 
         show_demo_window := false;
         lastMousePos := ivec2{0, 0};
@@ -101,9 +100,10 @@ main :: proc() {
 
             screenSize.x = cast(f32)mx;
             screenSize.y = cast(f32)my;
-            input.new_frame(&State);
-            input.process_events(&State);
-            input.update_mouse(&State, window);
+            render_buffer.screen_size = screenSize;
+            input.new_frame(&input_state);
+            input.process_events(&input_state);
+            input.update_mouse(&input_state, window);
             input.update_display_size(window);
 
             imgui.new_frame();
@@ -123,15 +123,12 @@ main :: proc() {
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
-            if(State.quit || input.get_key_state(&State, sdl.Scancode.Escape) == .Pressed)
+            if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed)
                 do running = false;
 
-            lastMousePos = State.mouse_pos;
-            worldMousePos := [2]f32{
-                cast(f32)State.mouse_pos.x + camera.pos.x - screenSize.x / 2,
-                -cast(f32)State.mouse_pos.y + camera.pos.y + screenSize.y / 2
-            };
-            log.info(State.mouse_pos);
+            lastMousePos = input_state.mouse_pos;
+            
+            log.info(input_state.mouse_pos);
             /*for planetInstance in &planets
             {
                 if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
@@ -145,9 +142,8 @@ main :: proc() {
             //entity.renderBuilding(&building, &renderBuffer);
             //for building in &buildings do
             //    entity.renderBuilding(&building, &renderBuffer);
-            scene.update_and_render(&sceneInstance, 1.0/60, &renderBuffer);
-            render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{screenSize.x, screenSize.y});
-            render.clearRenderBuffer(&renderBuffer);
+            scene.update_and_render(&sceneInstance, 1.0/60, &render_buffer, &input_state);
+            render.clearRenderBuffer(&render_buffer);
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }
