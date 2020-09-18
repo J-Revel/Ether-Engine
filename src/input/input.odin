@@ -12,7 +12,7 @@ Key_State :: enum {
     Up, Down, Pressed, Released
 }
 
-Input_State :: struct {
+State :: struct {
     time: u64,
     quit: bool,
     mouse_states: [3]Key_State,
@@ -24,7 +24,7 @@ Input_State :: struct {
     cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor
 }
 
-setup_state :: proc(using state: ^Input_State) {
+setup_state :: proc(using state: ^State) {
     io := imgui.get_io();
     io.backend_platform_name = "SDL";
     io.backend_flags |= .HasMouseCursors;
@@ -66,7 +66,7 @@ setup_state :: proc(using state: ^Input_State) {
     cursor_handles[imgui.Mouse_Cursor.NotAllowed] = sdl.create_system_cursor(sdl.System_Cursor.No);
 }
 
-new_frame :: proc(state: ^Input_State) {
+new_frame :: proc(state: ^State) {
     for i := 0; i<state.pressed_released_count; i+=1
     {
         key := state.pressed_released_keys[state.pressed_released_count];
@@ -81,7 +81,7 @@ new_frame :: proc(state: ^Input_State) {
     
 }
 
-process_events :: proc(state: ^Input_State) {
+process_events :: proc(state: ^State) {
     e : sdl.Event;
     for sdl.poll_event(&e) != 0 {
         io := imgui.get_io();
@@ -132,7 +132,7 @@ process_events :: proc(state: ^Input_State) {
     }
 }
 
-update_dt :: proc(state: ^Input_State) {
+update_dt :: proc(state: ^State) {
     io := imgui.get_io();
     freq := sdl.get_performance_frequency();
     curr_time := sdl.get_performance_counter();
@@ -141,7 +141,7 @@ update_dt :: proc(state: ^Input_State) {
     state.time = curr_time;
 }
 
-get_key_state :: proc(state: ^Input_State, scancode: sdl.Scancode) -> Key_State
+get_key_state :: proc(state: ^State, scancode: sdl.Scancode) -> Key_State
 {
     return state.key_states[scancode];
 }
@@ -163,7 +163,7 @@ is_down :: proc(state: Key_State) -> bool
     return state == Key_State.Down || state == Key_State.Pressed;
 }
 
-update_mouse :: proc(state: ^Input_State, window: ^sdl.Window) {
+update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     io := imgui.get_io();
     mx, my: i32;
     buttons := sdl.get_mouse_state(&mx, &my);

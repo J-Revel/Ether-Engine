@@ -22,14 +22,14 @@ import "src/gameplay/planet"
 import "src/gameplay/entity"
 import "src/geometry"
 import "src/input"
+import "src:gameplay"
+import "src:scene"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
 
 
 running := true;
-buildings: [dynamic]entity.Building;
-building: entity.Building;
 
 vec2 :: [2]f32;
 ivec2 :: [2]i32;
@@ -77,34 +77,14 @@ main :: proc() {
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
-        input_state : input.Input_State;
-        input.setup_state(&input_state);
+        State : input.State;
+        input.setup_state(&State);
 
         renderer: render.RendererState;
         renderBuffer: render.RenderBuffer;
-
-        planets: [dynamic]planet.Instance;
-        for j := 0; j<10; j += 1
-        {
-            planetConfig : planet.Instance;
-            planetConfig.pos = vec2{cast(f32)((j % 10) * 10000), cast(f32)((j / 10) * 10000)};
-            planetConfig.r = 1000;
-            harmonic :=  planet.ShapeHarmonic{0.2, 1};
-            for i := 0; i<10; i+=1
-            {
-                harmonic.f = rand.float32() / cast(f32) (i + 1);
-                harmonic.offset = rand.float32() * 2 * math.PI;
-                append(&planetConfig.harmonics, harmonic);
-                    
-            }
-            append(&planets, planetConfig);
-        }
         
-        building.size = vec2{20, 20};
-        building.planet = &planets[0];
+        //building.size = vec2{20, 20};
 
-        camera : render.Camera;
-        camera.zoom = 1;
         render.initRenderer(&renderer);
 
         show_demo_window := false;
@@ -112,15 +92,18 @@ main :: proc() {
         io := imgui.get_io();
         screenSize : vec2;
 
+        sceneInstance : scene.Instance;
+        scene.init(&sceneInstance);
+
         for running {
             mx, my: i32;
             sdl.gl_get_drawable_size(window, &mx, &my);
 
             screenSize.x = cast(f32)mx;
             screenSize.y = cast(f32)my;
-            input.new_frame(&input_state);
-            input.process_events(&input_state);
-            input.update_mouse(&input_state, window);
+            input.new_frame(&State);
+            input.process_events(&State);
+            input.update_mouse(&State, window);
             input.update_display_size(window);
 
             imgui.new_frame();
@@ -140,34 +123,29 @@ main :: proc() {
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             
-            if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed)
+            if(State.quit || input.get_key_state(&State, sdl.Scancode.Escape) == .Pressed)
                 do running = false;
-            if(!io.want_capture_mouse && input_state.mouse_states[0] == .Down)
-            {
-                offset := input_state.mouse_pos - lastMousePos;
-                camera.pos.x -= cast(f32)offset.x;
-                camera.pos.y += cast(f32)offset.y;
-            }
 
-            lastMousePos = input_state.mouse_pos;
+            lastMousePos = State.mouse_pos;
             worldMousePos := [2]f32{
-                cast(f32)input_state.mouse_pos.x + camera.pos.x - screenSize.x / 2,
-                -cast(f32)input_state.mouse_pos.y + camera.pos.y + screenSize.y / 2
+                cast(f32)State.mouse_pos.x + camera.pos.x - screenSize.x / 2,
+                -cast(f32)State.mouse_pos.y + camera.pos.y + screenSize.y / 2
             };
-            log.info(input_state.mouse_pos);
-            for planetInstance in &planets
+            log.info(State.mouse_pos);
+            /*for planetInstance in &planets
             {
                 if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
                 {
                     building.planet = &planetInstance;
                 }
-            }
-            building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos, 100);
-            for planetInstance in &planets do
-                planet.render(&renderBuffer, &(planets[0]), 500);
-            entity.renderBuilding(&building, &renderBuffer);
-            for building in &buildings do
-                entity.renderBuilding(&building, &renderBuffer);
+            }*/
+            //building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos, 100);
+            //for planetInstance in &planets do
+            //    planet.render(&renderBuffer, &(planets[0]), 500);
+            //entity.renderBuilding(&building, &renderBuffer);
+            //for building in &buildings do
+            //    entity.renderBuilding(&building, &renderBuffer);
+            scene.update_and_render(&sceneInstance, 1.0/60, &renderBuffer);
             render.renderBufferContent(&renderer, &renderBuffer, &camera, vec2{screenSize.x, screenSize.y});
             render.clearRenderBuffer(&renderBuffer);
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);

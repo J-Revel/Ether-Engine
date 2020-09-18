@@ -1,5 +1,5 @@
 package planet;
-import render "../../render";
+import render "../../render"
 import math "core:math"
 import geometry "core:math/linalg"
 import console "core:log"
