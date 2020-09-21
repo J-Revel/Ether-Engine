@@ -41,19 +41,19 @@ arc_collision_split :: proc(arc: Wave_Arc, step_size: f32, planet: ^Planet, out_
 
 	split_arc := arc;
 
-	for i := 0; i<step_count; i+=1
+	for i := 0; i<=step_count; i+=1
 	{
 		step_angle := angle + cast(f32)i * step_size;
 		point := arc.center + vec2{cos(step_angle), sin(step_angle)} * arc.radius;
-		if(is_inside_planet(planet, point, step_size * 10) != last_point_inside)
+		if(is_inside_planet(planet, point, step_size) != last_point_inside)
 		{
 			if(last_point_inside)
 			{
-				split_arc.angle = step_angle;
+				split_arc.angle = step_angle - step_size * 95 / 100;
 			}
 			else
 			{
-				split_arc.angular_size = step_angle - split_arc.angle;
+				split_arc.angular_size = step_angle - split_arc.angle - step_size * 5 / 100;
 				if(step_angle != split_arc.angle)
 				{
 					append(out_arcs, split_arc);
@@ -69,12 +69,13 @@ arc_collision_split :: proc(arc: Wave_Arc, step_size: f32, planet: ^Planet, out_
 	}
 }
 
-update_wave_collision :: proc(wave: ^Wave, step_size: f32, planet: ^Planet)
+update_wave_collision :: proc(wave: ^Wave, step_size: f32, max_radius: f32, planet: ^Planet)
 {
 	new_arcs := make([dynamic]Wave_Arc, 0, 10, context.temp_allocator);
 	for arc in wave.arcs
 	{
-		arc_collision_split(arc, step_size, planet, &new_arcs);
+		if(arc.radius < max_radius) do
+			arc_collision_split(arc, step_size, planet, &new_arcs);
 	}
 	resize(&wave.arcs, len(new_arcs));
 	copy(wave.arcs[:], new_arcs[:]);
@@ -111,6 +112,12 @@ render_wave :: proc(wave: ^Wave, step_size : f32, thickness: f32, color: [4]f32,
 			append(&index, i * 2);
 			append(&index, i * 2 + 1);
 		}
+		append(&index, (cast(u32)step_count) * 2 - 2);
+		append(&index, (cast(u32)step_count) * 2 - 1);
+		append(&index, (cast(u32)step_count) * 2);
+		append(&index, (cast(u32)step_count) * 2 - 1);
+		append(&index, (cast(u32)step_count) * 2);
+		append(&index, (cast(u32)step_count) * 2 + 1);
 		render.push_mesh_data(render_system, vertex[:], index[:]);
 		clear(&vertex);
 		clear(&index);

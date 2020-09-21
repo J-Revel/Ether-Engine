@@ -9,6 +9,8 @@ import imgui "src:../imgui"
 import "core:math/rand"
 import "core:math"
 
+import sdl "shared:odin-sdl2"
+
 
 Scene :: struct
 {
@@ -39,14 +41,7 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 {
 	worldMousePos := render.camera_to_world(&scene.camera, render_system, input_state.mouse_pos);
     update_display_tool(&tool_state, scene, input_state, render_system);
-	for b in &buildings
-	{
-		render_building(&b, render_system);
-	}
-	for p in &planets
-	{
-		render_planet(render_system, &p, 200);
-	}
+	
     
     imgui.begin("tools");
     buttonName := "Building Tool ";
@@ -56,17 +51,27 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
     }
     imgui.end();
 
-    time += deltaTime;
-    if time > 1
+    if input.get_key_state(input_state, sdl.Scancode.Space) != .Down && input.get_key_state(input_state, sdl.Scancode.Space) != .Pressed
     {
-    	append(&wave.arcs, Wave_Arc{0, {0, -400}, 0, 0, math.PI });
-    	time -= 1;
+	    time += deltaTime;
+	    if time > 1
+	    {
+	    	append(&wave.arcs, Wave_Arc{0, worldMousePos, 0, 0, 2 * math.PI });
+	    	time -= 1;
+	    }
+    	for arc in &wave.arcs do arc.radius += deltaTime * 100;
+
     }
-    for arc in &wave.arcs do arc.radius += deltaTime * 100;
-    for planet in &planets do update_wave_collision(&wave, 2, &planet);
-    render_wave(&wave, 2, 5, {1, 1, 0, 1}, render_system);
+    for planet in &planets do update_wave_collision(&wave, 100, 500, &planet);
+    render_wave(&wave, 10, 5, {1, 1, 0, 1}, render_system);
+    for b in &buildings
+	{
+		render_building(&b, render_system);
+	}
+	for p in &planets
+	{
+		render_planet(render_system, &p, 200);
+	}
 	
 	render.renderBufferContent(render_system, &camera);
 }
-
-
