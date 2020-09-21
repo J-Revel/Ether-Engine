@@ -39,7 +39,7 @@ render_planet :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Planet, subdi
     {
         angle := (cast(f32)i * 2) * math.PI / (cast(f32)subdivisions);
         
-        vertex[i] = render.VertexData{surfacePoint(planet, angle), {0, 0, 0, 1}};
+        vertex[i] = render.VertexData{surface_point(planet, angle), {0, 0, 0, 1}};
     }
     vertex[subdivisions] = render.VertexData{planet.pos, {1, 1, 1, 1}};
     for i : u32 = 0; i<subdivisions; i+=1
@@ -75,13 +75,13 @@ rdr :: proc(planet: ^Config, angle: f32) -> (f32, f32)
     return r, dr;
 }
 
-surfacePoint :: proc(planet: ^Planet, angle: f32) -> vec2
+surface_point :: proc(planet: ^Planet, angle: f32) -> vec2
 {
     r := r(planet, angle);
     return planet.pos + vec2{r * math.cos(angle), r * math.sin(angle)};
 }
 
-surfaceNormal :: proc(planet: ^Config, angle: f32) -> vec2
+surface_tangent :: proc(planet: ^Config, angle: f32) -> vec2
 {
     using math;
     using geometry;
@@ -95,8 +95,22 @@ surfaceNormal :: proc(planet: ^Config, angle: f32) -> vec2
     });
 }
 
+surface_normal :: proc(planet: ^Config, angle: f32) -> vec2
+{
+    using math;
+    using geometry;
+    r, dr := rdr(planet, angle);
+    cosa := cos(angle);
+    sina := sin(angle);
+
+    return vector_normalize(vec2 {
+        dr * sina + r * cosa,
+        -dr * cosa - r * sina
+    });
+}
+
 @private
-pointSlopeTest :: proc(planet: ^Planet, angle: f32, M: vec2) -> f32
+point_slope_test :: proc(planet: ^Planet, angle: f32, M: vec2) -> f32
 {
     using math;
     MO := planet.pos - M;
@@ -106,13 +120,13 @@ pointSlopeTest :: proc(planet: ^Planet, angle: f32, M: vec2) -> f32
     return 2 * dr *(MO.x * cosa + MO.y * sina) + 2 * r * (MO.y * cosa - MO.x * sina) + 2 * r * dr;
 }
 
-closestSurfaceAngle :: proc(planet: ^Planet, M: vec2, prcSteps: int) -> f32
+closest_surface_angle :: proc(planet: ^Planet, M: vec2, prcSteps: int) -> f32
 {
     using math;
     OM := M - planet.pos;
     angle := math.atan2_f32(OM.y, OM.x);
     delta : f32 = PI / 500;
-    slopeValue := pointSlopeTest(planet, angle, M);
+    slopeValue := point_slope_test(planet, angle, M);
     lastSlopeValue := slopeValue;
     steps:=0;
     for steps=0; steps < prcSteps && slopeValue * lastSlopeValue > 0; steps += 1
@@ -121,7 +135,7 @@ closestSurfaceAngle :: proc(planet: ^Planet, M: vec2, prcSteps: int) -> f32
         stepRatio := cast(f32)steps / stepCount;
         if slopeValue < 0 do angle += delta * cast(f32)(1 - stepRatio); else do angle -= delta * cast(f32)(1 - stepRatio);
         lastSlopeValue = slopeValue;
-        slopeValue = pointSlopeTest(planet, angle, M);
+        slopeValue = point_slope_test(planet, angle, M);
     }
     return angle;
 }

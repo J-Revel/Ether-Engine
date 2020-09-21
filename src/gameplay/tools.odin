@@ -73,7 +73,7 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 	            building.planet = &planetInstance;
 	        }
 	    }
-	    building.angle = closestSurfaceAngle(building.planet, world_pos, 100);
+	    building.angle = closest_surface_angle(building.planet, world_pos, 100);
 		render_building(&building, render_system);
 
 		if(input_state.mouse_states[2] == .Pressed)
@@ -84,6 +84,9 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 		if(input_state.mouse_states[0] == .Pressed)
 		{
 			append(&scene.buildings, building);
+			added_building := &scene.buildings[len(scene.buildings) - 1];
+			append(&scene.loading_buildings, Loading_Building{added_building, 0});
+
 		}
 	}
 	imgui.begin("Buildings");

@@ -15,6 +15,7 @@ import sdl "shared:odin-sdl2"
 Scene :: struct
 {
 	buildings: [dynamic]Building,
+	loading_buildings: [dynamic]Loading_Building,
 	planets: [dynamic]Planet,
 	camera: render.Camera,
 	tool_state: Tool_State,
@@ -31,7 +32,6 @@ init_scene :: proc(using scene: ^Scene)
 		p.pos = [2]f32{800 * cast(f32)i, 0};
 		append(&planets, p);
 	}
-    append(&wave.arcs, Wave_Arc{0, {0, -400}, 0, 0, math.PI });
 	tool_state = Basic_Tool_State{};
 }
 
@@ -51,23 +51,27 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
     }
     imgui.end();
 
-    if input.get_key_state(input_state, sdl.Scancode.Space) != .Down && input.get_key_state(input_state, sdl.Scancode.Space) != .Pressed
+    if input_state.mouse_states[2] == .Pressed
     {
-	    time += deltaTime;
-	    if time > 1
-	    {
-	    	append(&wave.arcs, Wave_Arc{0, worldMousePos, 0, 0, 2 * math.PI });
-	    	time -= 1;
-	    }
-    	for arc in &wave.arcs do arc.radius += deltaTime * 100;
-
-    }
+    	append(&wave.arcs, Wave_Arc{100, worldMousePos, 0, 0, 2 * math.PI });
+    	log.info(wave.arcs);
+	}
+	for arc in &wave.arcs do arc.radius += deltaTime * 100;
     for planet in &planets do update_wave_collision(&wave, 100, 500, &planet);
+
+    for h in &loading_buildings
+	{
+		h.energy += update_wave_collision(&wave, 30, 500, h.building);
+		log.info(h.energy);
+	}
+
     render_wave(&wave, 10, 5, {1, 1, 0, 1}, render_system);
+
     for b in &buildings
 	{
 		render_building(&b, render_system);
 	}
+
 	for p in &planets
 	{
 		render_planet(render_system, &p, 200);

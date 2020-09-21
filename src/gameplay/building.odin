@@ -1,7 +1,16 @@
 package gameplay
 
 import "src:render"
-import "core:log"
+import l "core:log"
+import "core:math"
+import "core:math/linalg"
+
+Grounded_Hitbox :: struct
+{
+    planet: ^Planet,
+    size: vec2,
+    angle: f32
+}
 
 Building_Render_Data :: struct
 {
@@ -11,10 +20,14 @@ Building_Render_Data :: struct
 
 Building :: struct
 {
-    planet: ^Planet,
-    size: vec2,
-    angle: f32,
+    using hitbox: Grounded_Hitbox,
     render_data: ^Building_Render_Data,
+}
+
+Loading_Building :: struct
+{
+    using building: ^Building,
+    energy: f32,
 }
 
 building_render_types := [5]Building_Render_Data
@@ -36,12 +49,10 @@ building_render_types := [5]Building_Render_Data
     }
 };
 
-
-
 render_building :: proc(using building: ^Building, renderBuffer: ^render.RenderBuffer)
 {
-    pos := surfacePoint(planet, angle);
-    surfaceTangent := surfaceNormal(planet, angle);
+    pos := surface_point(planet, angle);
+    surfaceTangent := surface_tangent(planet, angle);
     surfaceNormal := vec2 {surfaceTangent.y, -surfaceTangent.x};
 
     vertex: []render.VertexData = {
@@ -54,13 +65,18 @@ render_building :: proc(using building: ^Building, renderBuffer: ^render.RenderB
     render.push_mesh_data(renderBuffer, vertex, indices);
 }
 
-Loading_Building :: struct
+is_inside_hitbox :: proc(using hitbox: ^Grounded_Hitbox, pos: [2]f32) -> bool
 {
-    value: f32,
-    max: f32,
-}
+    using math;
+    ground_center := surface_point(planet, angle);
 
-update_loading_buildings :: proc(buildings: []Loading_Building)
-{
+    right := surface_tangent(planet, angle);
+    up := [2]f32{right.y, -right.x};
+
+    dir := pos - ground_center;
+    x := linalg.dot(right, dir);
+    y := linalg.dot(up, dir);
+
+    return x > -size.x / 2 && x < size.x / 2 && y > 0 && y < size.y;
 
 }
