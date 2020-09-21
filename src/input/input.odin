@@ -21,7 +21,9 @@ State :: struct {
     pressed_released_keys: [512]int,
     pressed_released_count: int,
     // TODO : migrate specific imgui code somewhere else
-    cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor
+    cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor,
+    mouse_captured: bool,
+    keyboard_captured: bool,
 }
 
 setup_state :: proc(using state: ^State) {
@@ -83,8 +85,8 @@ new_frame :: proc(state: ^State) {
 
 process_events :: proc(state: ^State) {
     e : sdl.Event;
+    io := imgui.get_io();
     for sdl.poll_event(&e) != 0 {
-        io := imgui.get_io();
         #partial switch e.type {
             case .Quit: {
                 state.quit = true;
@@ -102,15 +104,15 @@ process_events :: proc(state: ^State) {
             }
 
             case .Mouse_Button_Down: {
-                if e.button.button == u8(sdl.Mousecode.Left)   do state.mouse_states[0] = .Pressed;
-                if e.button.button == u8(sdl.Mousecode.Right)  do state.mouse_states[1] = .Pressed;
-                if e.button.button == u8(sdl.Mousecode.Middle) do state.mouse_states[2] = .Pressed;
+                if e.button.button == 1   do state.mouse_states[0] = .Pressed;
+                if e.button.button == 2  do state.mouse_states[1] = .Pressed;
+                if e.button.button == 3 do state.mouse_states[2] = .Pressed;
             }
 
             case .Mouse_Button_Up: {
-                if e.button.button == u8(sdl.Mousecode.Left)   do state.mouse_states[0] = .Released;
-                if e.button.button == u8(sdl.Mousecode.Right)  do state.mouse_states[1] = .Released;
-                if e.button.button == u8(sdl.Mousecode.Middle) do state.mouse_states[2] = .Released;
+                if e.button.button == 1   do state.mouse_states[0] = .Released;
+                if e.button.button == 2  do state.mouse_states[1] = .Released;
+                if e.button.button == 3 do state.mouse_states[2] = .Released;
             }
 
             case .Key_Down, .Key_Up: {
@@ -130,6 +132,8 @@ process_events :: proc(state: ^State) {
             }
         }
     }
+    state.keyboard_captured = io.want_capture_keyboard;
+    state.mouse_captured = io.want_capture_mouse;
 }
 
 update_dt :: proc(state: ^State) {

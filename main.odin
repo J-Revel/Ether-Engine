@@ -17,13 +17,9 @@ import imsdl "impl/sdl";
 
 import render "src/render";
 import "src/util";
-
-import "src/gameplay/planet"
-import "src/gameplay/entity"
 import "src/geometry"
 import "src/input"
 import "src:gameplay"
-import "src:scene"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
@@ -87,12 +83,11 @@ main :: proc() {
         render.initRenderer(&render_buffer.render_state);
 
         show_demo_window := false;
-        lastMousePos := ivec2{0, 0};
         io := imgui.get_io();
         screenSize : vec2;
 
-        sceneInstance : scene.Instance;
-        scene.init(&sceneInstance);
+        sceneInstance : gameplay.Scene;
+        gameplay.init_scene(&sceneInstance);
 
         for running {
             mx, my: i32;
@@ -109,42 +104,20 @@ main :: proc() {
             imgui.new_frame();
             {
                 info_overlay();
-
-                if show_demo_window do imgui.show_demo_window(&show_demo_window);
-                
-                text_test_window();
-                input_text_test_window();
-                misc_test_window();
-                combo_test_window();
             }
-            imgui.render();
 
             gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
+            gameplay.update_and_render(&sceneInstance, 1.0/60, &render_buffer, &input_state);
+            imgui.render();
+
             
             if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed)
                 do running = false;
 
-            lastMousePos = input_state.mouse_pos;
-            
-            log.info(input_state.mouse_pos);
-            /*for planetInstance in &planets
-            {
-                if(linalg.vector_length(worldMousePos - planetInstance.pos) < linalg.vector_length(worldMousePos - building.planet.pos))
-                {
-                    building.planet = &planetInstance;
-                }
-            }*/
-            //building.angle = planet.closestSurfaceAngle(building.planet, worldMousePos, 100);
-            //for planetInstance in &planets do
-            //    planet.render(&renderBuffer, &(planets[0]), 500);
-            //entity.renderBuilding(&building, &renderBuffer);
-            //for building in &buildings do
-            //    entity.renderBuilding(&building, &renderBuffer);
-            scene.update_and_render(&sceneInstance, 1.0/60, &render_buffer, &input_state);
+            imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);;
             render.clearRenderBuffer(&render_buffer);
-            imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
         }
         log.info("Shutting down...");
@@ -169,7 +142,6 @@ info_overlay :: proc() {
                                         .NoMove;
     imgui.begin("Info", nil, overlay_flags);
     imgui.text_unformatted("Press Esc to close the application");
-    imgui.text_unformatted("Press Tab to show demo window");
     imgui.end();
 }
 

@@ -1,6 +1,4 @@
-package entity
-
-vec2 :: [2]f32;
+package gameplay
 
 Entity :: struct
 {

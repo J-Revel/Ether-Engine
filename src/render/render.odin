@@ -16,7 +16,7 @@ layout (location = 0) out vec4 out_color;
 
 void main()
 {
-    out_color = frag_color;
+    out_color = 1 - ((1 - frag_color) * (1 - frag_color));
 }
 `;
 
@@ -73,10 +73,8 @@ VERTEX_BUFFER_SIZE :: 20000;
 
 RenderBuffer :: struct
 {
-    vertex: [20000]VertexData,
-    vertexCount: u32,
-    index: [50000]u32,
-    indexCount: u32,
+    vertex: [dynamic]VertexData,
+    index: [dynamic]u32,
 }
 
 Render_System :: struct
@@ -143,36 +141,36 @@ initRenderer :: proc (result: ^Render_State) -> bool
     return true;
 }
 
-pushMeshData :: proc(render_buffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
+push_mesh_data :: proc(render_buffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
 {
-    startIndex := render_buffer.vertexCount;
+    startIndex := cast(u32) len(render_buffer.vertex);
     for v in vertex
     {
-        render_buffer.vertex[render_buffer.vertexCount] = v;
-        render_buffer.vertexCount += 1;
+        append(&render_buffer.vertex, v);
     }
 
     for i in index
     {
-        render_buffer.index[render_buffer.indexCount] = startIndex + i;
-        render_buffer.indexCount += 1;
+        append(&render_buffer.index, startIndex + i);
     }
 }
 
 clearRenderBuffer :: proc(render_buffer: ^RenderBuffer)
 {
-    render_buffer.indexCount = 0;
-    render_buffer.vertexCount = 0;
+    clear(&render_buffer.index);
+    clear(&render_buffer.vertex);
 }
 
 renderBufferContent :: proc(render_buffer : ^Render_System, camera: ^Camera)
 {
+    vertex_count := len(render_buffer.vertex);
+    index_count := len(render_buffer.index);
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
     
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) render_buffer.vertexCount * size_of(VertexData), &render_buffer.vertex);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(VertexData), &render_buffer.vertex[0]);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
-    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) render_buffer.indexCount * size_of(u32), &render_buffer.index);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) index_count * size_of(u32), &render_buffer.index[0]);
     gl.BindVertexArray(0);
 
     gl.UseProgram(render_buffer.render_state.shader);
@@ -180,7 +178,16 @@ renderBufferContent :: proc(render_buffer : ^Render_System, camera: ^Camera)
     gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, render_buffer.screen_size.x, render_buffer.screen_size.y);
 
     gl.BindVertexArray(render_buffer.render_state.vao);
-    gl.DrawElements(gl.TRIANGLES, cast(i32) render_buffer.indexCount, gl.UNSIGNED_INT, nil);
+    gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, nil);
     gl.BindVertexArray(0);
     gl.UseProgram(0);
+}
+
+camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System, pos: [2]i32) -> [2]f32
+{
+    return [2]f32
+    {
+        cast(f32)pos.x + camera.pos.x - render_system.screen_size.x / 2,
+        -cast(f32)pos.y + camera.pos.y + render_system.screen_size.y / 2
+    };
 }

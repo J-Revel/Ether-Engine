@@ -1,12 +1,13 @@
-package planet;
-import render "../../render"
+package gameplay
 import math "core:math"
 import geometry "core:math/linalg"
 import console "core:log"
+import "core:math/rand"
+import "src:render"
 
 vec2 :: [2]f32;
 
-ShapeHarmonic :: struct
+Planet_Harmonic :: struct
 {
     f, offset: f32
 }
@@ -14,10 +15,10 @@ ShapeHarmonic :: struct
 Config :: struct
 {
     r: f32,
-    harmonics: [dynamic]ShapeHarmonic
+    harmonics: [dynamic]Planet_Harmonic
 }
 
-Instance :: struct
+Planet :: struct
 {
     pos: vec2,
     using config: Config
@@ -28,7 +29,7 @@ radius :: proc(meanRadius: f32, angle: f32) -> f32
     return meanRadius + meanRadius / 30 * math.cos(angle * 10) + meanRadius / 10 * math.sin(angle * 3) + meanRadius / 50 * math.cos( 5 + angle * 12);
 }
 
-render :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Instance, subdivisions: u32)
+render_planet :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Planet, subdivisions: u32)
 {
     vertex: []render.VertexData = make([]render.VertexData, subdivisions + 1);
     defer delete(vertex);
@@ -47,10 +48,10 @@ render :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Instance, subdivisio
         index[i * 3 + 1] = i;
         index[i * 3 + 2] = (i + 1) % subdivisions;
     }
-    render.pushMeshData(renderBuffer, vertex, index);
+    render.push_mesh_data(renderBuffer, vertex, index);
 }
 
-r :: proc(planet: ^Instance, angle: f32) -> f32
+r :: proc(planet: ^Planet, angle: f32) -> f32
 {
     r := planet.r;
     for harmonic, hIndex in planet.harmonics
@@ -74,7 +75,7 @@ rdr :: proc(planet: ^Config, angle: f32) -> (f32, f32)
     return r, dr;
 }
 
-surfacePoint :: proc(planet: ^Instance, angle: f32) -> vec2
+surfacePoint :: proc(planet: ^Planet, angle: f32) -> vec2
 {
     r := r(planet, angle);
     return planet.pos + vec2{r * math.cos(angle), r * math.sin(angle)};
@@ -84,7 +85,7 @@ surfaceNormal :: proc(planet: ^Config, angle: f32) -> vec2
 {
     using math;
     using geometry;
-    r,dr := rdr(planet, angle);
+    r, dr := rdr(planet, angle);
     cosa := cos(angle);
     sina := sin(angle);
 
@@ -94,7 +95,8 @@ surfaceNormal :: proc(planet: ^Config, angle: f32) -> vec2
     });
 }
 
-pointSlopeTest :: proc(planet: ^Instance, angle: f32, M: vec2) -> f32
+@private
+pointSlopeTest :: proc(planet: ^Planet, angle: f32, M: vec2) -> f32
 {
     using math;
     MO := planet.pos - M;
@@ -104,7 +106,7 @@ pointSlopeTest :: proc(planet: ^Instance, angle: f32, M: vec2) -> f32
     return 2 * dr *(MO.x * cosa + MO.y * sina) + 2 * r * (MO.y * cosa - MO.x * sina) + 2 * r * dr;
 }
 
-closestSurfaceAngle :: proc(planet: ^Instance, M: vec2, prcSteps: int) -> f32
+closestSurfaceAngle :: proc(planet: ^Planet, M: vec2, prcSteps: int) -> f32
 {
     using math;
     OM := M - planet.pos;
@@ -124,3 +126,23 @@ closestSurfaceAngle :: proc(planet: ^Instance, M: vec2, prcSteps: int) -> f32
     return angle;
 }
 
+is_inside_planet :: proc(planet: ^Planet, M: vec2, depth: f32 = 0) -> bool
+{
+    using math;
+    OM := M - planet.pos;
+    angle := math.atan2_f32(OM.y, OM.x);
+    _r := r(planet, angle) - depth;
+    return OM.x * OM.x + OM.y * OM.y < _r * _r;
+}
+
+generate :: proc(result: ^Config, r: f32, harmonicCount: int) 
+{
+    result.r = r;
+    for i := 0; i < harmonicCount; i+=1
+    {
+        harmonic := Planet_Harmonic{0.2, 1};
+        harmonic.f = rand.float32() / cast(f32) (i * 2 + 1) / 3;
+        harmonic.offset = rand.float32() * 2 * math.PI;
+        append(&result.harmonics, harmonic);
+    }
+}
