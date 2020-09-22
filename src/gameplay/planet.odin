@@ -95,6 +95,14 @@ surface_tangent :: proc(planet: ^Config, angle: f32) -> vec2
     });
 }
 
+surface_axes :: proc(planet: ^Planet, angle: f32) -> (origin: vec2, up: vec2, right: vec2)
+{
+    origin = surface_point(planet, angle);
+    right = surface_tangent(planet, angle);
+    up = [2]f32{right.y, -right.x};
+    return;
+}
+
 surface_normal :: proc(planet: ^Config, angle: f32) -> vec2
 {
     using math;

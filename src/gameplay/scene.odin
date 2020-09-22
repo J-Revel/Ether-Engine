@@ -54,7 +54,6 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
     if input_state.mouse_states[2] == .Pressed
     {
     	append(&wave.arcs, Wave_Arc{100, worldMousePos, 0, 0, 2 * math.PI });
-    	log.info(wave.arcs);
 	}
 	for arc in &wave.arcs do arc.radius += deltaTime * 100;
     for planet in &planets do update_wave_collision(&wave, 100, 500, &planet);
@@ -76,6 +75,26 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 	{
 		render_planet(render_system, &p, 200);
 	}
+
+	test_arc : Wave_Arc;
+	test_arc.radius = 200;
+	test_arc.center = worldMousePos;
+	test_arc.angular_size = math.PI * 2;
+	test_wave : Wave = {};
+	append(&test_wave.arcs, test_arc);
+	test_result := false;
+	for b in &buildings
+	{
+		hitbox := to_regular_hitbox(b.hitbox);
+		testCircle : Circle = {worldMousePos, 200};
+		if(collision_hitbox_empty_circle(&hitbox, &testCircle))
+		{
+			test_result = true;
+		}
+
+	}
+
+	render_wave(&test_wave, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	render.renderBufferContent(render_system, &camera);
 }

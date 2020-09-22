@@ -20,6 +20,21 @@ Wave_Arc :: struct
 	angular_size: f32
 }
 
+points_along_arc :: proc(arc: ^Wave_Arc, step_size: f32, allocator := context.temp_allocator) -> []vec2
+{
+	using math;
+	length := arc.angular_size * arc.radius;
+	step_count := cast(int)(length / step_size) + 1;
+	step_size := arc.angular_size / cast(f32)step_count;
+	result := make([]vec2, step_count + 1);
+	for i := 0; i <= step_count; i += 1
+	{
+		angle := arc.angle + cast(f32)i * step_size;
+		result[i] = arc.center + vec2{cos(angle), sin(angle)} * arc.radius;
+	}
+	return result;
+}
+
 arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Planet, out_arcs: ^[dynamic]Wave_Arc)
 {
 	using math;
@@ -65,7 +80,6 @@ arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Plane
 	{
 		split_arc.angular_size = angle + arc.angular_size - split_arc.angle;
 		split_arc.energy = arc.energy * split_arc.angular_size / length * radius;
-		l.info(split_arc.energy);
 		append(out_arcs, split_arc);
 	}
 }
@@ -93,7 +107,7 @@ arc_collision_split_hitbox :: proc(arc: Wave_Arc, step_size: f32, hitbox: ^Groun
 	{
 		step_angle := angle + cast(f32)i * step_size;
 		point := arc.center + vec2{cos(step_angle), sin(step_angle)} * arc.radius;
-		if(is_inside_hitbox(hitbox, point) != last_point_inside)
+		if is_inside_g_bb(hitbox, point) != last_point_inside
 		{
 			if(last_point_inside)
 			{

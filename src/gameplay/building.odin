@@ -65,7 +65,16 @@ render_building :: proc(using building: ^Building, renderBuffer: ^render.RenderB
     render.push_mesh_data(renderBuffer, vertex, indices);
 }
 
-is_inside_hitbox :: proc(using hitbox: ^Grounded_Hitbox, pos: [2]f32) -> bool
+to_regular_hitbox :: proc(using hitbox: Grounded_Hitbox) -> Bounding_Box
+{
+    ground_center := surface_point(planet, angle);
+
+    right := surface_tangent(planet, angle);
+    up := [2]f32{right.y, -right.x};
+    return Bounding_Box{ground_center + up * size.y / 2, angle, size};
+}
+
+is_inside_g_bb :: proc(using hitbox: ^Grounded_Hitbox, pos: [2]f32) -> bool
 {
     using math;
     ground_center := surface_point(planet, angle);
