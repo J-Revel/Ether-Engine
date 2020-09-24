@@ -1,6 +1,6 @@
 package gameplay
 
-import "src:render"
+import "../render"
 import l "core:log"
 import "core:math"
 import "core:math/linalg"
@@ -18,16 +18,30 @@ Building_Render_Data :: struct
     color: [4]f32,
 }
 
+Building_ID :: distinct u32;
+
 Building :: struct
 {
     using hitbox: Grounded_Hitbox,
     render_data: ^Building_Render_Data,
 }
 
+Wave_Receiver :: struct
+{
+
+}
+
 Loading_Building :: struct
 {
     using building: ^Building,
     energy: f32,
+}
+
+Wave_Emitter :: struct
+{
+    using loading_building: ^Loading_Building,
+    emit_angle: f32,
+    emit_delta_angle: f32,
 }
 
 building_render_types := [5]Building_Render_Data
@@ -87,5 +101,31 @@ is_inside_g_bb :: proc(using hitbox: ^Grounded_Hitbox, pos: [2]f32) -> bool
     y := linalg.dot(up, dir);
 
     return x > -size.x / 2 && x < size.x / 2 && y > 0 && y < size.y;
+}
 
+get_g_bb_pos :: proc(using bb: Grounded_Hitbox) -> vec2
+{
+    return surface_point(planet, angle);
+}
+
+get_g_bb_center :: proc(using bb: Grounded_Hitbox) -> vec2
+{
+    right := surface_tangent(planet, angle);
+    up := [2]f32{right.y, -right.x};
+    return surface_point(planet, angle) + up * size.y / 2;
+}
+
+update_wave_emitters :: proc(emitters: []Wave_Emitter) -> [dynamic]Wave_Arc
+{
+    result := make([dynamic]Wave_Arc, 100, context.temp_allocator);
+    for emitter in emitters
+    {
+        if emitter.energy > 1
+        {
+            emitter.energy -= 1;
+            emit_arc := Arc{0, emitter.angle + emitter.emit_angle, emitter.emit_delta_angle};
+            append(&result, Wave_Arc{0, get_g_bb_center(emitter), emit_arc});
+        }
+    }
+    return result;
 }

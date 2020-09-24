@@ -1,7 +1,7 @@
 package input
 
 import sdl "shared:odin-sdl2"
-import imgui "../../imgui"
+import imgui "../imgui"
 import "core:log"
 import runtime "core:runtime"
 

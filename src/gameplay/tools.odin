@@ -1,10 +1,10 @@
 package gameplay;
 
-import "src:render";
-import "src:input"
+import "../render";
+import "../input"
 import "core:log"
 import "core:math/linalg"
-import "src:../imgui"
+import "../imgui"
 import "core:strconv"
 
 

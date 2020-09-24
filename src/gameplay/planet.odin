@@ -3,7 +3,7 @@ import math "core:math"
 import geometry "core:math/linalg"
 import console "core:log"
 import "core:math/rand"
-import "src:render"
+import "../render"
 
 vec2 :: [2]f32;
 

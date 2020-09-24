@@ -30,7 +30,6 @@ is_inside_bb :: proc(using bb: ^Bounding_Box, pos: [2]f32) -> bool
     y := linalg.dot(up, dir);
 
     return x > -size.x / 2 && x < size.x / 2 && y > -size.y / 2 && y < size.y / 2;
-
 }
 
 collision_hitbox_empty_circle :: proc(hitbox: ^Bounding_Box, circle: ^Circle) -> bool
@@ -59,7 +58,7 @@ collision_hitbox_empty_circle :: proc(hitbox: ^Bounding_Box, circle: ^Circle) ->
 	return circle.radius > min_distance && circle.radius < max_distance;
 }
 
-collision_hitbox_arc :: proc(bb: ^Bounding_Box, arc: ^Wave_Arc, step_size: f32) -> bool
+collision_bb_arc :: proc(bb: ^Bounding_Box, arc: ^Wave_Arc, step_size: f32) -> bool
 {
 	circle := Circle{arc.center, arc.radius};
 	if collision_hitbox_empty_circle(bb, &circle)

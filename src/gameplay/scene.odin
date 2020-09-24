@@ -1,11 +1,11 @@
 package gameplay
 
-import "src:render"
+import "../render"
 import "core:log"
-import "src:input"
+import "../input"
 import "core:strconv"
 
-import imgui "src:../imgui"
+import imgui "../imgui"
 import "core:math/rand"
 import "core:math"
 
@@ -19,7 +19,7 @@ Scene :: struct
 	planets: [dynamic]Planet,
 	camera: render.Camera,
 	tool_state: Tool_State,
-    wave: Wave
+    arcs: [dynamic]Wave_Arc,
 }
 
 init_scene :: proc(using scene: ^Scene)
@@ -53,18 +53,23 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 
     if input_state.mouse_states[2] == .Pressed
     {
-    	append(&wave.arcs, Wave_Arc{100, worldMousePos, 0, 0, 2 * math.PI });
+    	append(&arcs, Wave_Arc{100, worldMousePos, {0, 0, 2 * math.PI} });
 	}
-	for arc in &wave.arcs do arc.radius += deltaTime * 100;
-    for planet in &planets do update_wave_collision(&wave, 100, 500, &planet);
+	for arc in &arcs do arc.radius += deltaTime * 100;
+    for planet in &planets do update_wave_collision(&arcs, 100, 500, &planet);
 
     for h in &loading_buildings
 	{
-		h.energy += update_wave_collision(&wave, 30, 500, h.building);
+		bb := to_regular_hitbox(h.building);
+		for arc in &arcs
+		{
+			if collision_bb_arc(&bb, &arc, 10)
+				do h.energy += deltaTime;
+		}
 		log.info(h.energy);
 	}
 
-    render_wave(&wave, 10, 5, {1, 1, 0, 1}, render_system);
+    render_wave(arcs[:], 10, 5, {1, 1, 0, 1}, render_system);
 
     for b in &buildings
 	{
@@ -79,22 +84,20 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 	test_arc : Wave_Arc;
 	test_arc.radius = 200;
 	test_arc.center = worldMousePos;
-	test_arc.angular_size = math.PI * 2;
-	test_wave : Wave = {};
-	append(&test_wave.arcs, test_arc);
+	test_arc.angular_size = math.PI / 2;
 	test_result := false;
 	for b in &buildings
 	{
 		hitbox := to_regular_hitbox(b.hitbox);
 		testCircle : Circle = {worldMousePos, 200};
-		if(collision_hitbox_empty_circle(&hitbox, &testCircle))
+		if(collision_bb_arc(&hitbox, &test_arc, 10))
 		{
 			test_result = true;
 		}
 
 	}
 
-	render_wave(&test_wave, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
+	render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	render.renderBufferContent(render_system, &camera);
 }

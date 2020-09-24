@@ -15,11 +15,11 @@ import imgui "imgui";
 import imgl  "impl/opengl";
 import imsdl "impl/sdl";
 
-import render "src/render";
-import "src/util";
-import "src/geometry"
-import "src/input"
-import "src:gameplay"
+import render "render";
+import "util";
+import "geometry"
+import "input"
+import "gameplay"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
@@ -37,6 +37,8 @@ main :: proc() {
         .Procedure,
     };
     context.logger = log.create_console_logger(opt = logger_opts);
+    
+
     log.info("Starting SDL Example...");
     init_err := sdl.init(.Video);
     defer sdl.quit();

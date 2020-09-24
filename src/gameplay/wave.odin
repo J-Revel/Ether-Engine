@@ -1,23 +1,22 @@
 package gameplay;
 
 import l "core:log"
-import "src:render"
+import "../render"
 import "core:math"
 import "core:mem"
 
-Wave :: struct
+Arc :: struct
 {
-	arcs: [dynamic]Wave_Arc,
-	duration: f32,
+	radius: f32,
+	angle: f32,
+	angular_size: f32
 }
 
 Wave_Arc :: struct
 {
 	energy: f32,
 	center: [2]f32,
-	radius: f32,
-	angle: f32,
-	angular_size: f32
+	using arc: Arc,
 }
 
 points_along_arc :: proc(arc: ^Wave_Arc, step_size: f32, allocator := context.temp_allocator) -> []vec2
@@ -138,40 +137,40 @@ arc_collision_split_hitbox :: proc(arc: Wave_Arc, step_size: f32, hitbox: ^Groun
 	return result;
 }
 
-update_wave_collision_planet :: proc(wave: ^Wave, step_size: f32, max_radius: f32, planet: ^Planet)
+update_wave_collision_planet :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, max_radius: f32, planet: ^Planet)
 {
 	new_arcs := make([dynamic]Wave_Arc, 0, 10, context.temp_allocator);
-	for arc in wave.arcs
+	for arc in arcs
 	{
 		if(arc.radius < max_radius) do
 			arc_collision_split_planet(arc, step_size, planet, &new_arcs);
 	}
-	resize(&wave.arcs, len(new_arcs));
-	copy(wave.arcs[:], new_arcs[:]);
+	resize(arcs, len(new_arcs));
+	copy(arcs[:], new_arcs[:]);
 }
 
-update_wave_collision_hitbox :: proc(wave: ^Wave, step_size: f32, max_radius: f32, hitbox: ^Grounded_Hitbox) -> f32
+update_wave_collision_hitbox :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, max_radius: f32, hitbox: ^Grounded_Hitbox) -> f32
 {
 	new_arcs := make([dynamic]Wave_Arc, 0, 10, context.temp_allocator);
 	result: f32 = 0;
-	for arc in wave.arcs
+	for arc in arcs
 	{
 		if(arc.radius < max_radius) do
 			result += arc_collision_split_hitbox(arc, step_size, hitbox, &new_arcs);
 	}
-	resize(&wave.arcs, len(new_arcs));
-	copy(wave.arcs[:], new_arcs[:]);
+	resize(arcs, len(new_arcs));
+	copy(arcs[:], new_arcs[:]);
 	return result;
 }
 
 update_wave_collision :: proc { update_wave_collision_planet, update_wave_collision_hitbox };
 
-render_wave :: proc(wave: ^Wave, step_size : f32, thickness: f32, color: [4]f32, render_system: ^render.Render_System)
+render_wave :: proc(arcs: []Wave_Arc, step_size : f32, thickness: f32, color: [4]f32, render_system: ^render.Render_System)
 {
 	vertex : [dynamic]render.VertexData;
 	index : [dynamic]u32;
 
-	for arc in &wave.arcs
+	for arc in arcs
 	{
 		length := arc.angular_size * arc.radius;
 		step_count := cast(int)(length / step_size) + 1;
