@@ -6,6 +6,7 @@ import "core:log"
 import "core:math/linalg"
 import "../imgui"
 import "core:strconv"
+import "../util/container"
 
 
 Basic_Tool_State :: struct
@@ -83,9 +84,12 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 
 		if(input_state.mouse_states[0] == .Pressed)
 		{
-			append(&scene.buildings, building);
-			added_building := &scene.buildings[len(scene.buildings) - 1];
-			append(&scene.loading_buildings, Loading_Building{added_building, 0});
+			added_building, ok := container.table_add(&scene.buildings, building);
+			log.info(scene.buildings);
+			if(ok)
+			{
+				append(&scene.loading_buildings, Loading_Building{added_building, 0});
+			}
 
 		}
 	}
@@ -93,7 +97,7 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 	for i := 0; i<len(building_render_types); i += 1
     {
 
-    	buf :[500]byte;
+    	buf : [500]byte;
 	    buttonName := strconv.itoa(buf[0:500], i);
 	    
     	if(imgui.button(buttonName))

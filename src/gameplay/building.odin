@@ -4,6 +4,7 @@ import "../render"
 import l "core:log"
 import "core:math"
 import "core:math/linalg"
+import "../util/container"
 
 Grounded_Hitbox :: struct
 {
@@ -18,7 +19,6 @@ Building_Render_Data :: struct
     color: [4]f32,
 }
 
-Building_ID :: distinct u32;
 
 Building :: struct
 {
@@ -33,13 +33,13 @@ Wave_Receiver :: struct
 
 Loading_Building :: struct
 {
-    using building: ^Building,
+    building: container.Handle(Building),
     energy: f32,
 }
 
 Wave_Emitter :: struct
 {
-    using loading_building: ^Loading_Building,
+    loading_building: container.Handle(Loading_Building),
     emit_angle: f32,
     emit_delta_angle: f32,
 }
@@ -115,7 +115,7 @@ get_g_bb_center :: proc(using bb: Grounded_Hitbox) -> vec2
     return surface_point(planet, angle) + up * size.y / 2;
 }
 
-update_wave_emitters :: proc(emitters: []Wave_Emitter) -> [dynamic]Wave_Arc
+update_wave_emitters :: proc(emitters: []Wave_Emitter, buildings : ^container.Table(Building)) -> [dynamic]Wave_Arc
 {
     result := make([dynamic]Wave_Arc, 100, context.temp_allocator);
     for emitter in emitters
@@ -123,8 +123,9 @@ update_wave_emitters :: proc(emitters: []Wave_Emitter) -> [dynamic]Wave_Arc
         if emitter.energy > 1
         {
             emitter.energy -= 1;
-            emit_arc := Arc{0, emitter.angle + emitter.emit_angle, emitter.emit_delta_angle};
-            append(&result, Wave_Arc{0, get_g_bb_center(emitter), emit_arc});
+            b := container.table_get(buildings, emitter.building);
+            emit_arc := Arc{0, b.angle + emitter.emit_angle, emitter.emit_delta_angle};
+            append(&result, Wave_Arc{0, get_g_bb_center(b), emit_arc});
         }
     }
     return result;

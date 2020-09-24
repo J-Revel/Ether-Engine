@@ -16,7 +16,7 @@ import container "../util/container"
 
 Scene :: struct
 {
-	buildings: container.Table(Building, Building_ID),
+	buildings: container.Table(Building),
 	loading_buildings: [dynamic]Loading_Building,
 	planets: [dynamic]Planet,
 	camera: render.Camera,
@@ -35,6 +35,8 @@ init_scene :: proc(using scene: ^Scene)
 		append(&planets, p);
 	}
 	tool_state = Basic_Tool_State{};
+
+	container.table_init(&buildings, 1000);
 }
 
 time : f32 = 0;
@@ -62,7 +64,8 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 
     for h in &loading_buildings
 	{
-		bb := to_regular_hitbox(h.building);
+		b := container.table_get(&buildings, h.building);
+		bb := to_regular_hitbox(b);
 		for arc in &arcs
 		{
 			if collision_bb_arc(&bb, &arc, 10)
@@ -72,9 +75,11 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 
     render_wave(arcs[:], 10, 5, {1, 1, 0, 1}, render_system);
 
-    for index in container.table_elements(&buildings)
+    it := container.table_iterator(&buildings);
+    for element in container.table_iterate(&it)
 	{
-		render_building(container.table_get(&buildings, index), render_system);
+		log.info(element);
+		render_building(container.table_get(&buildings, element), render_system);
 	}
 
 	for p in &planets
