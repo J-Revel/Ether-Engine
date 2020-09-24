@@ -11,10 +11,12 @@ import "core:math"
 
 import sdl "shared:odin-sdl2"
 
+import container "../util/container"
+
 
 Scene :: struct
 {
-	buildings: [dynamic]Building,
+	buildings: container.Table(Building, Building_ID),
 	loading_buildings: [dynamic]Loading_Building,
 	planets: [dynamic]Planet,
 	camera: render.Camera,
@@ -66,14 +68,13 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 			if collision_bb_arc(&bb, &arc, 10)
 				do h.energy += deltaTime;
 		}
-		log.info(h.energy);
 	}
 
     render_wave(arcs[:], 10, 5, {1, 1, 0, 1}, render_system);
 
-    for b in &buildings
+    for index in container.table_elements(&buildings)
 	{
-		render_building(&b, render_system);
+		render_building(container.table_get(&buildings, index), render_system);
 	}
 
 	for p in &planets
@@ -86,8 +87,9 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 	test_arc.center = worldMousePos;
 	test_arc.angular_size = math.PI / 2;
 	test_result := false;
-	for b in &buildings
+	for index in container.table_elements(&buildings)
 	{
+		b := container.table_get(&buildings, index);
 		hitbox := to_regular_hitbox(b.hitbox);
 		testCircle : Circle = {worldMousePos, 200};
 		if(collision_bb_arc(&hitbox, &test_arc, 10))

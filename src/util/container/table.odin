@@ -53,10 +53,10 @@ bit_array_allocate :: proc(array: ^Bit_Array) -> (u32, bool)
 
 Table :: struct(Value_Type: typeid, Index_Type: typeid)
 {
-	data: ^T,
-	using allocation: Bit_Array,
+	data: ^Value_Type,
+	allocation: Bit_Array,
 
-	allocator: mem.allocator,
+	allocator: mem.Allocator,
 }
 
 table_init_none :: proc(a: ^$A/Table, allocator:= context.allocator)
@@ -83,6 +83,12 @@ table_add :: proc(array: ^$A/Table($V, $I), value: V) -> (I, bool)
 	return ok;
 }
 
+table_get :: proc(array: ^$A/Table($V, $I), index: I) -> ^V
+{
+	s := transmute([]V) mem.Raw_Slice{array.data, array.allocation.cap};
+	return &s[cast(int)index];
+}
+
 table_init :: proc{table_init_none, table_init_len_cap};
 
 table_delete :: proc(a: $A/Table)
@@ -90,12 +96,31 @@ table_delete :: proc(a: $A/Table)
 	mem.free(a.data, a.allocator);
 }
 
-table_iterate :: proc(table: ^$A/Table($V, $I), index: I) -> I
+table_first :: proc(table: ^$A/Table($V, $I)) -> (I, bool)
+{
+	i : I = 0;
+	for ; cast(int)i < table.allocation.cap * 32 && bit_array_get(&table.allocation, cast(uint)i); i+=1 {}
+	return i, cast(int)i < (table.allocation.cap * 32);
+}
+
+table_next :: proc(table: ^$A/Table($V, $I), index: I) -> (I, bool)
 {
 	i := index + 1;
-	for ; i < table.cap * 32 && bit_array_get(table.allocation, i); i+=1
-	{
+	for ; cast(int)i < table.allocation.cap * 32 && bit_array_get(&table.allocation, cast(uint)i); i+=1 {}
+	return i, cast(int)i < (table.allocation.cap * 32);
+}
 
+table_elements :: proc(table: ^$A/Table($V, $I), allocator := context.temp_allocator) -> []I
+{
+	result := make([]I, table.allocation.cap * 32, allocator);
+	cursor := 0;
+	for i := 0; i<table.allocation.cap * 32; i += 1
+	{
+		if bit_array_get(&table.allocation, i)
+		{
+			result[cursor] = cast(I)i;
+			cursor += 1;
+		}
 	}
-	return i;
+	return mem.Raw_Slice { &result[0], cursor};
 }
