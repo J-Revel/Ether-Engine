@@ -29,24 +29,23 @@ bit_array_set :: proc(array: ^Bit_Array, bit: uint, value: bool)
 
 bit_array_get :: proc(array: ^Bit_Array, bit: uint) -> bool
 {
-	s := transmute([]u32) mem.Raw_Slice{array.data, cast(int)array.cap};
 	array_index := bit / 32;
 	bit_index := bit % 32;
-	return (s[array_index] & (1 << bit_index)) > 0;
+	value := mem.ptr_offset(array.data, cast(int)array_index);
+	return (value^ & (1 << bit_index)) > 0;
 }
 
 bit_array_allocate :: proc(array: ^Bit_Array) -> (uint, bool)
 {
-	s := transmute([]u32) mem.Raw_Slice{array.data, cast(int)array.cap};
 	for i in 0..<cast(uint)array.cap * 32
 	{
 		array_index : uint = i / 32;
 		bit_index : uint = i % 32;
 		bit_flag : u32 = cast(u32)(1 << bit_index);
-		if (s[cast(int)array_index] & bit_flag) == 0
+		value := mem.ptr_offset(array.data, cast(int)array_index);
+		if (value^ & bit_flag) == 0
 		{
-			s[array_index] |= bit_flag;
-			log.info(s[array_index]);
+			value^ |= bit_flag;
 			return i, true;
 		}
 	}
@@ -91,11 +90,9 @@ table_init_cap :: proc(a: ^$A/Table($V), cap: uint, allocator := context.allocat
 table_add :: proc(table: ^$A/Table($T), value: T) -> (Handle(T), bool)
 {
 	index, ok := bit_array_allocate(&table.allocation);
-	log.info(index);
 	if ok
 	{
 		mem.ptr_offset(table.data, cast(int)index)^ = value;
-		log.info(mem.ptr_offset(table.data, cast(int)index)^);
 	}
 	return Handle(T){index, table}, ok;
 }
@@ -140,9 +137,21 @@ handle_get :: proc(handle: $A/Handle($T)) -> ^T
 	return mem.ptr_offset(handle.table.data, cast(int)handle.id);
 }
 
+table_print :: proc(table: ^$A/Table($T))
+{
+	log.info("Table {");
+	it := table_iterator(table);
+	for element in table_iterate(&it)
+	{
+		log.info(element);
+	}
+
+	log.info("}");
+}
+
 bit_array_copy :: proc(target: ^Bit_Array, model: ^Bit_Array)
 {
-	if model.cap != target.cap
+	if model.cap > target.cap
 	{
 		if(target.data != nil)
 		{
@@ -156,14 +165,14 @@ bit_array_copy :: proc(target: ^Bit_Array, model: ^Bit_Array)
 
 table_copy :: proc(target: ^$A/Table($T), model: ^Table(T))
 {
-	if model.allocation.cap != target.allocation.cap
+	if model.allocation.cap > target.allocation.cap
 	{
 		mem.free(target.data, target.allocator);
 		mem.free(target.allocator.data, target.allocator);
 		target.data = cast(^T)mem.alloc(size_of(T) * cast(int)model.allocation.cap * 32, align_of(T), target.allocator);
 		target.allocation.data = cast(^u32)mem.alloc(size_of(u32) * cast(int)model.allocation.cap, align_of(u32), target.allocator);
+		target.allocation.cap = model.allocation.cap;
 	}
 	mem.copy(target.allocation.data, model.allocation.data, int(model.allocation.cap * size_of(u32)));
-	target.allocation.cap = model.allocation.cap;
 	mem.copy(target.data, model.data, int(model.allocation.cap * 32 * size_of(T)));
 }

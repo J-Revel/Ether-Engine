@@ -20,6 +20,7 @@ Scene :: struct
 	tool_state: Tool_State,
 	buildings: container.Table(Building),
 	loading_buildings: container.Table(Loading_Building),
+	wave_emitters: container.Table(Wave_Emitter),
 	planets: container.Table(Planet),
     arcs: container.Table(Wave_Arc),
 }
@@ -30,6 +31,7 @@ init_scene :: proc(using scene: ^Scene)
 	container.table_init(&loading_buildings, 1000);
 	container.table_init(&planets, 1000);
 	container.table_init(&arcs, 1000);
+	container.table_init(&wave_emitters, 100);
 	camera.zoom = 1;
 	for i := 0; i < 10; i+=1
 	{
@@ -83,6 +85,8 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 				do h.energy += deltaTime;
 		}
 	}
+
+	update_wave_emitters(&wave_emitters, &buildings, &arcs);
 
     render_wave(&arcs, 10, 5, {1, 1, 0, 1}, render_system);
 

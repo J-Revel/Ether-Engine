@@ -7,6 +7,7 @@ import "core:math/linalg"
 import "../imgui"
 import "core:strconv"
 import "../util/container"
+import "core:math"
 
 
 Basic_Tool_State :: struct
@@ -88,11 +89,14 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 		{
 			added_building, ok := container.table_add(&scene.buildings, building);
 			log.info(scene.buildings);
-			if(ok)
+			if ok
 			{
-				container.table_add(&scene.loading_buildings, Loading_Building{added_building, 0});
+				loading_building, ok := container.table_add(&scene.loading_buildings, Loading_Building{added_building, 0});
+				if tool.selected_building == 4
+				{
+					container.table_add(&scene.wave_emitters, Wave_Emitter{loading_building, math.PI / 2, math.PI / 10});
+				}
 			}
-
 		}
 	}
 	imgui.begin("Buildings");

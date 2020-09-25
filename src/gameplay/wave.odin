@@ -67,8 +67,7 @@ arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Plane
 			{
 				split_arc.angular_size = step_angle - split_arc.angle - step_size * 5 / 100;
 				split_arc.energy = arc.energy * split_arc.angular_size / length * radius;
-				l.info(split_arc.energy);
-				if(step_angle != split_arc.angle)
+				if step_angle != split_arc.angle
 				{
 					container.table_add(out_arcs, split_arc);
 				}

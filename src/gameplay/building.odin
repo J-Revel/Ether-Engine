@@ -115,19 +115,21 @@ get_g_bb_center :: proc(using bb: Grounded_Hitbox) -> vec2
     return surface_point(planet, angle) + up * size.y / 2;
 }
 
-update_wave_emitters :: proc(emitters: []Wave_Emitter, buildings : ^container.Table(Building)) -> [dynamic]Wave_Arc
+update_wave_emitters :: proc(emitters: ^container.Table(Wave_Emitter), buildings: ^container.Table(Building), arcs: ^container.Table(Wave_Arc))
 {
     result := make([dynamic]Wave_Arc, 100, context.temp_allocator);
-    for emitter in emitters
+    it := container.table_iterator(emitters);
+    for emitter in container.table_iterate(&it)
     {
+        l.info(emitter);
         l_building := container.handle_get(emitter.loading_building);
+        l.info(l_building);
         if l_building.energy > 1
         {
             l_building.energy -= 1;
             b := container.handle_get(l_building.building);
             emit_arc := Arc{0, b.angle + emitter.emit_angle, emitter.emit_delta_angle};
-            append(&result, Wave_Arc{0, get_g_bb_center(b), emit_arc});
+            container.table_add(arcs, Wave_Arc{0, get_g_bb_center(b), emit_arc});
         }
     }
-    return result;
 }
