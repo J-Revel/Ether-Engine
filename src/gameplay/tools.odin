@@ -67,11 +67,13 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 		building.size = building_render_types[tool.selected_building].render_size;
 		building.render_data = &building_render_types[tool.selected_building];
 		world_pos := render.camera_to_world(&scene.camera, render_system, input_state.mouse_pos);
-		for planetInstance in &scene.planets
+		
+		planet_it := container.table_iterator(&scene.planets);
+		for planet in container.table_iterate(&planet_it)
 	    {
-	        if(building.planet == nil || linalg.vector_length(world_pos - planetInstance.pos) < linalg.vector_length(world_pos - building.planet.pos))
+	        if(building.planet == nil || linalg.vector_length(world_pos - planet.pos) < linalg.vector_length(world_pos - building.planet.pos))
 	        {
-	            building.planet = &planetInstance;
+	            building.planet = planet;
 	        }
 	    }
 	    building.angle = closest_surface_angle(building.planet, world_pos, 100);
@@ -88,7 +90,7 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 			log.info(scene.buildings);
 			if(ok)
 			{
-				append(&scene.loading_buildings, Loading_Building{added_building, 0});
+				container.table_add(&scene.loading_buildings, Loading_Building{added_building, 0});
 			}
 
 		}

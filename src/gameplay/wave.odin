@@ -4,6 +4,7 @@ import l "core:log"
 import "../render"
 import "core:math"
 import "core:mem"
+import "../util/container"
 
 Arc :: struct
 {
@@ -34,12 +35,12 @@ points_along_arc :: proc(arc: ^Wave_Arc, step_size: f32, allocator := context.te
 	return result;
 }
 
-arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Planet, out_arcs: ^[dynamic]Wave_Arc)
+arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Planet, out_arcs: ^container.Table(Wave_Arc))
 {
 	using math;
 	if(arc.radius == 0)
 	{
-		append(out_arcs, arc);
+		container.table_add(out_arcs, arc);
 		return;
 	}
 	length := arc.angular_size * arc.radius;
@@ -69,7 +70,7 @@ arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Plane
 				l.info(split_arc.energy);
 				if(step_angle != split_arc.angle)
 				{
-					append(out_arcs, split_arc);
+					container.table_add(out_arcs, split_arc);
 				}
 			}
 			last_point_inside = !last_point_inside;
@@ -79,7 +80,7 @@ arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Plane
 	{
 		split_arc.angular_size = angle + arc.angular_size - split_arc.angle;
 		split_arc.energy = arc.energy * split_arc.angular_size / length * radius;
-		append(out_arcs, split_arc);
+		container.table_add(out_arcs, split_arc);
 	}
 }
 
@@ -137,16 +138,17 @@ arc_collision_split_hitbox :: proc(arc: Wave_Arc, step_size: f32, hitbox: ^Groun
 	return result;
 }
 
-update_wave_collision_planet :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, max_radius: f32, planet: ^Planet)
+update_wave_collision_planet :: proc(arcs: ^container.Table(Wave_Arc), step_size: f32, max_radius: f32, planet: ^Planet)
 {
-	new_arcs := make([dynamic]Wave_Arc, 0, 10, context.temp_allocator);
-	for arc in arcs
+	new_arcs : container.Table(Wave_Arc);
+	container.table_init(&new_arcs, arcs.allocation.cap, context.temp_allocator);
+	arcs_it := container.table_iterator(arcs);
+	for arc in container.table_iterate(&arcs_it)
 	{
 		if(arc.radius < max_radius) do
-			arc_collision_split_planet(arc, step_size, planet, &new_arcs);
+			arc_collision_split_planet(arc^, step_size, planet, &new_arcs);
 	}
-	resize(arcs, len(new_arcs));
-	copy(arcs[:], new_arcs[:]);
+	container.table_copy(arcs, &new_arcs);
 }
 
 update_wave_collision_hitbox :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, max_radius: f32, hitbox: ^Grounded_Hitbox) -> f32
@@ -165,12 +167,13 @@ update_wave_collision_hitbox :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, m
 
 update_wave_collision :: proc { update_wave_collision_planet, update_wave_collision_hitbox };
 
-render_wave :: proc(arcs: []Wave_Arc, step_size : f32, thickness: f32, color: [4]f32, render_system: ^render.Render_System)
+render_wave :: proc(arcs: ^container.Table(Wave_Arc), step_size : f32, thickness: f32, color: [4]f32, render_system: ^render.Render_System)
 {
 	vertex : [dynamic]render.VertexData;
 	index : [dynamic]u32;
 
-	for arc in arcs
+	arc_it := container.table_iterator(arcs);
+	for arc in container.table_iterate(&arc_it)
 	{
 		length := arc.angular_size * arc.radius;
 		step_count := cast(int)(length / step_size) + 1;

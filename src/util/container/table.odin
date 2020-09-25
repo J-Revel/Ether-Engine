@@ -7,13 +7,15 @@ import "core:log"
 Bit_Array :: struct
 {
 	data: ^u32,
-	cap: uint // u32 slots count
+	cap: uint, // u32 slots count
+	allocator: mem.Allocator,
 }
 
 bit_array_init :: proc(a: ^Bit_Array, cap: uint, allocator := context.allocator)
 {
 	a.data = cast(^u32)mem.alloc(size_of(u32) * cast(int)cap, align_of(u32), allocator);
 	a.cap = cap;
+	a.allocator = allocator;
 }
 
 bit_array_set :: proc(array: ^Bit_Array, bit: uint, value: bool)
@@ -53,7 +55,8 @@ bit_array_allocate :: proc(array: ^Bit_Array) -> (uint, bool)
 
 Handle :: struct(T: typeid)
 {
-	id: uint
+	id: uint,
+	table: ^Table(T)
 }
 
 Table :: struct(T: typeid)
@@ -85,7 +88,7 @@ table_init_cap :: proc(a: ^$A/Table($V), cap: uint, allocator := context.allocat
 	bit_array_init(&a.allocation, (cap + 31) / 32, allocator);
 }
 
-table_add :: proc(table: ^$A/Table($V), value: V) -> (Handle(V), bool)
+table_add :: proc(table: ^$A/Table($T), value: T) -> (Handle(T), bool)
 {
 	index, ok := bit_array_allocate(&table.allocation);
 	log.info(index);
@@ -94,7 +97,7 @@ table_add :: proc(table: ^$A/Table($V), value: V) -> (Handle(V), bool)
 		mem.ptr_offset(table.data, cast(int)index)^ = value;
 		log.info(mem.ptr_offset(table.data, cast(int)index)^);
 	}
-	return Handle(V){index}, ok;
+	return Handle(T){index, table}, ok;
 }
 
 table_delete :: proc(a: $A/Table)
@@ -109,13 +112,16 @@ table_iterator :: proc(table: ^$A/Table($T)) -> Table_Iterator(T)
 	return Table_Iterator(T){table, cursor};
 }
 
-table_iterate :: proc(it: ^$A/Table_Iterator($T)) -> (value: Handle(T), ok: bool)
+iterate :: proc{ table_iterate };
+
+table_iterate :: proc(it: ^$A/Table_Iterator($T)) -> (value: ^T, id: Handle(T), ok: bool)
 {
 	if it.cursor < it.table.allocation.cap * 32
 	{
 		ok = true;
 	}
-	value = Handle(T){it.cursor};
+	id = Handle(T){it.cursor, it.table};
+	value = table_get(it.table, id);
 	it.cursor += 1;
 	for it.cursor < it.table.allocation.cap * 32 && !bit_array_get(&it.table.allocation, it.cursor)
 	{
@@ -124,24 +130,40 @@ table_iterate :: proc(it: ^$A/Table_Iterator($T)) -> (value: Handle(T), ok: bool
 	return;
 }
 
-table_get :: proc(table: ^$A/Table($V), index: Handle(V)) -> ^V
+table_get :: proc(table: ^$A/Table($T), index: Handle(T)) -> ^T
 {
 	return mem.ptr_offset(table.data, cast(int)index.id);
 }
 
-table_elements :: proc(table: ^$A/Table($V)) -> []Handle(V)
+handle_get :: proc(handle: $A/Handle($T)) -> ^T
 {
-	result_data := cast(^Handle(V)) mem.alloc(cast(int)(size_of(Handle(V)) * table.allocation.cap * 32), align_of(Handle(V)), table.allocator);
-	result_count := 0;
-	for i in 0..<table.allocation.cap * 32
-	{
-		if bit_array_get(&table.allocation, cast(uint)i)
-		{
-			element := mem.ptr_offset(result_data, int(i));
-			element^.id = i;
-			result_count += 1;
-		}
+	return mem.ptr_offset(handle.table.data, cast(int)handle.id);
+}
 
+bit_array_copy :: proc(target: ^Bit_Array, model: ^Bit_Array)
+{
+	if model.cap != target.cap
+	{
+		if(target.data != nil)
+		{
+			mem.free(target.data, target.allocator);
+		}
+		target.data = cast(^u32)mem.alloc(size_of(u32) * cast(int)model.cap, align_of(u32), target.allocator);
 	}
-	return transmute([]Handle(V)) mem.Raw_Slice{result_data, result_count};
+	mem.copy(target.data, model.data, int(model.cap * size_of(u32)));
+	target.cap = model.cap;
+}
+
+table_copy :: proc(target: ^$A/Table($T), model: ^Table(T))
+{
+	if model.allocation.cap != target.allocation.cap
+	{
+		mem.free(target.data, target.allocator);
+		mem.free(target.allocator.data, target.allocator);
+		target.data = cast(^T)mem.alloc(size_of(T) * cast(int)model.allocation.cap * 32, align_of(T), target.allocator);
+		target.allocation.data = cast(^u32)mem.alloc(size_of(u32) * cast(int)model.allocation.cap, align_of(u32), target.allocator);
+	}
+	mem.copy(target.allocation.data, model.allocation.data, int(model.allocation.cap * size_of(u32)));
+	target.allocation.cap = model.allocation.cap;
+	mem.copy(target.data, model.data, int(model.allocation.cap * 32 * size_of(T)));
 }

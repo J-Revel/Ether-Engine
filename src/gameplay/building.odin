@@ -120,10 +120,11 @@ update_wave_emitters :: proc(emitters: []Wave_Emitter, buildings : ^container.Ta
     result := make([dynamic]Wave_Arc, 100, context.temp_allocator);
     for emitter in emitters
     {
-        if emitter.energy > 1
+        l_building := container.handle_get(emitter.loading_building);
+        if l_building.energy > 1
         {
-            emitter.energy -= 1;
-            b := container.table_get(buildings, emitter.building);
+            l_building.energy -= 1;
+            b := container.handle_get(l_building.building);
             emit_arc := Arc{0, b.angle + emitter.emit_angle, emitter.emit_delta_angle};
             append(&result, Wave_Arc{0, get_g_bb_center(b), emit_arc});
         }
