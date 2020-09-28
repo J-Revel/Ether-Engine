@@ -73,6 +73,7 @@ Prefab :: struct
 table_database_add :: proc(db: ^Database, name: string, table: ^Table($T))
 {
 	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
+	log.info(name, rawptr(table));
 	append(db, named_table);
 }
 
