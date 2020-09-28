@@ -52,18 +52,28 @@ bit_array_allocate :: proc(array: ^Bit_Array) -> (uint, bool)
 	return 0, false;
 }
 
+Raw_Handle :: struct
+{
+	id: uint,
+	raw_table: ^Raw_Table
+}
+
 Handle :: struct(T: typeid)
 {
 	id: uint,
 	table: ^Table(T)
 }
 
+Raw_Table :: struct
+{
+	data: rawptr,
+	allocation: Bit_Array,
+	allocator: mem.Allocator
+}
+
 Table :: struct(T: typeid)
 {
-	data: ^T,
-	allocation: Bit_Array,
-
-	allocator: mem.Allocator,
+	using raw: Raw_Table
 }
 
 Table_Iterator :: struct(T: typeid)
@@ -83,7 +93,7 @@ table_init_cap :: proc(a: ^$A/Table($V), cap: uint, allocator := context.allocat
 {
 	a.allocator = allocator;
 
-	a.data = (^V)(mem.alloc(size_of(V) * cast(int)cap, align_of(V), allocator));
+	a.data = (mem.alloc(size_of(V) * cast(int)cap, align_of(V), allocator));
 	bit_array_init(&a.allocation, (cap + 31) / 32, allocator);
 }
 
@@ -92,9 +102,36 @@ table_add :: proc(table: ^$A/Table($T), value: T) -> (Handle(T), bool)
 	index, ok := bit_array_allocate(&table.allocation);
 	if ok
 	{
-		mem.ptr_offset(table.data, cast(int)index)^ = value;
+		mem.ptr_offset(cast(^T)table.data, cast(int)index)^ = value;
 	}
-	return Handle(T){index, table}, ok;
+	return Handle(T){index + 1, table}, ok;
+}
+
+ptr_offset :: inline proc(ptr: uintptr, n: int, type_size: int) -> uintptr {
+	new := int(ptr) + type_size * n;
+	return uintptr(new);
+}
+
+table_add_raw :: proc(table: ^Raw_Table, value: any, type_size: int) -> (Raw_Handle, bool)
+{
+	index, ok := bit_array_allocate(&table.allocation);
+	if ok
+	{
+		mem.copy(rawptr(ptr_offset(uintptr(table.data), int(index), type_size)), value.data, type_size);
+	}
+	return Raw_Handle{index + 1, table}, ok;
+}
+
+// like table_add_raw but does not set the value yed
+table_allocate_raw :: proc(table: ^Raw_Table, type_size: int) -> (Raw_Handle, bool)
+{
+	index, ok := bit_array_allocate(&table.allocation);
+	return Raw_Handle{index + 1, table}, ok;
+}
+
+invalid_handle :: proc(table: ^$A/Table($T)) -> Handle(T)
+{
+	return Handle(T){0, table};
 }
 
 table_delete :: proc(a: $A/Table)
@@ -117,7 +154,7 @@ table_iterate :: proc(it: ^$A/Table_Iterator($T)) -> (value: ^T, id: Handle(T), 
 	{
 		ok = true;
 	}
-	id = Handle(T){it.cursor, it.table};
+	id = Handle(T){it.cursor + 1, it.table};
 	value = table_get(it.table, id);
 	it.cursor += 1;
 	for it.cursor < it.table.allocation.cap * 32 && !bit_array_get(&it.table.allocation, it.cursor)
@@ -129,12 +166,22 @@ table_iterate :: proc(it: ^$A/Table_Iterator($T)) -> (value: ^T, id: Handle(T), 
 
 table_get :: proc(table: ^$A/Table($T), index: Handle(T)) -> ^T
 {
-	return mem.ptr_offset(table.data, cast(int)index.id);
+	return mem.ptr_offset(cast(^T)table.data, cast(int)index.id - 1);
+}
+
+table_get_raw :: proc(table: ^Raw_Table, index: Raw_Handle, type_size: int) -> rawptr
+{
+	return rawptr(uintptr(int(uintptr(table.data)) + type_size * int(index.id - 1)));
 }
 
 handle_get :: proc(handle: $A/Handle($T)) -> ^T
 {
-	return mem.ptr_offset(handle.table.data, cast(int)handle.id);
+	return mem.ptr_offset(cast(^T)handle.table.data, cast(int)handle.id - 1);
+}
+
+handle_get_raw :: proc(handle: Raw_Handle, type_size: int) -> rawptr
+{
+	return table_get_raw(handle.raw_table, handle, type_size);
 }
 
 table_print :: proc(table: ^$A/Table($T))

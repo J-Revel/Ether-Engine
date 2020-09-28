@@ -18,6 +18,7 @@ Wave_Arc :: struct
 	energy: f32,
 	center: [2]f32,
 	using arc: Arc,
+	ignored_building: container.Handle(Building),
 }
 
 points_along_arc :: proc(arc: ^Wave_Arc, step_size: f32, allocator := context.temp_allocator) -> []vec2
@@ -25,6 +26,7 @@ points_along_arc :: proc(arc: ^Wave_Arc, step_size: f32, allocator := context.te
 	using math;
 	length := arc.angular_size * arc.radius;
 	step_count := cast(int)(length / step_size) + 1;
+	if step_count < 5 do step_count = 5;
 	step_size := arc.angular_size / cast(f32)step_count;
 	result := make([]vec2, step_count + 1);
 	for i := 0; i <= step_count; i += 1
@@ -45,6 +47,7 @@ arc_collision_split_planet :: proc(arc: Wave_Arc, step_size: f32, planet: ^Plane
 	}
 	length := arc.angular_size * arc.radius;
 	step_count := cast(int)(length / step_size) + 1;
+	if step_count < 5 do step_count = 5;
 	step_size := arc.angular_size / cast(f32)step_count;
 	last_point_inside: bool = false;
 	last_added_arc := arc;

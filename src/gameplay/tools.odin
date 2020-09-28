@@ -8,6 +8,8 @@ import "../imgui"
 import "core:strconv"
 import "../util/container"
 import "core:math"
+import "core:runtime"
+import "core:reflect"
 
 
 Basic_Tool_State :: struct
@@ -87,16 +89,35 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 
 		if(input_state.mouse_states[0] == .Pressed)
 		{
-			added_building, ok := container.table_add(&scene.buildings, building);
-			log.info(scene.buildings);
-			if ok
-			{
-				loading_building, ok := container.table_add(&scene.loading_buildings, Loading_Building{added_building, 0});
+			//added_building, ok := container.table_add(&scene.buildings, building);
+			prefab : container.Prefab;
+			prefab.components = make([]container.Component_Model, 3, context.temp_allocator);
+			l_b := Loading_Building{container.Handle(Building){0, nil}, 0};
+			wave_emitter := Wave_Emitter{container.Handle(Loading_Building){0, nil}, 0, math.PI / 10};
+			prefab.components[0] = {0, &building};
+			prefab.components[1] = {1, &l_b};
+			prefab.components[2] = {4, &wave_emitter};
+
+			prefab.refs = make([]container.Component_Ref, 2, context.temp_allocator);
+			test_offset := (reflect.struct_field_by_name(typeid_of(Loading_Building), "building").offset);
+			prefab.refs[0] = {1, int(test_offset), 0};
+
+			test_offset = (reflect.struct_field_by_name(typeid_of(Wave_Emitter), "loading_building").offset);
+			prefab.refs[1] = {2, int(test_offset), 1};
+
+			container.prefab_instantiate(&scene.db, prefab);
+			it1 := container.table_iterator(&scene.loading_buildings);
+			for b in container.table_iterate(&it1)
+				do log.info(b);
+			it2 := container.table_iterator(&scene.wave_emitters);
+			for b in container.table_iterate(&it2)
+				do log.info(b);
+			/*
 				if tool.selected_building == 4
 				{
-					container.table_add(&scene.wave_emitters, Wave_Emitter{loading_building, math.PI / 2, math.PI / 10});
+					container.table_add(&scene.wave_emitters, Wave_Emitter{loading_building, 0, math.PI / 10});
 				}
-			}
+			}*/
 		}
 	}
 	imgui.begin("Buildings");

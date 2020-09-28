@@ -23,6 +23,7 @@ Scene :: struct
 	wave_emitters: container.Table(Wave_Emitter),
 	planets: container.Table(Planet),
     arcs: container.Table(Wave_Arc),
+    db: container.Database
 }
 
 init_scene :: proc(using scene: ^Scene)
@@ -32,6 +33,11 @@ init_scene :: proc(using scene: ^Scene)
 	container.table_init(&planets, 1000);
 	container.table_init(&arcs, 1000);
 	container.table_init(&wave_emitters, 100);
+	container.table_database_add(&db, "buildings", &buildings);
+	container.table_database_add(&db, "loading_buildings", &loading_buildings);
+	container.table_database_add(&db, "planets", &planets);
+	container.table_database_add(&db, "arcs", &arcs);
+	container.table_database_add(&db, "wave_emitters", &wave_emitters);
 	camera.zoom = 1;
 	for i := 0; i < 10; i+=1
 	{
@@ -62,7 +68,7 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 
     if input_state.mouse_states[2] == .Pressed
     {
-    	container.table_add(&arcs, Wave_Arc{100, worldMousePos, {0, 0, 2 * math.PI} });
+    	container.table_add(&arcs, Wave_Arc{100, worldMousePos, {0, 0, 2 * math.PI}, container.invalid_handle(&buildings)});
 	}
 	arc_it := container.table_iterator(&arcs);
 	for arc in container.table_iterate(&arc_it) do arc.radius += deltaTime * 100;
@@ -81,8 +87,9 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 		arc_it = container.table_iterator(&arcs);
 		for arc in container.table_iterate(&arc_it)
 		{
-			if collision_bb_arc(&bb, arc, 10)
+			if h.building.id != arc.ignored_building.id && collision_bb_arc(&bb, arc, 10)
 				do h.energy += deltaTime;
+			log.info(h);
 		}
 	}
 

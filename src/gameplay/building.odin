@@ -119,9 +119,8 @@ update_wave_emitters :: proc(emitters: ^container.Table(Wave_Emitter), buildings
 {
     result := make([dynamic]Wave_Arc, 100, context.temp_allocator);
     it := container.table_iterator(emitters);
-    for emitter in container.table_iterate(&it)
+    for emitter, emitter_id in container.table_iterate(&it)
     {
-        l.info(emitter);
         l_building := container.handle_get(emitter.loading_building);
         l.info(l_building);
         if l_building.energy > 1
@@ -129,7 +128,7 @@ update_wave_emitters :: proc(emitters: ^container.Table(Wave_Emitter), buildings
             l_building.energy -= 1;
             b := container.handle_get(l_building.building);
             emit_arc := Arc{0, b.angle + emitter.emit_angle, emitter.emit_delta_angle};
-            container.table_add(arcs, Wave_Arc{0, get_g_bb_center(b), emit_arc});
+            container.table_add(arcs, Wave_Arc{0, get_g_bb_center(b), emit_arc, l_building.building});
         }
     }
 }
