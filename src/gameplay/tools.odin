@@ -89,7 +89,6 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 
 		if(input_state.mouse_states[0] == .Pressed)
 		{
-			//added_building, ok := container.table_add(&scene.buildings, building);
 			prefab : container.Prefab;
 			prefab.components = make([]container.Component_Model, 3, context.temp_allocator);
 			l_b := Loading_Building{container.Handle(Building){0, nil}, 0};
@@ -106,18 +105,6 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 			prefab.refs[1] = {2, int(test_offset), 1};
 
 			container.prefab_instantiate(&scene.db, prefab);
-			it1 := container.table_iterator(&scene.loading_buildings);
-			for b in container.table_iterate(&it1)
-				do log.info(b);
-			it2 := container.table_iterator(&scene.wave_emitters);
-			for b in container.table_iterate(&it2)
-				do log.info(b);
-			/*
-				if tool.selected_building == 4
-				{
-					container.table_add(&scene.wave_emitters, Wave_Emitter{loading_building, 0, math.PI / 10});
-				}
-			}*/
 		}
 	}
 	imgui.begin("Buildings");

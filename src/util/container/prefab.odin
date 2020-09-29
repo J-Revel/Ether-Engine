@@ -1,47 +1,10 @@
-package util
+package table
 
 import "core:log"
 import "core:reflect"
 import "core:mem"
-
-vec2 :: [2]f32;
-
-Planet_Harmonic :: struct
-{
-    f, offset: f32
-}
-
-Config :: struct
-{
-    r: f32,
-    harmonics: [dynamic]Planet_Harmonic
-}
-
-Planet :: struct
-{
-    pos: vec2,
-    using config: Config
-}
-
-Grounded_Hitbox :: struct
-{
-    planet: ^Planet,
-    size: vec2,
-    angle: f32
-}
-
-Building_Render_Data :: struct
-{
-    render_size: vec2,
-    color: [4]f32,
-}
-
-
-Building :: struct
-{
-    using hitbox: Grounded_Hitbox,
-    render_data: ^Building_Render_Data,
-}
+import "core:os"
+import "core:encoding/json"
 
 Database_Named_Table :: struct { name: string, table: Database_Table };
 Database :: [dynamic]Database_Named_Table;
@@ -73,7 +36,6 @@ Prefab :: struct
 table_database_add :: proc(db: ^Database, name: string, table: ^Table($T))
 {
 	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
-	log.info(name, rawptr(table));
 	append(db, named_table);
 }
 
@@ -101,7 +63,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: Prefab) -> bool
 		{
 			if ref.component_index == i
 			{
-				mem.copy(rawptr(uintptr(int(uintptr(components_data[i])) + ref.component_offset)), &component_handles[i], size_of(Raw_Handle));
+				mem.copy(rawptr(uintptr(int(uintptr(components_data[i])) + ref.component_offset)), &component_handles[ref.ref_target_index], size_of(Raw_Handle));
 			}
 		}
 	}
@@ -113,4 +75,55 @@ prefab_instantiate :: proc(db: ^Database, prefab: Prefab) -> bool
 	}
 
 	return true;
+}
+
+load_prefab :: proc(path: string, db: Database, allocator := context.allocator) -> (Prefab, bool)
+{
+	file, ok := os.read_entire_file(path);
+	if ok
+	{
+		parsed, ok := json.parse(file);
+
+		prefab : Prefab;
+
+		component_count := len(parsed.value.(json.Object));
+
+		prefab.components = make([]Component_Model, component_count, context.temp_allocator);
+
+		component_cursor := 0;
+		for name, value in parsed.value.(json.Object)
+		{
+			for table, table_index in db
+			{
+				log.info(table.name, name);
+				if table.name == name
+				{
+					prefab.components[component_cursor].table_index = table_index;
+				}
+			}
+			component_cursor += 1;
+		}
+		for i in 0..component_count
+		{
+			
+		}
+		log.info(prefab);
+		assert(false);
+		//l_b := gameplay.Loading_Building{Handle(Building){0, nil}, 0};
+		//wave_emitter := Wave_Emitter{Handle(Loading_Building){0, nil}, 0, math.PI / 10};
+		//prefab.components[0] = {0, &building};
+		//prefab.components[1] = {1, &l_b};
+		//prefab.components[2] = {4, &wave_emitter};
+
+		//prefab.refs = make([]Component_Ref, 2, context.temp_allocator);
+		//test_offset := (reflect.struct_field_by_name(typeid_of(Loading_Building), "building").offset);
+		//prefab.refs[0] = {1, int(test_offset), 0};
+
+		//test_offset = (reflect.struct_field_by_name(typeid_of(Wave_Emitter), "loading_building").offset);
+		//prefab.refs[1] = {2, int(test_offset), 1};
+	
+		//log.info(parsed.value.(json.Object)["building"].value.(json.Object)["size"].value.(json.Array)[0].value.(f64));
+		return prefab, true;
+	}
+	return {}, false;
 }

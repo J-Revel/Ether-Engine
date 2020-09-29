@@ -1,6 +1,6 @@
 package gameplay
 import math "core:math"
-import geometry "core:math/linalg"
+import linalg "core:math/linalg"
 import console "core:log"
 import "core:math/rand"
 import "../render"
@@ -63,14 +63,12 @@ r :: proc(planet: ^Planet, angle: f32) -> f32
 
 rdr :: proc(planet: ^Config, angle: f32) -> (f32, f32)
 {
-    using math;
-    using geometry;
     r := planet.r;
     dr : f32 = 0;
     for harmonic, hIndex in planet.harmonics
     {
-        r += harmonic.f * planet.r * sin(harmonic.offset + angle * cast(f32)(hIndex + 1));
-        dr += harmonic.f * planet.r * cast(f32)(hIndex+1) * cos(harmonic.offset + angle * cast(f32)(hIndex + 1));
+        r += harmonic.f * planet.r * math.sin(harmonic.offset + angle * cast(f32)(hIndex + 1));
+        dr += harmonic.f * planet.r * cast(f32)(hIndex+1) * math.cos(harmonic.offset + angle * cast(f32)(hIndex + 1));
     }
     return r, dr;
 }
@@ -83,13 +81,11 @@ surface_point :: proc(planet: ^Planet, angle: f32) -> vec2
 
 surface_tangent :: proc(planet: ^Config, angle: f32) -> vec2
 {
-    using math;
-    using geometry;
     r, dr := rdr(planet, angle);
-    cosa := cos(angle);
-    sina := sin(angle);
+    cosa := math.cos(angle);
+    sina := math.sin(angle);
 
-    return vector_normalize(vec2 {
+    return linalg.vector_normalize(vec2 {
         dr * cosa - r * sina,
         dr * sina + r * cosa
     });
@@ -105,13 +101,11 @@ surface_axes :: proc(planet: ^Planet, angle: f32) -> (origin: vec2, up: vec2, ri
 
 surface_normal :: proc(planet: ^Config, angle: f32) -> vec2
 {
-    using math;
-    using geometry;
     r, dr := rdr(planet, angle);
-    cosa := cos(angle);
-    sina := sin(angle);
+    cosa := math.cos(angle);
+    sina := math.sin(angle);
 
-    return vector_normalize(vec2 {
+    return linalg.vector_normalize(vec2 {
         dr * sina + r * cosa,
         -dr * cosa - r * sina
     });

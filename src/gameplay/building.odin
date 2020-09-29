@@ -19,7 +19,6 @@ Building_Render_Data :: struct
     color: [4]f32,
 }
 
-
 Building :: struct
 {
     using hitbox: Grounded_Hitbox,
@@ -122,7 +121,6 @@ update_wave_emitters :: proc(emitters: ^container.Table(Wave_Emitter), buildings
     for emitter, emitter_id in container.table_iterate(&it)
     {
         l_building := container.handle_get(emitter.loading_building);
-        l.info(l_building);
         if l_building.energy > 1
         {
             l_building.energy -= 1;

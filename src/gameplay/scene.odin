@@ -13,6 +13,10 @@ import sdl "shared:odin-sdl2"
 
 import container "../util/container"
 
+import os "core:os"
+
+import json "core:encoding/json"
+
 
 Scene :: struct
 {
@@ -28,16 +32,18 @@ Scene :: struct
 
 init_scene :: proc(using scene: ^Scene)
 {
+
 	container.table_init(&buildings, 1000);
 	container.table_init(&loading_buildings, 1000);
 	container.table_init(&planets, 1000);
 	container.table_init(&arcs, 1000);
 	container.table_init(&wave_emitters, 100);
-	container.table_database_add(&db, "buildings", &buildings);
-	container.table_database_add(&db, "loading_buildings", &loading_buildings);
-	container.table_database_add(&db, "planets", &planets);
-	container.table_database_add(&db, "arcs", &arcs);
-	container.table_database_add(&db, "wave_emitters", &wave_emitters);
+	container.table_database_add(&db, "building", &buildings);
+	container.table_database_add(&db, "loading_building", &loading_buildings);
+	container.table_database_add(&db, "planet", &planets);
+	container.table_database_add(&db, "arc", &arcs);
+	container.table_database_add(&db, "wave_emitter", &wave_emitters);
+	container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
 	camera.zoom = 1;
 	for i := 0; i < 10; i+=1
 	{

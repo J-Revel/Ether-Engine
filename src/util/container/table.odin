@@ -1,4 +1,4 @@
-package util
+package table
 
 import "core:mem"
 import "core:runtime"
