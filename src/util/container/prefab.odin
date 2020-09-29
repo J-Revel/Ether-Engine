@@ -77,6 +77,53 @@ prefab_instantiate :: proc(db: ^Database, prefab: Prefab) -> bool
 	return true;
 }
 
+db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
+{
+	for table, table_index in db
+	{
+		if table.name == name
+		{
+			return table.table, table_index, true;
+		}
+	}
+	return {}, 0, false;
+}
+
+build_struct_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> rawptr
+{
+	result := mem.alloc(size_of(type), align_of(type), allocator);
+	for name, value in json_data
+	{
+		#partial switch t in value.value
+		{
+			case json.Object:
+			{
+				log.info("OBJECT");
+			}
+			case json.Array:
+			{
+				if len(t) == 2
+				{
+					vector: [2]f32;
+					vector.x = f32(t[0].value.(json.Float));
+					vector.y = f32(t[1].value.(json.Float));
+
+					log.info("ARRAY", vector);
+				}
+			}
+			case json.Float:
+			{
+				log.info("FLOAT", f32(t));
+			}
+			case json.String:
+			{
+				log.info("STRING");
+			}
+		}
+	}
+	return result;
+}
+
 load_prefab :: proc(path: string, db: Database, allocator := context.allocator) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path);
@@ -91,15 +138,16 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 		prefab.components = make([]Component_Model, component_count, context.temp_allocator);
 
 		component_cursor := 0;
-		for name, value in parsed.value.(json.Object)
+		parsed_object := parsed.value.(json.Object);
+		
+		for name, value in parsed_object
 		{
-			for table, table_index in db
+			table, table_index, ok := db_get_table(db, name);
+			log.info(name);
+			if(ok)
 			{
-				if table.name == name
-				{
-					prefab.components[component_cursor].table_index = table_index;
-					log.info(reflect.struct_field_by_name(db[table_index].table.type, "building"));
-				}
+				prefab.components[component_cursor].table_index = table_index;
+				data := build_struct_from_json(value.value.(json.Object), table.type, context.temp_allocator);
 			}
 			component_cursor += 1;
 		}

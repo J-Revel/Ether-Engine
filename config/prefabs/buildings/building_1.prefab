@@ -4,7 +4,8 @@
 		"angle": "&angle"
 	},
 	"loading_building": {
-		"building": "@building"
+		"building": "@building",
+		"energy": 0.5,
 	},
 	"wave_emitter": {
 		"loading_building": "@loading_building"
