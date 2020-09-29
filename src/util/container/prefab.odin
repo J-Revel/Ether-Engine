@@ -95,18 +95,15 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 		{
 			for table, table_index in db
 			{
-				log.info(table.name, name);
 				if table.name == name
 				{
 					prefab.components[component_cursor].table_index = table_index;
+					log.info(reflect.struct_field_by_name(db[table_index].table.type, "building"));
 				}
 			}
 			component_cursor += 1;
 		}
-		for i in 0..component_count
-		{
-			
-		}
+
 		log.info(prefab);
 		assert(false);
 		//l_b := gameplay.Loading_Building{Handle(Building){0, nil}, 0};
