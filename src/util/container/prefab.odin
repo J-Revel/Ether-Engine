@@ -16,15 +16,27 @@ Database_Table :: struct
 
 Component_Ref :: struct
 {
-	component_index: int,
-	component_offset: int,
-	ref_target_index: int,
+	component_offset: intptr,
+	target_index: int,
+}
+
+Component_Input :: struct
+{
+	component_offset: intptr,
+	input_name: string,
+}
+
+Component_Model_Data :: struct
+{
+	data: rawptr,
+	refs: [dynamic]Component_Ref,
+	inputs: [dynamic]Component_Input,
 }
 
 Component_Model :: struct
 {
 	table_index: int,
-	data: rawptr,
+	data: Component_Model_Data,
 }
 
 Prefab :: struct
@@ -39,7 +51,7 @@ table_database_add :: proc(db: ^Database, name: string, table: ^Table($T))
 	append(db, named_table);
 }
 
-prefab_instantiate :: proc(db: ^Database, prefab: Prefab) -> bool
+prefab_instantiate :: proc(db: ^Database, prefab: Prefab, input: map[string]any) -> bool
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(prefab.components), context.temp_allocator);
@@ -89,11 +101,13 @@ db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
 	return {}, 0, false;
 }
 
-build_struct_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> rawptr
+build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> (result: Component_Model_Data)
 {
-	result := mem.alloc(size_of(type), align_of(type), allocator);
+	result.data = mem.alloc(size_of(type), align_of(type), allocator);
 	for name, value in json_data
 	{
+		field := reflect.struct_field_by_name(type, name);
+		log.info(field);
 		#partial switch t in value.value
 		{
 			case json.Object:
@@ -108,16 +122,34 @@ build_struct_from_json :: proc(json_data: json.Object, type: typeid, allocator: 
 					vector.x = f32(t[0].value.(json.Float));
 					vector.y = f32(t[1].value.(json.Float));
 
-					log.info("ARRAY", vector);
+					if(field.type == typeid_of([2]f32))
+					{
+						fieldPtr := rawptr(uintptr(result.data) + field.offset);
+						mem.copy(fieldPtr, &vector, size_of(f32) * 2);
+					}
 				}
 			}
 			case json.Float:
 			{
-				log.info("FLOAT", f32(t));
+				if(field.type == typeid_of(f32))
+				{
+					value: f32 = f32(t);
+					fieldPtr := rawptr(uintptr(result.data) + field.offset);
+					mem.copy(fieldPtr, &value, size_of(f32));
+				}
 			}
 			case json.String:
 			{
-				log.info("STRING");
+				if(t[0] == '&')
+				{
+					log.info("INPUT");
+					result.
+				}
+				if(t[0] == '@')
+				{
+					log.info("REF");
+				}
+				log.info(t);
 			}
 		}
 	}
@@ -147,13 +179,12 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 			if(ok)
 			{
 				prefab.components[component_cursor].table_index = table_index;
-				data := build_struct_from_json(value.value.(json.Object), table.type, context.temp_allocator);
+				prefab.components[component_cursor].data = build_component_model_from_json(value.value.(json.Object), table.type, context.temp_allocator);
+				
 			}
 			component_cursor += 1;
 		}
 
-		log.info(prefab);
-		assert(false);
 		//l_b := gameplay.Loading_Building{Handle(Building){0, nil}, 0};
 		//wave_emitter := Wave_Emitter{Handle(Loading_Building){0, nil}, 0, math.PI / 10};
 		//prefab.components[0] = {0, &building};
