@@ -21,6 +21,13 @@ Component_Ref :: struct
 	ref_target_index: int,
 }
 
+Component_Input :: struct
+{
+	offset: int,
+	size: int,
+	data: rawptr,
+}
+
 Component_Model :: struct
 {
 	table_index: int,
@@ -89,7 +96,23 @@ db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
 	return {}, 0, false;
 }
 
-build_struct_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> rawptr
+json_value_to_f32 :: proc(value : json.Value) -> f32
+{
+	#partial switch v in value.value
+	{
+		case json.Float:
+		{
+			return f32(v);
+		}
+		case json.Integer:
+		{
+			return f32(v);
+		}
+	}
+	return 0;
+}
+
+build_struct_inputs_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> []Component_Input
 {
 	result := mem.alloc(size_of(type), align_of(type), allocator);
 	for name, value in json_data
@@ -105,10 +128,13 @@ build_struct_from_json :: proc(json_data: json.Object, type: typeid, allocator: 
 				if len(t) == 2
 				{
 					vector: [2]f32;
-					vector.x = f32(t[0].value.(json.Float));
-					vector.y = f32(t[1].value.(json.Float));
+					log.info(t[0].value);
+					vector.x = json_value_to_f32(t[0]);
+					vector.y = json_value_to_f32(t[1]);
 
-					log.info("ARRAY", vector);
+
+
+					log.info("[2]f32", vector);
 				}
 			}
 			case json.Float:
