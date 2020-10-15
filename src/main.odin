@@ -115,8 +115,7 @@ main :: proc() {
             imgui.render();
 
             
-            if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed)
-                do running = false;
+            if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed) do running = false;
 
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             render.clearRenderBuffer(&render_buffer);

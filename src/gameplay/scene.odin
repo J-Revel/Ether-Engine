@@ -93,8 +93,7 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 		arc_it = container.table_iterator(&arcs);
 		for arc in container.table_iterate(&arc_it)
 		{
-			if h.building.id != arc.ignored_building.id && collision_bb_arc(&bb, arc, 10)
-				do h.energy += deltaTime;
+			if h.building.id != arc.ignored_building.id && collision_bb_arc(&bb, arc, 10) do h.energy += deltaTime;
 			log.info(h);
 		}
 	}

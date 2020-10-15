@@ -147,8 +147,7 @@ update_wave_collision_planet :: proc(arcs: ^container.Table(Wave_Arc), step_size
 	arcs_it := container.table_iterator(arcs);
 	for arc in container.table_iterate(&arcs_it)
 	{
-		if(arc.radius < max_radius) do
-			arc_collision_split_planet(arc^, step_size, planet, &new_arcs);
+		if(arc.radius < max_radius) do arc_collision_split_planet(arc^, step_size, planet, &new_arcs);
 	}
 	container.table_copy(arcs, &new_arcs);
 }
@@ -159,8 +158,7 @@ update_wave_collision_hitbox :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, m
 	result: f32 = 0;
 	for arc in arcs
 	{
-		if(arc.radius < max_radius) do
-			result += arc_collision_split_hitbox(arc, step_size, hitbox, &new_arcs);
+		if(arc.radius < max_radius) do result += arc_collision_split_hitbox(arc, step_size, hitbox, &new_arcs);
 	}
 	resize(arcs, len(new_arcs));
 	copy(arcs[:], new_arcs[:]);
@@ -179,8 +177,7 @@ render_wave :: proc(arcs: ^container.Table(Wave_Arc), step_size : f32, thickness
 	{
 		length := arc.angular_size * arc.radius;
 		step_count := cast(int)(length / step_size) + 1;
-		if(step_count > 100) do
-			step_count = 100;
+		if(step_count > 100) do step_count = 100;
 		step_size := arc.angular_size / cast(f32)step_count;
 		
 		for i := 0; i<step_count + 1; i += 1

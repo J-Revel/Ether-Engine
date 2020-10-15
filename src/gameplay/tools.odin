@@ -93,7 +93,7 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 			prefab.components = make([]container.Component_Model, 3, context.temp_allocator);
 			l_b := Loading_Building{container.Handle(Building){0, nil}, 0};
 			wave_emitter := Wave_Emitter{container.Handle(Loading_Building){0, nil}, 0, math.PI / 10};
-			prefab.components[0] = {0, &building};
+			/*prefab.components[0] = {0, &building};
 			prefab.components[1] = {1, &l_b};
 			prefab.components[2] = {4, &wave_emitter};
 
@@ -104,7 +104,7 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 			test_offset = (reflect.struct_field_by_name(typeid_of(Wave_Emitter), "loading_building").offset);
 			prefab.refs[1] = {2, int(test_offset), 1};
 
-			container.prefab_instantiate(&scene.db, prefab);
+			container.prefab_instantiate(&scene.db, prefab);*/
 		}
 	}
 	imgui.begin("Buildings");

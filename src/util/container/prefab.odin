@@ -16,13 +16,13 @@ Database_Table :: struct
 
 Component_Ref :: struct
 {
-	component_offset: intptr,
+	component_offset: uintptr,
 	target_index: int,
 }
 
 Component_Input :: struct
 {
-	component_offset: intptr,
+	component_offset: uintptr,
 	input_name: string,
 }
 
@@ -63,7 +63,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: Prefab, input: map[string]any)
 		table := db[component.table_index].table;
 		component_sizes[i] = reflect.size_of_typeid(table.type);
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
-		mem.copy(components_data[i], component.data, component_sizes[i]);
+		mem.copy(components_data[i], component.data.data, component_sizes[i]);
 	}
 
 	for component, i in prefab.components
@@ -71,13 +71,13 @@ prefab_instantiate :: proc(db: ^Database, prefab: Prefab, input: map[string]any)
 		table := db[component.table_index].table;
 		ok : bool;
 		component_handles[i], ok = table_allocate_raw(table, reflect.size_of_typeid(table.type));
-		for ref in prefab.refs
+		/*for ref in prefab.refs
 		{
 			if ref.component_index == i
 			{
 				mem.copy(rawptr(uintptr(int(uintptr(components_data[i])) + ref.component_offset)), &component_handles[ref.ref_target_index], size_of(Raw_Handle));
 			}
-		}
+		}*/
 	}
 
 	for component, i in prefab.components
@@ -104,10 +104,14 @@ db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
 build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> (result: Component_Model_Data)
 {
 	result.data = mem.alloc(size_of(type), align_of(type), allocator);
+	ti := type_info_of(type);
+	data := mem.alloc(ti.size, ti.align, allocator);
+	test := any {data, type};
+	log.info(test);
+	
 	for name, value in json_data
 	{
 		field := reflect.struct_field_by_name(type, name);
-		log.info(field);
 		#partial switch t in value.value
 		{
 			case json.Object:
@@ -119,8 +123,8 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				if len(t) == 2
 				{
 					vector: [2]f32;
-					vector.x = f32(t[0].value.(json.Float));
-					vector.y = f32(t[1].value.(json.Float));
+					vector.x = f32(t[0].value.(json.Integer));
+					vector.y = f32(t[1].value.(json.Integer));
 
 					if(field.type == typeid_of([2]f32))
 					{
@@ -143,7 +147,6 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				if(t[0] == '&')
 				{
 					log.info("INPUT");
-					result.
 				}
 				if(t[0] == '@')
 				{
@@ -153,6 +156,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 			}
 		}
 	}
+	log.info(any {result.data, type});
 	return result;
 }
 
@@ -175,7 +179,6 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 		for name, value in parsed_object
 		{
 			table, table_index, ok := db_get_table(db, name);
-			log.info(name);
 			if(ok)
 			{
 				prefab.components[component_cursor].table_index = table_index;
