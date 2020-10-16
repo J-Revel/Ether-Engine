@@ -101,6 +101,18 @@ db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
 	return {}, 0, false;
 }
 
+parse_json_float :: proc(json_data: json.Value) -> f32
+{
+	#partial switch v in json_data.value
+	{
+		case json.Integer:
+			return f32(v);
+		case json.Float:
+			return f32(v);
+	}
+	return 0;
+}
+
 build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> (result: Component_Model_Data)
 {
 	result.data = mem.alloc(size_of(type), align_of(type), allocator);
@@ -123,8 +135,10 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				if len(t) == 2
 				{
 					vector: [2]f32;
-					vector.x = f32(t[0].value.(json.Integer));
-					vector.y = f32(t[1].value.(json.Integer));
+
+					vector.x = parse_json_float(t[0]);
+					vector.y = parse_json_float(t[1]);
+					log.info(vector);
 
 					if(field.type == typeid_of([2]f32))
 					{
