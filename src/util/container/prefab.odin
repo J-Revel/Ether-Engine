@@ -5,6 +5,7 @@ import "core:reflect"
 import "core:mem"
 import "core:os"
 import "core:encoding/json"
+import "core:runtime"
 
 Database_Named_Table :: struct { name: string, table: Database_Table };
 Database :: [dynamic]Database_Named_Table;
@@ -111,19 +112,47 @@ parse_json_float :: proc(json_data: json.Value) -> f32
 			return f32(v);
 	}
 	return 0;
+// same as reflect.struct_field_by_name, but goes inside params with using
+find_struct_field :: proc(T: typeid, name: string) -> (field: reflect.Struct_Field, field_found: bool)
+{
+	field_found = false;
+	ti := runtime.type_info_base(type_info_of(T));
+	if s, ok := ti.variant.(runtime.Type_Info_Struct); ok {
+		for fname, i in s.names {
+			if fname == name {
+				field.name   = s.names[i];
+				field.type   = s.types[i].id;
+				field.tag    = reflect.Struct_Tag(s.tags[i]);
+				field.offset = s.offsets[i];
+				field_found = true;
+				return;
+			}
+			else if s.usings[i] {
+				if child_field, ok := find_struct_field(s.types[i].id, name); ok {
+					field = child_field;
+					field.offset += s.offsets[i];
+					field_found = true;
+					return;
+				}
+			}
+		}
+	}
+	return;
 }
 
 build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator) -> (result: Component_Model_Data)
 {
-	result.data = mem.alloc(size_of(type), align_of(type), allocator);
+	log.info(type);
 	ti := type_info_of(type);
-	data := mem.alloc(ti.size, ti.align, allocator);
-	test := any {data, type};
-	log.info(test);
+	base_ti := runtime.type_info_base(ti);
+	log.info(base_ti.variant.(runtime.Type_Info_Struct));
+	result.data = mem.alloc(ti.size, ti.align, allocator);
 	
 	for name, value in json_data
 	{
-		field := reflect.struct_field_by_name(type, name);
+		log.info(name);
+		field, field_found := find_struct_field(type, name);
+		log.info(field, field_found);
 		#partial switch t in value.value
 		{
 			case json.Object:
@@ -142,6 +171,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 
 					if(field.type == typeid_of([2]f32))
 					{
+						log.info(field.offset);
 						fieldPtr := rawptr(uintptr(result.data) + field.offset);
 						mem.copy(fieldPtr, &vector, size_of(f32) * 2);
 					}
