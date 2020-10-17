@@ -43,7 +43,8 @@ init_scene :: proc(using scene: ^Scene)
 	container.table_database_add(&db, "planet", &planets);
 	container.table_database_add(&db, "arc", &arcs);
 	container.table_database_add(&db, "wave_emitter", &wave_emitters);
-	container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
+	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
+	log.info(prefab_instance, ok);
 	camera.zoom = 1;
 	for i := 0; i < 10; i+=1
 	{
@@ -51,6 +52,14 @@ init_scene :: proc(using scene: ^Scene)
 		generate(&p, rand.float32() * 200 + 100, 10);
 		p.pos = [2]f32{800 * cast(f32)i, 0};
 		container.table_add(&planets, p);
+	}
+	test_input: map[string]any;
+	planet: ^Planet = container.table_get(&planets, container.Handle(Planet){1, &planets});
+	test_input["planet"] = planet;
+	for i := 0; i<8; i += 1
+	{
+		test_input["angle"] = f32(math.PI / 4.0) * f32(i);
+		container.prefab_instantiate(&db, &prefab_instance, test_input);
 	}
 	tool_state = Basic_Tool_State{};
 

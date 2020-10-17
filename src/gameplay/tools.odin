@@ -68,7 +68,7 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 	{
 		building : Building;
 		building.size = building_render_types[tool.selected_building].render_size;
-		building.render_data = &building_render_types[tool.selected_building];
+		building.render_data = building_render_types[tool.selected_building];
 		world_pos := render.camera_to_world(&scene.camera, render_system, input_state.mouse_pos);
 		
 		planet_it := container.table_iterator(&scene.planets);

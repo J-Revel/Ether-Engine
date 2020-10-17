@@ -22,7 +22,7 @@ Building_Render_Data :: struct
 Building :: struct
 {
     using hitbox: Grounded_Hitbox,
-    render_data: ^Building_Render_Data,
+    using render_data: Building_Render_Data,
 }
 
 Wave_Receiver :: struct
