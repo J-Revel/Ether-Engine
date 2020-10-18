@@ -8,7 +8,7 @@ import "core:math";
 import gl "shared:odin-gl";
 
 @(private="package")
-fragmentShaderSrc :: `
+color_fragment_shader_src :: `
 #version 450
 in vec4 frag_color;
 in vec2 frag_pos;
@@ -21,7 +21,7 @@ void main()
 `;
 
 @(private="package")
-vertexShaderSrc :: `
+color_vertex_shader_src :: `
 #version 450
 layout (location = 0) in vec2 pos;
 layout (location = 1) in vec4 color;
@@ -56,7 +56,7 @@ Render_State :: struct
     elementBuffer: u32,
 }
 
-VertexData :: struct
+Color_Vertex_Data :: struct
 {
     pos: vec2,
     color: Color
@@ -71,25 +71,29 @@ Camera :: struct
 INDEX_BUFFER_SIZE :: 50000;
 VERTEX_BUFFER_SIZE :: 20000;
 
-RenderBuffer :: struct
+
+Render_Buffer :: struct(T: typeid)
 {
-    vertex: [dynamic]VertexData,
+    vertex: [dynamic]T,
     index: [dynamic]u32,
 }
 
-Render_System :: struct
+Render_System :: struct(T: typeid)
 {
     screen_size: vec2,
-    using buffer: RenderBuffer,
+    using buffer: Render_Buffer(T),
     render_state: Render_State,
 }
 
-initRenderer :: proc (result: ^Render_State) -> bool
+Color_Render_Buffer :: Render_Buffer(Color_Vertex_Data);
+Color_Render_System :: Render_System(Color_Vertex_Data);
+
+init_color_renderer :: proc (result: ^Render_State) -> bool
 {
     vertexShader := gl.CreateShader(gl.VERTEX_SHADER);
     fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER);
-    vertexShaderText := cast(^u8)strings.clone_to_cstring(vertexShaderSrc, context.temp_allocator);
-    fragmentShaderText := cast(^u8)strings.clone_to_cstring(fragmentShaderSrc, context.temp_allocator);
+    vertexShaderText := cast(^u8)strings.clone_to_cstring(color_vertex_shader_src, context.temp_allocator);
+    fragmentShaderText := cast(^u8)strings.clone_to_cstring(color_fragment_shader_src, context.temp_allocator);
     gl.ShaderSource(vertexShader, 1, &vertexShaderText, nil);
     gl.ShaderSource(fragmentShader, 1, &fragmentShaderText, nil);
     gl.CompileShader(vertexShader);
@@ -98,12 +102,12 @@ initRenderer :: proc (result: ^Render_State) -> bool
     vertOk: i32;
     gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &vertOk);
     if vertOk != gl.TRUE {
-        log.errorf("Unable to compile vertex shader: {}", vertexShaderSrc);
+        log.errorf("Unable to compile vertex shader: {}", color_vertex_shader_src);
         return false;
     }
     gl.GetShaderiv(fragmentShader, gl.COMPILE_STATUS, &fragOk);
     if fragOk != gl.TRUE || vertOk != gl.TRUE {
-        log.errorf("Unable to compile fragment shader: {}", fragmentShaderSrc);
+        log.errorf("Unable to compile fragment shader: {}", color_fragment_shader_src);
         return false;
     }
 
@@ -127,11 +131,11 @@ initRenderer :: proc (result: ^Render_State) -> bool
 
     gl.BindVertexArray(result.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, result.vbo);
-    gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_SIZE * size_of(VertexData), nil, gl.DYNAMIC_DRAW);
+    gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_SIZE * size_of(Color_Vertex_Data), nil, gl.DYNAMIC_DRAW);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.elementBuffer);
     gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
-    gl.VertexAttribPointer(0, 2, gl.FLOAT, 0, size_of(VertexData), nil);
-    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(VertexData), rawptr(uintptr(size_of(vec2))));
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, 0, size_of(Color_Vertex_Data), nil);
+    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(Color_Vertex_Data), rawptr(uintptr(size_of(vec2))));
     gl.EnableVertexAttribArray(0);
     gl.EnableVertexAttribArray(1);
 
@@ -141,9 +145,9 @@ initRenderer :: proc (result: ^Render_State) -> bool
     return true;
 }
 
-push_mesh_data :: proc(render_buffer: ^RenderBuffer, vertex: []VertexData, index: []u32)
+push_mesh_data :: proc(render_buffer: ^Render_Buffer($T), vertex: []T, index: []u32)
 {
-    startIndex := cast(u32) len(render_buffer.vertex);
+    start_index := cast(u32) len(render_buffer.vertex);
     for v in vertex
     {
         append(&render_buffer.vertex, v);
@@ -151,24 +155,24 @@ push_mesh_data :: proc(render_buffer: ^RenderBuffer, vertex: []VertexData, index
 
     for i in index
     {
-        append(&render_buffer.index, startIndex + i);
+        append(&render_buffer.index, start_index + i);
     }
 }
 
-clearRenderBuffer :: proc(render_buffer: ^RenderBuffer)
+clear_render_buffer :: proc(render_buffer: ^Render_Buffer($T))
 {
     clear(&render_buffer.index);
     clear(&render_buffer.vertex);
 }
 
-renderBufferContent :: proc(render_buffer : ^Render_System, camera: ^Camera)
+render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camera)
 {
     vertex_count := len(render_buffer.vertex);
     index_count := len(render_buffer.index);
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
     
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(VertexData), &render_buffer.vertex[0]);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(Color_Vertex_Data), &render_buffer.vertex[0]);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
     gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) index_count * size_of(u32), &render_buffer.index[0]);
     gl.BindVertexArray(0);
@@ -183,7 +187,7 @@ renderBufferContent :: proc(render_buffer : ^Render_System, camera: ^Camera)
     gl.UseProgram(0);
 }
 
-camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System, pos: [2]i32) -> [2]f32
+camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System(Color_Vertex_Data), pos: [2]i32) -> [2]f32
 {
     return [2]f32
     {

@@ -63,11 +63,12 @@ init_scene :: proc(using scene: ^Scene)
 	}
 	tool_state = Basic_Tool_State{};
 
+	render.load_texture("resources/textures/spaceship.png");
 }
 
 time : f32 = 0;
 
-update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^render.Render_System, input_state: ^input.State)
+update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^render.Color_Render_System, input_state: ^input.State)
 {
 	worldMousePos := render.camera_to_world(&scene.camera, render_system, input_state.mouse_pos);
     update_display_tool(&tool_state, scene, input_state, render_system);
@@ -138,10 +139,9 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 		{
 			test_result = true;
 		}
-
 	}
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
-	render.renderBufferContent(render_system, &camera);
+	render.render_buffer_content(render_system, &camera);
 }

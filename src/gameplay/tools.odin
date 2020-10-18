@@ -28,7 +28,7 @@ Tool_State:: union
 	Building_Placement_Tool_State,
 }
 
-update_display_tool :: proc(tool_state: ^Tool_State, scene: ^Scene, input_state: ^input.State, render_system: ^render.Render_System)
+update_display_tool :: proc(tool_state: ^Tool_State, scene: ^Scene, input_state: ^input.State, render_system: ^render.Color_Render_System)
 {
 	#partial switch state in tool_state
 	{
@@ -61,7 +61,7 @@ update_basic_tool :: proc(input_state: ^input.State, camera: ^render.Camera, too
 	tool.last_mouse_pos = f_mouse_pos;
 }
 
-update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene, tool_state: ^Tool_State, render_system: ^render.Render_System)
+update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene, tool_state: ^Tool_State, render_system: ^render.Color_Render_System)
 {
 	tool : ^Building_Placement_Tool_State = &tool_state.(Building_Placement_Tool_State);
 	if(!input_state.mouse_captured)

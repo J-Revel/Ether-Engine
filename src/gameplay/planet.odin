@@ -29,9 +29,9 @@ radius :: proc(meanRadius: f32, angle: f32) -> f32
     return meanRadius + meanRadius / 30 * math.cos(angle * 10) + meanRadius / 10 * math.sin(angle * 3) + meanRadius / 50 * math.cos( 5 + angle * 12);
 }
 
-render_planet :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Planet, subdivisions: u32)
+render_planet :: proc(renderBuffer: ^render.Render_Buffer(render.Color_Vertex_Data), planet: ^Planet, subdivisions: u32)
 {
-    vertex: []render.VertexData = make([]render.VertexData, subdivisions + 1);
+    vertex: []render.Color_Vertex_Data = make([]render.Color_Vertex_Data, subdivisions + 1);
     defer delete(vertex);
     index: []u32 = make([]u32, subdivisions * 3);
     defer delete(index);
@@ -39,9 +39,9 @@ render_planet :: proc(renderBuffer: ^render.RenderBuffer, planet: ^Planet, subdi
     {
         angle := (cast(f32)i * 2) * math.PI / (cast(f32)subdivisions);
         
-        vertex[i] = render.VertexData{surface_point(planet, angle), {0, 0, 0, 1}};
+        vertex[i] = render.Color_Vertex_Data{surface_point(planet, angle), {0, 0, 0, 1}};
     }
-    vertex[subdivisions] = render.VertexData{planet.pos, {1, 1, 1, 1}};
+    vertex[subdivisions] = render.Color_Vertex_Data{planet.pos, {1, 1, 1, 1}};
     for i : u32 = 0; i<subdivisions; i+=1
     {
         index[i * 3] = subdivisions;

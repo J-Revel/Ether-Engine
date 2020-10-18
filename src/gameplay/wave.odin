@@ -167,9 +167,9 @@ update_wave_collision_hitbox :: proc(arcs: ^[dynamic]Wave_Arc, step_size: f32, m
 
 update_wave_collision :: proc { update_wave_collision_planet, update_wave_collision_hitbox };
 
-render_wave :: proc(arcs: ^container.Table(Wave_Arc), step_size : f32, thickness: f32, color: [4]f32, render_system: ^render.Render_System)
+render_wave :: proc(arcs: ^container.Table(Wave_Arc), step_size : f32, thickness: f32, color: [4]f32, render_system: ^render.Color_Render_System)
 {
-	vertex : [dynamic]render.VertexData;
+	vertex : [dynamic]render.Color_Vertex_Data;
 	index : [dynamic]u32;
 
 	arc_it := container.table_iterator(arcs);
@@ -184,9 +184,9 @@ render_wave :: proc(arcs: ^container.Table(Wave_Arc), step_size : f32, thickness
 		{
 			vertex_angle := arc.angle + step_size * cast(f32)i;
 			v :[2]f32 = arc.center + (arc.radius - thickness / 2) * [2]f32{math.cos(vertex_angle), math.sin(vertex_angle)};
-			append(&vertex, render.VertexData{v, {0, 0, 0, 0}});
+			append(&vertex, render.Color_Vertex_Data{v, {0, 0, 0, 0}});
 			v = arc.center + (arc.radius + thickness / 2) * [2]f32{math.cos(vertex_angle), math.sin(vertex_angle)};
-			append(&vertex, render.VertexData{v, color});	
+			append(&vertex, render.Color_Vertex_Data{v, color});	
 		}
 
 		for i : u32 = 1; i < cast(u32)step_count; i += 1
@@ -204,7 +204,7 @@ render_wave :: proc(arcs: ^container.Table(Wave_Arc), step_size : f32, thickness
 		append(&index, (cast(u32)step_count) * 2 - 1);
 		append(&index, (cast(u32)step_count) * 2);
 		append(&index, (cast(u32)step_count) * 2 + 1);
-		render.push_mesh_data(render_system, vertex[:], index[:]);
+		render.push_mesh_data(&render_system.buffer, vertex[:], index[:]);
 		clear(&vertex);
 		clear(&index);
 	}

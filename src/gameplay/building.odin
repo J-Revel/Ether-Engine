@@ -62,17 +62,17 @@ building_render_types := [5]Building_Render_Data
     }
 };
 
-render_building :: proc(using building: ^Building, renderBuffer: ^render.RenderBuffer)
+render_building :: proc(using building: ^Building, renderBuffer: ^render.Color_Render_Buffer)
 {
     pos := surface_point(planet, angle);
     surfaceTangent := surface_tangent(planet, angle);
     surfaceNormal := vec2 {surfaceTangent.y, -surfaceTangent.x};
 
-    vertex: []render.VertexData = {
-        render.VertexData{pos - surfaceTangent * render_data.render_size.x / 2, render_data.color}, 
-        render.VertexData{pos - surfaceTangent * render_data.render_size.x / 2 + surfaceNormal * render_data.render_size.y, render_data.color},
-        render.VertexData{pos + surfaceTangent * render_data.render_size.x / 2 + surfaceNormal * render_data.render_size.y, render_data.color},
-        render.VertexData{pos + surfaceTangent * render_data.render_size.x / 2, render_data.color}
+    vertex: []render.Color_Vertex_Data = {
+        render.Color_Vertex_Data{pos - surfaceTangent * render_data.render_size.x / 2, render_data.color}, 
+        render.Color_Vertex_Data{pos - surfaceTangent * render_data.render_size.x / 2 + surfaceNormal * render_data.render_size.y, render_data.color},
+        render.Color_Vertex_Data{pos + surfaceTangent * render_data.render_size.x / 2 + surfaceNormal * render_data.render_size.y, render_data.color},
+        render.Color_Vertex_Data{pos + surfaceTangent * render_data.render_size.x / 2, render_data.color}
     };
     indices := []u32{0, 1, 2, 0, 2, 3};
     render.push_mesh_data(renderBuffer, vertex, indices);

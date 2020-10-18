@@ -9,6 +9,7 @@ import "core:math/linalg";
 import "core:math/rand";
 
 import sdl "shared:odin-sdl2";
+import sdl_image "shared:odin-sdl2/image"
 import gl  "shared:odin-gl";
 
 import imgui "imgui";
@@ -43,6 +44,7 @@ main :: proc() {
     init_err := sdl.init(.Video);
     defer sdl.quit();
     if init_err == 0 {
+        sdl_image.init(.PNG);
         log.info("Setting up the window...");
         window := sdl.create_window("Ether", 100, 100, 1280, 720, .Open_GL|.Mouse_Focus|.Shown|.Resizable);
         if window == nil {
@@ -78,11 +80,11 @@ main :: proc() {
         input_state : input.State;
         input.setup_state(&input_state);
 
-        render_buffer: render.Render_System;
+        render_buffer: render.Color_Render_System;
         
         //building.size = vec2{20, 20};
 
-        render.initRenderer(&render_buffer.render_state);
+        render.init_color_renderer(&render_buffer.render_state);
 
         show_demo_window := false;
         io := imgui.get_io();
@@ -118,7 +120,7 @@ main :: proc() {
             if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed) do running = false;
 
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
-            render.clearRenderBuffer(&render_buffer);
+            render.clear_render_buffer(&render_buffer.buffer);
             sdl.gl_swap_window(window);
         }
         log.info("Shutting down...");
