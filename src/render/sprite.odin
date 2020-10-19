@@ -3,6 +3,7 @@ import sdl_image "shared:odin-sdl2/image"
 import "core:strings"
 import "core:log"
 import gl "shared:odin-gl";
+import "../util/container"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -47,7 +48,7 @@ Rect :: struct
 Texture :: struct
 {
 	texture_id: u32,
-	size: [2]int,
+	size: [2]i32,
 }
 
 Sprite :: struct
@@ -56,7 +57,7 @@ Sprite :: struct
 	clip: Rect,
 }
 
-load_texture :: proc(path: string) -> u32
+load_texture :: proc(path: string) -> Texture
 {
 	cstring_path := strings.clone_to_cstring(path, context.temp_allocator);
 	surface := sdl_image.load(cstring_path);
@@ -74,7 +75,7 @@ load_texture :: proc(path: string) -> u32
 	 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	return 0;
+	return Texture{texture_id, {surface.w, surface.h}};
 }
 
 Sprite_Vertex_Data :: struct

@@ -27,7 +27,8 @@ Scene :: struct
 	wave_emitters: container.Table(Wave_Emitter),
 	planets: container.Table(Planet),
     arcs: container.Table(Wave_Arc),
-    db: container.Database
+    db: container.Database,
+    sprite_renderer: render.Render_System(render.Sprite_Vertex_Data),
 }
 
 init_scene :: proc(using scene: ^Scene)
