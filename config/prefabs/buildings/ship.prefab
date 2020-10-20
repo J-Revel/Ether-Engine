@@ -1,0 +1,11 @@
+{
+	"transform": {
+		"pos": "&pos",
+		"scale": "&scale",
+		"angle": 0
+	},
+	"sprite_component": {
+		"transform": "@transform",
+		"sprite": "&sprite"
+	}
+}

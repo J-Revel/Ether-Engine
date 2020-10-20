@@ -51,6 +51,13 @@ table_database_add :: proc(db: ^Database, name: string, table: ^Table($T))
 	append(db, named_table);
 }
 
+table_database_add_init :: proc(db: ^Database, name: string, table: ^Table($T), size: uint)
+{
+	table_init(table, size);
+	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
+	append(db, named_table);
+}
+
 prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[string]any) -> bool
 {
 	data_total_size := 0;
@@ -75,6 +82,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 		for ref in component.data.refs
 		{
 			fieldPtr := rawptr(uintptr(components_data[i]) + ref.field.offset);
+			log.info(ref);
 			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(Raw_Handle));
 		}
 
@@ -83,7 +91,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 			if input_value, ok := input_data[input.name]; ok {
 				if input_value.id == input.field.type {
 					field_ptr := rawptr(uintptr(components_data[i]) + input.field.offset);
-					mem.copy(field_ptr, input_value.data, size_of(input.field.type));
+					mem.copy(field_ptr, input_value.data, reflect.size_of_typeid(input.field.type));
 				}
 				else do log.info("Wrong input value : ", input_value.id, " vs ", input.field.type);
 			}
@@ -152,7 +160,7 @@ find_struct_field :: proc(T: typeid, name: string) -> (field: reflect.Struct_Fie
 	return;
 }
 
-build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator, available_component_index: map[string]int) -> (result: Component_Model_Data)
+build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator, available_component_index: map[string]Registered_Component_Data) -> (result: Component_Model_Data)
 {
 	ti := type_info_of(type);
 	base_ti := runtime.type_info_base(ti);
@@ -208,9 +216,8 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 					log.info("REF");
 					ref_name := t[1:];
 
-					if index, ok := available_component_index[ref_name]; ok {
-						append(&refs, Component_Ref{index, field});
-
+					if component_data, ok := available_component_index[ref_name]; ok {
+						append(&refs, Component_Ref{component_data.component_index, field});
 					}
 					else do log.info("Missing component", ref_name);
 				}
@@ -224,6 +231,12 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 
 	log.info(result);
 	return result;
+}
+
+Registered_Component_Data :: struct
+{
+	component_index: int,
+	table_index: int,
 }
 
 load_prefab :: proc(path: string, db: Database, allocator := context.allocator) -> (Prefab, bool)
@@ -242,7 +255,7 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 		component_cursor := 0;
 		parsed_object := parsed.value.(json.Object);
 
-		registered_components := make(map[string]int, 10, context.temp_allocator);
+		registered_components := make(map[string]Registered_Component_Data, 10, context.temp_allocator);
 		
 		for name, value in parsed_object
 		{
@@ -251,7 +264,7 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 			{
 				prefab.components[component_cursor].table_index = table_index;
 				prefab.components[component_cursor].data = build_component_model_from_json(value.value.(json.Object), table.type, context.temp_allocator, registered_components);
-				registered_components[name] = table_index;				
+				registered_components[name] = {component_cursor, table_index};				
 			}
 			component_cursor += 1;
 		}

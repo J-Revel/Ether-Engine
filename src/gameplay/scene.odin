@@ -19,7 +19,7 @@ import json "core:encoding/json"
 
 import gl "shared:odin-gl";
 
-spaceship_sprite : render.Sprite;
+spaceship_sprite : container.Handle(render.Sprite);
 
 Scene :: struct
 {
@@ -34,25 +34,50 @@ Scene :: struct
     color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
     textures: container.Table(render.Texture),
+    sprites: container.Table(render.Sprite),
+    transforms: Transform_Table,
+    sprite_components: container.Table(Sprite_Component),
+
 }
 
 init_scene :: proc(using scene: ^Scene)
 {
+	container.table_database_add_init(&db, "building", &buildings, 1000);
+	container.table_database_add_init(&db, "loading_building", &loading_buildings, 1000);
+	container.table_database_add_init(&db, "planet", &planets, 1000);
+	container.table_database_add_init(&db, "arc", &arcs, 1000);
+	container.table_database_add_init(&db, "wave_emitter", &wave_emitters, 100);
+	container.table_database_add_init(&db, "texture", &textures, 100);
+	container.table_database_add_init(&db, "sprite", &sprites, 200);
+	container.table_database_add_init(&db, "transform", &transforms, 10000);
+	container.table_database_add_init(&db, "sprite_component", &sprite_components, 500);
 
-	container.table_init(&buildings, 1000);
-	container.table_init(&loading_buildings, 1000);
-	container.table_init(&planets, 1000);
-	container.table_init(&arcs, 1000);
-	container.table_init(&wave_emitters, 100);
-	container.table_init(&textures, 100);
-	container.table_database_add(&db, "building", &buildings);
-	container.table_database_add(&db, "loading_building", &loading_buildings);
-	container.table_database_add(&db, "planet", &planets);
-	container.table_database_add(&db, "arc", &arcs);
-	container.table_database_add(&db, "wave_emitter", &wave_emitters);
-	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
-	log.info(prefab_instance, ok);
+	render.init_sprite_renderer(&sprite_renderer.render_state);
+	render.init_color_renderer(&color_renderer.render_state);
+
 	camera.zoom = 1;
+	
+	spaceship_texture : render.Texture = render.load_texture("resources/textures/spaceship.png");
+	texture_handle, ok_texture_add := container.table_add(&scene.textures, spaceship_texture);
+	ok_sprite_add: bool;
+	spaceship_sprite, ok_sprite_add = container.table_add(&sprites, render.Sprite{texture_handle, {0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}});
+
+	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
+	test_input: map[string]any;
+	test_input["sprite"] = spaceship_sprite;
+	test_input["pos"] = [2]f32{0, 0};
+	test_input["scale"] = f32(0.1);
+
+	container.prefab_instantiate(&db, &prefab_instance, test_input);
+
+	test_input["sprite"] = spaceship_sprite;
+	test_input["pos"] = [2]f32{-350, 0};
+	test_input["scale"] = f32(0.5);
+
+	container.prefab_instantiate(&db, &prefab_instance, test_input);
+
+	/*prefab_instance, ok := container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
+	log.info(prefab_instance, ok);
 	for i := 0; i < 10; i+=1
 	{
 		p : Planet;
@@ -68,13 +93,9 @@ init_scene :: proc(using scene: ^Scene)
 		test_input["angle"] = f32(math.PI / 4.0) * f32(i);
 		container.prefab_instantiate(&db, &prefab_instance, test_input);
 	}
+	*/
 	tool_state = Basic_Tool_State{};
 
-	render.init_sprite_renderer(&sprite_renderer.render_state);
-	render.init_color_renderer(&color_renderer.render_state);
-	spaceship_texture : render.Texture = render.load_texture("resources/textures/spaceship.png");
-	texture_handle, ok_texture_add := container.table_add(&scene.textures, spaceship_texture);
-	spaceship_sprite = render.Sprite{texture_handle, {0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}};
 }
 
 time : f32 = 0;
@@ -153,12 +174,14 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 		}
 	}
 
-	render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite, {0, 0}, render.Color{1, 1, 1, 1}, 100);
+	spaceship_sprite_data := container.handle_get(spaceship_sprite);
+	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
+	render_sprite_components(&scene.sprite_renderer.buffer, &sprite_components);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	render.render_buffer_content(&color_renderer, &camera);
-	texture_id := container.table_get(&textures, spaceship_sprite.texture).texture_id;
+	texture_id := container.table_get(&textures, spaceship_sprite_data.texture).texture_id;
 	gl.Enable(gl.BLEND);
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);

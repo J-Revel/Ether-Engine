@@ -57,9 +57,12 @@ Texture :: struct
 	size: [2]int,
 }
 
+Sprite_Handle :: container.Handle(Sprite);
+Texture_Handle :: container.Handle(Texture);
+
 Sprite :: struct
 {
-	texture: container.Handle(Texture),
+	texture: Texture_Handle,
 	anchor: [2]f32,
 	clip: Rect,
 }
@@ -79,13 +82,11 @@ load_texture :: proc(path: string) -> Texture
 	cstring_path := strings.clone_to_cstring(path, context.temp_allocator);
 	surface := sdl_image.load(cstring_path);
 	defer sdl.free_surface(surface);
-	log.info(path, surface);
 	texture_id: u32;
 	gl.GenTextures(1, &texture_id);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);
 
 	mode := gl.RGB;
- 	log.info(surface.format);
  	
 	if surface.format.bytes_per_pixel == 4 do mode = gl.RGBA;
 	 
@@ -160,7 +161,7 @@ init_sprite_renderer :: proc (result: ^Render_State) -> bool
     return true;
 }
 
-render_sprite :: proc(render_buffer: ^Render_Buffer(Sprite_Vertex_Data), using sprite: Sprite, pos: [2]f32, color: Color, scale: f32)
+render_sprite :: proc(render_buffer: ^Sprite_Render_Buffer, using sprite: ^Sprite, pos: [2]f32, color: Color, scale: f32)
 {
     start_index := cast(u32) len(render_buffer.vertex);
 
@@ -174,10 +175,10 @@ render_sprite :: proc(render_buffer: ^Render_Buffer(Sprite_Vertex_Data), using s
     render_size := texture_size * clip_size;
 
     vertex_data : Sprite_Vertex_Data;
-    left_pos := pos.x - render_size.x * anchor.x;
-    right_pos := pos.x + render_size.x * (1 - anchor.x);
-    top_pos := pos.y - render_size.y * anchor.y;
-    bottom_pos := pos.y + render_size.y * (1 - anchor.y);
+    left_pos := pos.x - render_size.x * anchor.x * scale;
+    right_pos := pos.x + render_size.x * (1 - anchor.x) * scale;
+    top_pos := pos.y - render_size.y * anchor.y * scale;
+    bottom_pos := pos.y + render_size.y * (1 - anchor.y) * scale;
 
     left_uv := clip.pos.x;
     right_uv := clip.pos.x + clip_size.x;

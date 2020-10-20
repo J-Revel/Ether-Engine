@@ -169,6 +169,7 @@ render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camer
 {
     vertex_count := len(render_buffer.vertex);
     index_count := len(render_buffer.index);
+    if(vertex_count == 0) do return;
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
     
