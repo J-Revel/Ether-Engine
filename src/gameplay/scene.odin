@@ -17,6 +17,9 @@ import os "core:os"
 
 import json "core:encoding/json"
 
+import gl "shared:odin-gl";
+
+spaceship_sprite : render.Sprite;
 
 Scene :: struct
 {
@@ -28,7 +31,9 @@ Scene :: struct
 	planets: container.Table(Planet),
     arcs: container.Table(Wave_Arc),
     db: container.Database,
-    sprite_renderer: render.Render_System(render.Sprite_Vertex_Data),
+    color_renderer: render.Color_Render_System,
+    sprite_renderer: render.Sprite_Render_System,
+    textures: container.Table(render.Texture),
 }
 
 init_scene :: proc(using scene: ^Scene)
@@ -39,6 +44,7 @@ init_scene :: proc(using scene: ^Scene)
 	container.table_init(&planets, 1000);
 	container.table_init(&arcs, 1000);
 	container.table_init(&wave_emitters, 100);
+	container.table_init(&textures, 100);
 	container.table_database_add(&db, "building", &buildings);
 	container.table_database_add(&db, "loading_building", &loading_buildings);
 	container.table_database_add(&db, "planet", &planets);
@@ -64,16 +70,22 @@ init_scene :: proc(using scene: ^Scene)
 	}
 	tool_state = Basic_Tool_State{};
 
-	render.load_texture("resources/textures/spaceship.png");
+	render.init_sprite_renderer(&sprite_renderer.render_state);
+	render.init_color_renderer(&color_renderer.render_state);
+	spaceship_texture : render.Texture = render.load_texture("resources/textures/spaceship.png");
+	texture_handle, ok_texture_add := container.table_add(&scene.textures, spaceship_texture);
+	spaceship_sprite = render.Sprite{texture_handle, {0.5, 0.5}, {}};
 }
 
 time : f32 = 0;
 
-update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^render.Color_Render_System, input_state: ^input.State)
+update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f32, input_state: ^input.State)
 {
-	worldMousePos := render.camera_to_world(&scene.camera, render_system, input_state.mouse_pos);
-    update_display_tool(&tool_state, scene, input_state, render_system);
-	
+
+	color_renderer.screen_size = screen_size;
+	sprite_renderer.screen_size = screen_size;
+	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
+    update_display_tool(&tool_state, scene, input_state, &color_renderer);
     
     imgui.begin("tools");
     buttonName := "Building Tool ";
@@ -111,18 +123,18 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 
 	update_wave_emitters(&wave_emitters, &buildings, &arcs);
 
-    render_wave(&arcs, 10, 5, {1, 1, 0, 1}, render_system);
+    render_wave(&arcs, 10, 5, {1, 1, 0, 1}, &color_renderer);
 
     it := container.table_iterator(&buildings);
     for b in container.iterate(&it)
 	{
-		render_building(b, render_system);
+		render_building(b, &color_renderer);
 	}
 
 	planet_it = container.table_iterator(&planets);
 	for p in container.table_iterate(&planet_it)
 	{
-		render_planet(render_system, p, 200);
+		render_planet(&color_renderer, p, 200);
 	}
 
 	test_arc : Wave_Arc;
@@ -142,7 +154,13 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, render_system: ^r
 		}
 	}
 
+	render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite, {0, 0}, render.Color{1, 1, 1, 1}, 100);
+
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
-	render.render_buffer_content(render_system, &camera);
+	render.render_buffer_content(&color_renderer, &camera);
+	gl.BindTexture(gl.TEXTURE_2D, container.table_get(&textures, spaceship_sprite.texture).texture_id);
+	render.render_buffer_content(&scene.sprite_renderer, &camera);
+    render.clear_render_buffer(&color_renderer.buffer);
+    render.clear_render_buffer(&scene.sprite_renderer.buffer);
 }

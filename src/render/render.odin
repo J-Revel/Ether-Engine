@@ -172,7 +172,7 @@ render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camer
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
     
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(Color_Vertex_Data), &render_buffer.vertex[0]);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(T), &render_buffer.vertex[0]);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
     gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) index_count * size_of(u32), &render_buffer.index[0]);
     gl.BindVertexArray(0);

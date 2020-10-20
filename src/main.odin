@@ -80,15 +80,12 @@ main :: proc() {
         input_state : input.State;
         input.setup_state(&input_state);
 
-        render_buffer: render.Color_Render_System;
         
         //building.size = vec2{20, 20};
 
-        render.init_color_renderer(&render_buffer.render_state);
-
         show_demo_window := false;
         io := imgui.get_io();
-        screenSize : vec2;
+        screen_size : vec2;
 
         sceneInstance : gameplay.Scene;
         gameplay.init_scene(&sceneInstance);
@@ -97,9 +94,9 @@ main :: proc() {
             mx, my: i32;
             sdl.gl_get_drawable_size(window, &mx, &my);
 
-            screenSize.x = cast(f32)mx;
-            screenSize.y = cast(f32)my;
-            render_buffer.screen_size = screenSize;
+            screen_size.x = cast(f32)mx;
+            screen_size.y = cast(f32)my;
+            
             input.new_frame(&input_state);
             input.process_events(&input_state);
             input.update_mouse(&input_state, window);
@@ -113,14 +110,13 @@ main :: proc() {
             gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
-            gameplay.update_and_render(&sceneInstance, 1.0/60, &render_buffer, &input_state);
+            gameplay.update_and_render(&sceneInstance, 1.0/60, screen_size, &input_state);
             imgui.render();
 
             
             if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed) do running = false;
 
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
-            render.clear_render_buffer(&render_buffer.buffer);
             sdl.gl_swap_window(window);
         }
         log.info("Shutting down...");
