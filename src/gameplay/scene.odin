@@ -74,14 +74,13 @@ init_scene :: proc(using scene: ^Scene)
 	render.init_color_renderer(&color_renderer.render_state);
 	spaceship_texture : render.Texture = render.load_texture("resources/textures/spaceship.png");
 	texture_handle, ok_texture_add := container.table_add(&scene.textures, spaceship_texture);
-	spaceship_sprite = render.Sprite{texture_handle, {0.5, 0.5}, {}};
+	spaceship_sprite = render.Sprite{texture_handle, {0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}};
 }
 
 time : f32 = 0;
 
 update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f32, input_state: ^input.State)
 {
-
 	color_renderer.screen_size = screen_size;
 	sprite_renderer.screen_size = screen_size;
 	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
@@ -159,7 +158,10 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	render.render_buffer_content(&color_renderer, &camera);
-	gl.BindTexture(gl.TEXTURE_2D, container.table_get(&textures, spaceship_sprite.texture).texture_id);
+	texture_id := container.table_get(&textures, spaceship_sprite.texture).texture_id;
+	gl.Enable(gl.BLEND);
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.BindTexture(gl.TEXTURE_2D, texture_id);
 	render.render_buffer_content(&scene.sprite_renderer, &camera);
     render.clear_render_buffer(&color_renderer.buffer);
     render.clear_render_buffer(&scene.sprite_renderer.buffer);

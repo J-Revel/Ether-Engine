@@ -185,19 +185,20 @@ render_sprite :: proc(render_buffer: ^Render_Buffer(Sprite_Vertex_Data), using s
     bottom_uv := clip.pos.y + clip_size.y;
 
     vertex_data.pos = [2]f32{left_pos, top_pos};
-    vertex_data.uv = sprite.clip.pos;
+    vertex_data.color = color;
+    vertex_data.uv = clip.pos + {0, 0};
     append(&render_buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{right_pos, top_pos};
-    vertex_data.uv = clip.pos;
+    vertex_data.uv = clip.pos + {clip_size.x, 0};
     append(&render_buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{left_pos, bottom_pos};
-    vertex_data.uv = sprite.clip.pos;
+    vertex_data.uv = clip.pos + {0, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{right_pos, bottom_pos};
-    vertex_data.uv = sprite.clip.pos;
+    vertex_data.uv = clip.pos + {clip_size.x, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
     append(&render_buffer.index, start_index);
