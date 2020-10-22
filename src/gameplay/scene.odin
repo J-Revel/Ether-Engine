@@ -19,6 +19,8 @@ import json "core:encoding/json"
 
 import gl "shared:odin-gl";
 
+import "../editor"
+
 spaceship_sprite : container.Handle(render.Sprite);
 
 Scene :: struct
@@ -37,7 +39,7 @@ Scene :: struct
     sprites: container.Table(render.Sprite),
     transforms: Transform_Table,
     sprite_components: container.Table(Sprite_Component),
-
+    show_editor: bool
 }
 
 init_scene :: proc(using scene: ^Scene)
@@ -99,15 +101,29 @@ init_scene :: proc(using scene: ^Scene)
 }
 
 time : f32 = 0;
+editor_state: editor.Editor_State;
 
 update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f32, input_state: ^input.State)
 {
+
 	color_renderer.screen_size = screen_size;
 	sprite_renderer.screen_size = screen_size;
 	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
     update_display_tool(&tool_state, scene, input_state, &color_renderer);
     
     imgui.begin("tools");
+
+    switch(input.get_mouse_state(input_state, 0))
+    {
+    	case .Pressed:
+    		imgui.text("Pressed");
+    	case .Down:
+    		imgui.text("Down");
+    	case .Released:
+    		imgui.text("Released");
+    	case .Up:
+    		imgui.text("Up");
+    }
     buttonName := "Building Tool ";
     if(imgui.button("Building Tool"))
     {
@@ -115,7 +131,7 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
     }
     imgui.end();
 
-    if input_state.mouse_states[2] == .Pressed
+    if input.get_mouse_state(input_state, 2) == .Pressed
     {
     	container.table_add(&arcs, Wave_Arc{100, worldMousePos, {0, 0, 2 * math.PI}, container.invalid_handle(&buildings)});
 	}
@@ -172,6 +188,14 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 		{
 			test_result = true;
 		}
+	}
+
+	if input.get_key_state(input_state, sdl.Scancode.Space) == .Pressed do show_editor = !show_editor;
+	if show_editor
+	{
+		sprite_data := container.handle_get(spaceship_sprite);
+		texture_data := container.handle_get(sprite_data.texture);
+		editor.update_editor(&editor_state, screen_size, texture_data);
 	}
 
 	spaceship_sprite_data := container.handle_get(spaceship_sprite);

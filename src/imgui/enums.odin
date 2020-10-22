@@ -443,7 +443,7 @@ Window_Flags :: enum i32 {
 	NoFocusOnAppearing        = 1 << 12,
 	NoBringToFrontOnFocus     = 1 << 13,
 	AlwaysVerticalScrollbar   = 1 << 14,
-	AlwaysHorizontalScrollbar = 1<< 15,
+	AlwaysHorizontalScrollbar = 1 << 15,
 	AlwaysUseWindowPadding    = 1 << 16,
 	NoNavInputs               = 1 << 18,
 	NoNavFocus                = 1 << 19,

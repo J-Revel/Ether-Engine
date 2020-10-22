@@ -8,6 +8,8 @@ import runtime "core:runtime"
 vec2 :: [2]f32;
 ivec2 ::[2]i32;
 
+current_frame: int = 1;
+
 Key_State :: enum {
     Up, Down, Pressed, Released
 }
@@ -15,11 +17,9 @@ Key_State :: enum {
 State :: struct {
     time: u64,
     quit: bool,
-    mouse_states: [3]Key_State,
+    mouse_states: [3]int,
     mouse_pos: ivec2,
-    key_states: [512]Key_State,
-    pressed_released_keys: [512]int,
-    pressed_released_count: int,
+    key_states: [512]int,
     // TODO : migrate specific imgui code somewhere else
     cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor,
     mouse_captured: bool,
@@ -69,18 +69,22 @@ setup_state :: proc(using state: ^State) {
 }
 
 new_frame :: proc(state: ^State) {
-    for i := 0; i<state.pressed_released_count; i+=1
-    {
-        key := state.pressed_released_keys[state.pressed_released_count];
-        state.key_states[key] = state.key_states[key] == .Pressed ? .Down : .Up; 
-    }
-    state.pressed_released_count = 0;
-    for i := 0; i<3; i+=1
-    {
-        if state.mouse_states[i] == .Pressed do state.mouse_states[i] = .Down;
-        if state.mouse_states[i] == .Released do state.mouse_states[i] = .Up; 
-    }
+    current_frame += 1;
     
+}
+
+get_key_state :: proc(state: ^State, key: sdl.Scancode) -> Key_State
+{
+    if state.key_states[key] == current_frame do return .Pressed;
+    if state.key_states[key] == -current_frame do return .Released;
+    return state.key_states[key] > 0 ? .Down : .Up;
+}
+
+get_mouse_state :: proc(state: ^State, button: int) -> Key_State
+{
+    if state.mouse_states[button] == current_frame do return .Pressed;
+    if state.mouse_states[button] == -current_frame do return .Released;
+    return (state.mouse_states[button] > 0 ? .Down : .Up);
 }
 
 process_events :: proc(state: ^State) {
@@ -104,15 +108,15 @@ process_events :: proc(state: ^State) {
             }
 
             case .Mouse_Button_Down: {
-                if e.button.button == 1   do state.mouse_states[0] = .Pressed;
-                if e.button.button == 2  do state.mouse_states[1] = .Pressed;
-                if e.button.button == 3 do state.mouse_states[2] = .Pressed;
+                if e.button.button == 1   do state.mouse_states[0] = current_frame;
+                if e.button.button == 2  do state.mouse_states[1] = current_frame;
+                if e.button.button == 3 do state.mouse_states[2] = current_frame;
             }
 
             case .Mouse_Button_Up: {
-                if e.button.button == 1   do state.mouse_states[0] = .Released;
-                if e.button.button == 2  do state.mouse_states[1] = .Released;
-                if e.button.button == 3 do state.mouse_states[2] = .Released;
+                if e.button.button == 1   do state.mouse_states[0] = -current_frame;
+                if e.button.button == 2  do state.mouse_states[1] = -current_frame;
+                if e.button.button == 3 do state.mouse_states[2] = -current_frame;
             }
 
             case .Key_Down, .Key_Up: {
@@ -121,9 +125,7 @@ process_events :: proc(state: ^State) {
                 io.key_shift = sdl.get_mod_state() & (sdl.Keymod.LShift|sdl.Keymod.RShift) != nil;
                 io.key_ctrl  = sdl.get_mod_state() & (sdl.Keymod.LCtrl|sdl.Keymod.RCtrl)   != nil;
                 io.key_alt   = sdl.get_mod_state() & (sdl.Keymod.LAlt|sdl.Keymod.RAlt)     != nil;
-                state.key_states[sc] = e.type == .Key_Down ? .Pressed : .Released;
-                state.pressed_released_keys[state.pressed_released_count] = cast(int)sc;
-                state.pressed_released_count += 1;
+                state.key_states[sc] = e.type == .Key_Down ? current_frame : -current_frame;
                 when ODIN_OS == "windows" {
                     io.key_super = false;
                 } else {
@@ -143,11 +145,6 @@ update_dt :: proc(state: ^State) {
     // TODO : fill io.delta_time somewhere
     io.delta_time = state.time > 0 ? f32(f64(curr_time - state.time) / f64(freq)) : f32(1/60);
     state.time = curr_time;
-}
-
-get_key_state :: proc(state: ^State, scancode: sdl.Scancode) -> Key_State
-{
-    return state.key_states[scancode];
 }
 
 get_state_values :: proc(state: Key_State) -> (down: bool, justChanged: bool)
@@ -170,19 +167,18 @@ is_down :: proc(state: Key_State) -> bool
 update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     io := imgui.get_io();
     mx, my: i32;
-    buttons := sdl.get_mouse_state(&mx, &my);
-    io.mouse_down[0] = is_down(state.mouse_states[0]) || (buttons & u32(sdl.Mousecode.Left))   != 0;
-    io.mouse_down[1] = is_down(state.mouse_states[1]) || (buttons & u32(sdl.Mousecode.Right))  != 0;
-    io.mouse_down[2] = is_down(state.mouse_states[2]) || (buttons & u32(sdl.Mousecode.Middle)) != 0;
-    
-    state.mouse_pos.x = mx;
-    state.mouse_pos.y = my;
+    sdl.get_mouse_state(&mx, &my);
+    io.mouse_down[0] = is_down(get_mouse_state(state, 0));
+    io.mouse_down[1] = is_down(get_mouse_state(state, 1));
+    io.mouse_down[2] = is_down(get_mouse_state(state, 2));
 
     // Set mouse pos if window is focused
     io.mouse_pos = imgui.Vec2{min(f32), min(f32)};
     if sdl.get_keyboard_focus() == window {
+        state.mouse_pos = {mx, my};
         io.mouse_pos = imgui.Vec2{f32(mx), f32(my)};
     }
+    log.info(io.mouse_pos);
 
     if io.config_flags & .NoMouseCursorChange != .NoMouseCursorChange {
         desired_cursor := imgui.get_mouse_cursor();

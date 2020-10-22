@@ -48,11 +48,12 @@ update_basic_tool :: proc(input_state: ^input.State, camera: ^render.Camera, too
 	f_mouse_pos := [2]f32{cast(f32)input_state.mouse_pos.x, cast(f32)input_state.mouse_pos.y};
 	
 	tool : ^Basic_Tool_State = &tool_state.(Basic_Tool_State);
-	if input_state.mouse_states[0] == .Pressed
+	left_click_state := input.get_mouse_state(input_state, 0);
+	if left_click_state == .Pressed
 	{
 		tool.last_mouse_pos = f_mouse_pos;
 	}
-	if input.is_down(input_state.mouse_states[0])
+	if input.is_down(left_click_state)
 	{
 		offset := f_mouse_pos - tool.last_mouse_pos;
 	    camera.pos.x -= cast(f32)offset.x;
@@ -82,12 +83,12 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 	    building.angle = closest_surface_angle(building.planet, world_pos, 100);
 		render_building(&building, render_system);
 
-		if(input_state.mouse_states[2] == .Pressed)
+		if(input.get_mouse_state(input_state, 2) == .Pressed)
 		{
 			tool_state^ = Basic_Tool_State{};
 		}
 
-		if(input_state.mouse_states[0] == .Pressed)
+		if(input.get_mouse_state(input_state, 0) == .Pressed)
 		{
 			prefab : container.Prefab;
 			prefab.components = make([]container.Component_Model, 3, context.temp_allocator);
