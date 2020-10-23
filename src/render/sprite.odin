@@ -51,6 +51,12 @@ Rect :: struct
 	size: [2]f32
 }
 
+is_in_rect :: proc(rect: Rect, pos: [2]f32) -> bool
+{
+    return pos.x >= rect.pos.x && pos.x < rect.pos.x + rect.size.x
+        && pos.y >= rect.pos.y && pos.y < rect.pos.y + rect.size.y;
+}
+
 Texture :: struct
 {
 	texture_id: u32,
@@ -60,11 +66,16 @@ Texture :: struct
 Sprite_Handle :: container.Handle(Sprite);
 Texture_Handle :: container.Handle(Texture);
 
+Sprite_Data :: struct
+{
+    anchor: [2]f32,
+    clip: Rect,
+}
+
 Sprite :: struct
 {
 	texture: Texture_Handle,
-	anchor: [2]f32,
-	clip: Rect,
+    using data: Sprite_Data,
 }
 
 Sprite_Vertex_Data :: struct

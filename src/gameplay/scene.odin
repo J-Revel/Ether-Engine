@@ -22,6 +22,7 @@ import gl "shared:odin-gl";
 import "../editor"
 
 spaceship_sprite : container.Handle(render.Sprite);
+editor_state: editor.Editor_State;
 
 Scene :: struct
 {
@@ -62,7 +63,7 @@ init_scene :: proc(using scene: ^Scene)
 	spaceship_texture : render.Texture = render.load_texture("resources/textures/spaceship.png");
 	texture_handle, ok_texture_add := container.table_add(&scene.textures, spaceship_texture);
 	ok_sprite_add: bool;
-	spaceship_sprite, ok_sprite_add = container.table_add(&sprites, render.Sprite{texture_handle, {0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}});
+	spaceship_sprite, ok_sprite_add = container.table_add(&sprites, render.Sprite{texture_handle, {{0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}}});
 
 	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
@@ -77,6 +78,8 @@ init_scene :: proc(using scene: ^Scene)
 	test_input["scale"] = f32(0.5);
 
 	container.prefab_instantiate(&db, &prefab_instance, test_input);
+
+	editor.init_editor(&editor_state, texture_handle);
 
 	/*prefab_instance, ok := container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
 	log.info(prefab_instance, ok);
@@ -101,7 +104,6 @@ init_scene :: proc(using scene: ^Scene)
 }
 
 time : f32 = 0;
-editor_state: editor.Editor_State;
 
 update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f32, input_state: ^input.State)
 {
@@ -190,12 +192,12 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 		}
 	}
 
-	if input.get_key_state(input_state, sdl.Scancode.Space) == .Pressed do show_editor = !show_editor;
+	if input.get_key_state(input_state, sdl.Scancode.End) == .Pressed do show_editor = !show_editor;
 	if show_editor
 	{
 		sprite_data := container.handle_get(spaceship_sprite);
 		texture_data := container.handle_get(sprite_data.texture);
-		editor.update_editor(&editor_state, screen_size, texture_data);
+		editor.update_editor(&editor_state, screen_size);
 	}
 
 	spaceship_sprite_data := container.handle_get(spaceship_sprite);
