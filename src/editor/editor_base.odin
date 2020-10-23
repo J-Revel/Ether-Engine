@@ -66,17 +66,24 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 	for sprite_data, index in &sprites_data
 	{
 		imgui.push_id(i32(index));
+		imgui.columns(3);
 		if imgui.input_text("name", sprite_data.name[:])
 		{
 
 		}
+		imgui.next_column();
 		if edit_sprite_index != index + 1 && imgui.button("Edit")
 		{
 			edit_sprite_index = index + 1;
 		}
+		imgui.next_column();
+		imgui.slider_float2("anchor", sprite_data.anchor, 0, 1);
+		imgui.next_column();
 
 		imgui.pop_id();
 	}
+
+	imgui.columns(1);
 	if edit_sprite_index > 0 && imgui.button("Stop Edition") do edit_sprite_index = 0;
 	draw_list := imgui.get_window_draw_list();
 	pos : imgui.Vec2;
