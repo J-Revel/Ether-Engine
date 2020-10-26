@@ -65,6 +65,7 @@ init_scene :: proc(using scene: ^Scene)
 	ok_sprite_add: bool;
 	spaceship_sprite, ok_sprite_add = container.table_add(&sprites, render.Sprite{texture_handle, {{0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}}});
 
+	render.save_sprites_to_file("test.sprites", {spaceship_sprite});
 	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;

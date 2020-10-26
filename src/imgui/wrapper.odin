@@ -782,7 +782,7 @@ swr_igSliderFloat :: proc(label: string, v: ^f32, v_min: f32, v_max: f32, format
 }
 
 // AUTO_GENERATED for 'igSliderFloat2'
-swr_igSliderFloat2 :: proc(label: string, v: [2]f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
+swr_igSliderFloat2 :: proc(label: string, v: ^[2]f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str4 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igSliderFloat2(str0, v, v_min, v_max, str4, flags);

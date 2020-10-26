@@ -491,7 +491,7 @@ foreign cimgui {
 	igShowUserGuide                    :: proc() ---;
 	igSliderAngle                      :: proc(label: cstring, v_rad: ^f32, v_degrees_min: f32, v_degrees_max: f32, format: cstring, flags: Slider_Flags) -> bool ---;
 	igSliderFloat                      :: proc(label: cstring, v: ^f32, v_min: f32, v_max: f32, format: cstring, flags: Slider_Flags) -> bool ---;
-	igSliderFloat2                     :: proc(label: cstring, v: [2]f32, v_min: f32, v_max: f32, format: cstring, flags: Slider_Flags) -> bool ---;
+	igSliderFloat2                     :: proc(label: cstring, v: ^[2]f32, v_min: f32, v_max: f32, format: cstring, flags: Slider_Flags) -> bool ---;
 	igSliderFloat3                     :: proc(label: cstring, v: [3]f32, v_min: f32, v_max: f32, format: cstring, flags: Slider_Flags) -> bool ---;
 	igSliderFloat4                     :: proc(label: cstring, v: [4]f32, v_min: f32, v_max: f32, format: cstring, flags: Slider_Flags) -> bool ---;
 	igSliderInt                        :: proc(label: cstring, v: ^i32, v_min: i32, v_max: i32, format: cstring, flags: Slider_Flags) -> bool ---;

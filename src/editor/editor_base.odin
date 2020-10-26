@@ -77,7 +77,7 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 			edit_sprite_index = index + 1;
 		}
 		imgui.next_column();
-		imgui.slider_float2("anchor", sprite_data.anchor, 0, 1);
+		imgui.slider_float2("anchor", &sprite_data.anchor, 0, 1);
 		imgui.next_column();
 
 		imgui.pop_id();
@@ -147,6 +147,10 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 				clip.size = relative_mouse_pos - clip.pos;
 			}
 		}
+	}
+	if(imgui.button("Save"))
+	{
+		//render.save_sprites_to_file("test.sprites", {})
 	}
 	imgui.end();
 }

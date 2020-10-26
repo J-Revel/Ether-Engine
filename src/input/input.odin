@@ -178,7 +178,6 @@ update_mouse :: proc(state: ^State, window: ^sdl.Window) {
         state.mouse_pos = {mx, my};
         io.mouse_pos = imgui.Vec2{f32(mx), f32(my)};
     }
-    log.info(io.mouse_pos);
 
     if io.config_flags & .NoMouseCursorChange != .NoMouseCursorChange {
         desired_cursor := imgui.get_mouse_cursor();

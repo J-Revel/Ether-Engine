@@ -5,6 +5,8 @@ import "core:strings"
 import "core:log"
 import gl "shared:odin-gl";
 import "../util/container"
+import "core:os"
+import "core:encoding/json"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -59,6 +61,7 @@ is_in_rect :: proc(rect: Rect, pos: [2]f32) -> bool
 
 Texture :: struct
 {
+    path: string,
 	texture_id: u32,
 	size: [2]int,
 }
@@ -105,7 +108,64 @@ load_texture :: proc(path: string) -> Texture
 	 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	return {texture_id, {int(surface.w), int(surface.h)}};
+	return {path, texture_id, {int(surface.w), int(surface.h)}};
+}
+
+// Sprites are all stored in a file by 
+//load_sprites_from_file :: proc(path: string, ) -> 
+
+Sprite_Collection :: struct
+{
+    texture_path: string,
+    sprites: []Sprite_Data,
+}
+
+save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.Errno
+{
+    file_handle, err := os.open(path, os.O_WRONLY | os.O_CREATE);
+    log.info(err);
+    if err != os.ERROR_NONE
+    {
+        return err;
+    }
+    sprite_collections: map[string]Sprite_Collection;
+
+
+    sprite_count: map[string] struct{count: int, cursor: int};
+    for sprite_id in sprites_ids
+    {
+        sprite := container.handle_get(sprite_id);
+        texture := container.handle_get(sprite.texture);
+        count, collection_ok := sprite_count[texture.path];
+        if !collection_ok
+        {
+            sprite_count[texture.path] = {0, 0};
+        }
+        sprite_count[texture.path].count += 1;
+    }
+
+    for key, value in sprite_count
+    {
+        sprite_collections[key].sprites = Sprite_Collection{key, make([]Sprite_Data, value.x)};
+    }
+    for sprite_id in sprites_ids
+    {
+        sprite := container.handle_get(sprite_id);
+        texture := container.handle_get(sprite.texture);
+        cursor := &sprite_count[texture.path].cursor;
+        sprite_collections[texture.path].sprites[cursor^];
+        cursor += 1;
+    }
+
+
+    for key, value in sprite_collections
+    {
+        encoded, marshal_error := json.marshal(value);
+
+        if marshal_error == .None do os.write(file_handle, encoded);
+    }
+    os.close(file_handle);
+    return 0;
 }
 
 init_sprite_renderer :: proc (result: ^Render_State) -> bool
