@@ -8,6 +8,7 @@ import "../util/container"
 import "core:os"
 import "core:encoding/json"
 import "core:sort"
+import "core:fmt"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -160,11 +161,16 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
     current_texture: Texture_Handle;
     for sprite in sorted_sprites
     {
-        if sprite.texture != current_texture
+        if sprite.texture.id != current_texture.id
         {
-            
+            encoded, marshal_error := json.marshal(sprite.data);
+            to_write := "]},";
+            if current_texture.id != 0 do os.write(file_handle, to_write);
+            to_write := fmt.tprintf("{\"texture\": %s, \"sprites\":[");
+            os.write(file_handle, to_write);
+            os.write(file_handle, ", ");
+
         }
-        encoded, marshal_error := json.marshal(value);
 
         if marshal_error == .None do os.write(file_handle, encoded);
     }
