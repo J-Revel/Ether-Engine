@@ -7,6 +7,7 @@ import gl "shared:odin-gl";
 import "../util/container"
 import "core:os"
 import "core:encoding/json"
+import "core:sort"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -114,52 +115,55 @@ load_texture :: proc(path: string) -> Texture
 // Sprites are all stored in a file by 
 //load_sprites_from_file :: proc(path: string, ) -> 
 
-Sprite_Collection :: struct
-{
-    texture_path: string,
-    sprites: []Sprite_Data,
-}
+sprite_sort_interface := sort.Interface {
+    len = proc(it: sort.Interface) -> int 
+    {
+        sprites := cast(^[]Sprite)it.collection;
+        return len(sprites);
+    },
+    less = proc(it: sort.Interface, i, j: int) -> bool
+    {
+        s := (^[]Sprite)(it.collection);
+        return s[i].texture.id < s[j].texture.id;
+    },
+    swap = proc(it: sort.Interface, i, j: int)
+    {
+        s := (^[]Sprite)(it.collection);
+        s[i], s[j] = s[j], s[i];
+    }
+};
 
 save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.Errno
 {
     file_handle, err := os.open(path, os.O_WRONLY | os.O_CREATE);
-    log.info(err);
     if err != os.ERROR_NONE
     {
         return err;
     }
-    sprite_collections: map[string]Sprite_Collection;
-
 
     sprite_count: map[string] struct{count: int, cursor: int};
-    for sprite_id in sprites_ids
+    max_sprite_per_texture := 0;
+    texture_count := 0;
+
+    sorted_sprites := make([]Sprite, len(sprites_ids), context.temp_allocator);
+
+
+    for sprite_id, index in sprites_ids
     {
         sprite := container.handle_get(sprite_id);
-        texture := container.handle_get(sprite.texture);
-        count, collection_ok := sprite_count[texture.path];
-        if !collection_ok
+        sorted_sprites[index] = sprite^;
+    }
+
+    sprite_sort_interface.collection = &sorted_sprites;
+    sort.sort(sprite_sort_interface);
+    
+    current_texture: Texture_Handle;
+    for sprite in sorted_sprites
+    {
+        if sprite.texture != current_texture
         {
-            sprite_count[texture.path] = {0, 0};
+            
         }
-        sprite_count[texture.path].count += 1;
-    }
-
-    for key, value in sprite_count
-    {
-        sprite_collections[key].sprites = Sprite_Collection{key, make([]Sprite_Data, value.x)};
-    }
-    for sprite_id in sprites_ids
-    {
-        sprite := container.handle_get(sprite_id);
-        texture := container.handle_get(sprite.texture);
-        cursor := &sprite_count[texture.path].cursor;
-        sprite_collections[texture.path].sprites[cursor^];
-        cursor += 1;
-    }
-
-
-    for key, value in sprite_collections
-    {
         encoded, marshal_error := json.marshal(value);
 
         if marshal_error == .None do os.write(file_handle, encoded);
