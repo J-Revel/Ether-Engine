@@ -73,6 +73,7 @@ Texture_Handle :: container.Handle(Texture);
 
 Sprite_Data :: struct
 {
+    id: string,
     anchor: [2]f32,
     clip: Rect,
 }
@@ -136,7 +137,7 @@ sprite_sort_interface := sort.Interface {
 
 save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.Errno
 {
-    file_handle, err := os.open(path, os.O_WRONLY | os.O_CREATE);
+    file_handle, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC);
     if err != os.ERROR_NONE
     {
         return err;
@@ -159,23 +160,75 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
     sort.sort(sprite_sort_interface);
     
     current_texture: Texture_Handle;
+    write_buf := make([]byte, 500, context.temp_allocator);
+    fmt.bprint(write_buf, "{");
+    os.write(file_handle, write_buf[0:1]);
     for sprite in sorted_sprites
     {
         if sprite.texture.id != current_texture.id
         {
-            encoded, marshal_error := json.marshal(sprite.data);
-            to_write := "]},";
-            if current_texture.id != 0 do os.write(file_handle, to_write);
-            to_write := fmt.tprintf("{\"texture\": %s, \"sprites\":[");
-            os.write(file_handle, to_write);
-            os.write(file_handle, ", ");
-
+            fmt.bprint(write_buf, "],");
+            if current_texture.id > 0 do os.write(file_handle, write_buf[0:3]);
+            texture := container.handle_get(sprite.texture);
+            str := fmt.bprintf(write_buf, "\"%s\": [", texture.path);
+            
+            log.info(string(write_buf[0:len(str)]));
+            os.write(file_handle, write_buf[0:len(str)]);
+            current_texture = sprite.texture;
         }
-
+        else
+        {
+            fmt.bprint(write_buf, ",");
+            os.write(file_handle, write_buf[0:1]);
+        }
+        encoded, marshal_error := json.marshal(sprite.data);
+        log.info(encoded);
+        log.info(string(encoded));
         if marshal_error == .None do os.write(file_handle, encoded);
+        else do log.error(marshal_error);
     }
+    fmt.bprint(write_buf, "]}");
+    os.write(file_handle, write_buf[0:2]);
     os.close(file_handle);
     return 0;
+}
+
+load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture), sprites: ^container.Table(Sprite)) -> bool
+{
+    file, ok := os.read_entire_file(path, context.temp_allocator);
+    if ok
+    {
+        parsed, ok := json.parse(file);
+        parsed_object := parsed.value.(json.Object);
+
+        for texture_path, sprite_list in parsed_object
+        {
+            texture : Texture = load_texture(texture_path);
+            texture_id, texture_add_ok := container.table_add(textures, texture);
+            sprite := Sprite{texture = texture_id};
+            for sprite_data in sprite_list.value.(json.Array)
+            {
+                sprite_data_root := sprite_data.value.(json.Object);
+                anchor_data := sprite_data_root["anchor"].value.(json.Array);
+                clip_data := sprite_data_root["clip"].value.(json.Object);
+                clip_pos_data := clip_data["pos"].value.(json.Array);
+                clip_size_data := clip_data["size"].value.(json.Array);
+
+                sprite.id = sprite_data_root["id"].value.(json.String);
+                sprite.anchor.x = f32(anchor_data[0].value.(json.Float));
+                sprite.anchor.y = f32(anchor_data[1].value.(json.Float));
+                sprite.clip.pos.x = f32(clip_pos_data[0].value.(json.Float));
+                sprite.clip.pos.y = f32(clip_pos_data[1].value.(json.Float));
+                sprite.clip.size.x = f32(clip_size_data[0].value.(json.Float));
+                sprite.clip.size.y = f32(clip_size_data[1].value.(json.Float));
+                log.info(sprite.data);
+            }
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 init_sprite_renderer :: proc (result: ^Render_State) -> bool

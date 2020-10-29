@@ -126,7 +126,7 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 				if dragging
 				{
 					dragging = false;
-					drag_rect := render.Sprite_Data{{0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
+					drag_rect := render.Sprite_Data{"default", {0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
 					append(&sprites_data, Editor_Sprite_Data{{}, drag_rect});
 				}
 			}

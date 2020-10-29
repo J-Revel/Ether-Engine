@@ -82,7 +82,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 		for ref in component.data.refs
 		{
 			fieldPtr := rawptr(uintptr(components_data[i]) + ref.field.offset);
-			log.info(ref);
+			//log.info(ref);
 			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(Raw_Handle));
 		}
 
@@ -175,7 +175,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 		{
 			case json.Object:
 			{
-				log.info("OBJECT");
+				//log.info("OBJECT");
 			}
 			case json.Array:
 			{
@@ -207,13 +207,13 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 			{
 				if(t[0] == '&')
 				{
-					log.info("INPUT");
+					//log.info("INPUT");
 					input_name := t[1:];
 					append(&inputs, Component_Input{input_name, field});
 				}
 				if(t[0] == '@')
 				{
-					log.info("REF");
+					//log.info("REF");
 					ref_name := t[1:];
 
 					if component_data, ok := available_component_index[ref_name]; ok {
@@ -229,7 +229,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 	result.refs = make([]Component_Ref, len(refs), allocator);
 	for ref, index in refs do result.refs[index] = refs[index];
 
-	log.info(result);
+	//log.info(result);
 	return result;
 }
 
