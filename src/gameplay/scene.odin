@@ -21,9 +21,6 @@ import gl "shared:odin-gl";
 
 import "../editor"
 
-spaceship_sprite : container.Handle(render.Sprite);
-editor_state: editor.Editor_State;
-
 Scene :: struct
 {
 	camera: render.Camera,
@@ -40,7 +37,9 @@ Scene :: struct
     sprites: container.Table(render.Sprite),
     transforms: Transform_Table,
     sprite_components: container.Table(Sprite_Component),
-    show_editor: bool
+    show_editor: bool,
+
+	editor_state: editor.Editor_State
 }
 
 init_scene :: proc(using scene: ^Scene)
@@ -60,13 +59,11 @@ init_scene :: proc(using scene: ^Scene)
 
 	camera.zoom = 1;
 	
-	spaceship_texture : render.Texture = render.load_texture("resources/textures/spaceship.png");
-	texture_handle, ok_texture_add := container.table_add(&scene.textures, spaceship_texture);
-	ok_sprite_add: bool;
-	//spaceship_sprite, ok_sprite_add = container.table_add(&sprites, render.Sprite{texture_handle, {"spaceship", {0.5, 0.5}, {{0.2, 0.2}, {0.6, 0.6}}}});
-
-	//render.save_sprites_to_file("test.sprites", {spaceship_sprite, spaceship_sprite});
 	render.load_sprites_from_file("test.sprites", &textures, &sprites);
+
+	log.info(sprites);
+	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
+	log.info(spaceship_sprite, sprite_found);
 	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
@@ -81,26 +78,7 @@ init_scene :: proc(using scene: ^Scene)
 
 	container.prefab_instantiate(&db, &prefab_instance, test_input);
 
-	editor.init_editor(&editor_state, texture_handle);
-
-	/*prefab_instance, ok := container.load_prefab("config/prefabs/buildings/building_1.prefab", scene.db);
-	log.info(prefab_instance, ok);
-	for i := 0; i < 10; i+=1
-	{
-		p : Planet;
-		generate(&p, rand.float32() * 200 + 100, 10);
-		p.pos = [2]f32{800 * cast(f32)i, 0};
-		container.table_add(&planets, p);
-	}
-	test_input: map[string]any;
-	planet: ^Planet = container.table_get(&planets, container.Handle(Planet){1, &planets});
-	test_input["planet"] = planet;
-	for i := 0; i<8; i += 1
-	{
-		test_input["angle"] = f32(math.PI / 4.0) * f32(i);
-		container.prefab_instantiate(&db, &prefab_instance, test_input);
-	}
-	*/
+	editor.init_editor(&editor_state, container.handle_get(spaceship_sprite).texture);
 	tool_state = Basic_Tool_State{};
 
 }
@@ -157,7 +135,6 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 		for arc in container.table_iterate(&arc_it)
 		{
 			if h.building.id != arc.ignored_building.id && collision_bb_arc(&bb, arc, 10) do h.energy += deltaTime;
-			log.info(h);
 		}
 	}
 
@@ -194,7 +171,9 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 		}
 	}
 
-	if input.get_key_state(input_state, sdl.Scancode.End) == .Pressed do show_editor = !show_editor;
+	if input.get_key_state(input_state, sdl.Scancode.Tab) == .Pressed do show_editor = !show_editor;
+
+	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
 	if show_editor
 	{
 		sprite_data := container.handle_get(spaceship_sprite);

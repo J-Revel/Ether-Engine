@@ -7,11 +7,30 @@ import "core:strings"
 import "../util/container"
 import "core:mem"
 import "core:runtime"
+import "core:fmt"
 
 Editor_State :: struct
 {
 	show_demo_window: bool,
 	sprite_editor: Sprite_Editor_State,
+}
+
+Editor_Sprite_Data :: struct
+{
+	name: []u8,
+	using data: render.Sprite_Data,
+}
+
+Sprite_Editor_State :: struct
+{
+	texture_id: container.Handle(render.Texture),
+	sprites_data: [dynamic]Editor_Sprite_Data,
+	scale: f32,
+
+	drag_start_pos: [2]f32,
+	dragging: bool,
+
+	edit_sprite_index: int,
 }
 
 init_editor :: proc(editor_state: ^Editor_State, texture_id: container.Handle(render.Texture))
@@ -36,28 +55,28 @@ update_editor :: proc(editor_state: ^Editor_State, screen_size: [2]f32)
     }
 }
 
-Editor_Sprite_Data :: struct
-{
-	name: [50]u8,
-	using data: render.Sprite_Data,
-}
-
-Sprite_Editor_State :: struct
-{
-	texture_id: container.Handle(render.Texture),
-	sprites_data: [dynamic]Editor_Sprite_Data,
-	scale: f32,
-
-	drag_start_pos: [2]f32,
-	dragging: bool,
-
-	edit_sprite_index: int,
-}
-
 bytes_to_string :: proc(data: []u8) -> string
 {
 	length := runtime.cstring_len(transmute(cstring)&data[0]);
 	return transmute(string)mem.Raw_String{&data[0], length};
+}
+
+save_sprites :: proc(output_path: string, using editor_state: ^Sprite_Editor_State)
+{
+	texture: ^render.Texture = container.handle_get(texture_id);
+	temp_sprite_table : container.Table(render.Sprite);
+	container.table_init(&temp_sprite_table, uint(len(sprites_data)), context.temp_allocator);
+
+	for sprite_data in &sprites_data
+	{
+		sprite: render.Sprite = {
+			texture_id, 
+			bytes_to_string(sprite_data.name[:]),
+			sprite_data.data
+		};
+		container.table_add(&temp_sprite_table, sprite);
+	}
+	//render.save_sprites_to_file_editor(output_path, );
 }
 
 update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
@@ -65,12 +84,9 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 	imgui.slider_float("scale", &scale, 0.01, 2);
 	for sprite_data, index in &sprites_data
 	{
-		imgui.push_id(i32(index));
+		imgui.push_id(fmt.tprintf("sprite_%d", index));
 		imgui.columns(3);
-		if imgui.input_text("name", sprite_data.name[:])
-		{
-
-		}
+		imgui.input_text("name", sprite_data.name[:]);
 		imgui.next_column();
 		if edit_sprite_index != index + 1 && imgui.button("Edit")
 		{
@@ -126,8 +142,12 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 				if dragging
 				{
 					dragging = false;
-					drag_rect := render.Sprite_Data{"default", {0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
-					append(&sprites_data, Editor_Sprite_Data{{}, drag_rect});
+					drag_rect := render.Sprite_Data{{0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
+					default_sprite_name := "default";
+					sprite_name_data := make([]byte, 50, context.allocator);
+					copy(sprite_name_data, default_sprite_name);
+					sprite_name_data[len(default_sprite_name)] = 0;
+					append(&sprites_data, Editor_Sprite_Data{sprite_name_data, drag_rect});
 				}
 			}
 		}

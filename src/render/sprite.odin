@@ -73,7 +73,6 @@ Texture_Handle :: container.Handle(Texture);
 
 Sprite_Data :: struct
 {
-    id: string,
     anchor: [2]f32,
     clip: Rect,
 }
@@ -81,6 +80,7 @@ Sprite_Data :: struct
 Sprite :: struct
 {
 	texture: Texture_Handle,
+    id: string,
     using data: Sprite_Data,
 }
 
@@ -112,6 +112,21 @@ load_texture :: proc(path: string) -> Texture
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 	return {path, texture_id, {int(surface.w), int(surface.h)}};
+}
+
+get_sprite :: proc(id: string, sprites: ^container.Table(Sprite)) -> (Sprite_Handle, bool)
+{
+    it := container.table_iterator(sprites);
+    log.info(sprites);
+    for h, sprite_handle in container.iterate(&it)
+    {
+        log.info(h.id, id);
+        if strings.compare(h.id, id) == 0
+        {
+            return sprite_handle, true;
+        }
+    }
+    return {}, false;
 }
 
 // Sprites are all stored in a file by 
@@ -193,6 +208,40 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
     return 0;
 }
 
+// TODO : finish writing that function
+save_sprites_to_file_editor :: proc(path: string, texture_path: string, sprite_names: []string, sprites_data: []Sprite_Data) -> os.Errno
+{
+    file_handle, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC);
+    if err != os.ERROR_NONE
+    {
+        return err;
+    }
+    
+    current_texture: Texture_Handle;
+    write_buf := make([]byte, 500, context.temp_allocator);
+    fmt.bprint(write_buf, "{");
+    fmt.bprintf(write_buf, "\"%s\": [");
+    os.write(file_handle, write_buf[0:1]);
+    for sprite, index in sprites_data
+    {
+        if(index > 0)
+        {
+            fmt.bprint(write_buf, ",");
+            os.write(file_handle, write_buf[0:1]);
+        }
+
+        encoded, marshal_error := json.marshal(sprite);
+        log.info(encoded);
+        log.info(string(encoded));
+        if marshal_error == .None do os.write(file_handle, encoded);
+        else do log.error(marshal_error);
+    }
+    fmt.bprint(write_buf, "]}");
+    os.write(file_handle, write_buf[0:2]);
+    os.close(file_handle);
+    return 0;
+}
+
 load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture), sprites: ^container.Table(Sprite)) -> bool
 {
     file, ok := os.read_entire_file(path, context.temp_allocator);
@@ -222,6 +271,7 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
                 sprite.clip.size.x = f32(clip_size_data[0].value.(json.Float));
                 sprite.clip.size.y = f32(clip_size_data[1].value.(json.Float));
                 log.info(sprite.data);
+                container.table_add(sprites, sprite);
             }
         }
 
