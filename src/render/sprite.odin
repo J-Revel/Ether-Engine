@@ -9,6 +9,7 @@ import "core:os"
 import "core:encoding/json"
 import "core:sort"
 import "core:fmt"
+import "core:runtime"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -117,10 +118,8 @@ load_texture :: proc(path: string) -> Texture
 get_sprite :: proc(id: string, sprites: ^container.Table(Sprite)) -> (Sprite_Handle, bool)
 {
     it := container.table_iterator(sprites);
-    log.info(sprites);
     for h, sprite_handle in container.iterate(&it)
     {
-        log.info(h.id, id);
         if strings.compare(h.id, id) == 0
         {
             return sprite_handle, true;
@@ -198,8 +197,7 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
         }
         encoded, marshal_error := json.marshal(sprite.data);
         log.info(encoded);
-        log.info(string(encoded));
-        if marshal_error == .None do os.write(file_handle, encoded);
+        if marshal_error == .None do os.write_string(file_handle, encoded);
         else do log.error(marshal_error);
     }
     fmt.bprint(write_buf, "]}");
@@ -208,8 +206,7 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
     return 0;
 }
 
-// TODO : finish writing that function
-save_sprites_to_file_editor :: proc(path: string, texture_path: string, sprite_names: []string, sprites_data: []Sprite_Data) -> os.Errno
+save_sprites_to_file_editor :: proc(path: string, sprite_names: []string, sprites_data: []Sprite_Data) -> os.Errno
 {
     file_handle, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC);
     if err != os.ERROR_NONE
@@ -220,9 +217,8 @@ save_sprites_to_file_editor :: proc(path: string, texture_path: string, sprite_n
     current_texture: Texture_Handle;
     write_buf := make([]byte, 500, context.temp_allocator);
     fmt.bprint(write_buf, "{");
-    fmt.bprintf(write_buf, "\"%s\": [");
     os.write(file_handle, write_buf[0:1]);
-    for sprite, index in sprites_data
+    for sprite_data, index in sprites_data
     {
         if(index > 0)
         {
@@ -230,14 +226,23 @@ save_sprites_to_file_editor :: proc(path: string, texture_path: string, sprite_n
             os.write(file_handle, write_buf[0:1]);
         }
 
-        encoded, marshal_error := json.marshal(sprite);
+
+        log.info(sprite_data);
+        encoded, marshal_error := json.marshal(sprite_data, context.temp_allocator);
         log.info(encoded);
-        log.info(string(encoded));
-        if marshal_error == .None do os.write(file_handle, encoded);
-        else do log.error(marshal_error);
-    }
-    fmt.bprint(write_buf, "]}");
-    os.write(file_handle, write_buf[0:2]);
+        if marshal_error == .None
+        {
+            str := fmt.tprintf("\"%s\": %s", sprite_names[index], encoded);
+            log.info(str);
+            os.write_string(file_handle, str);
+        }
+        else
+        {
+            log.error(marshal_error);
+        }
+        //os.write(file_handle, );
+    }   
+    os.write_string(file_handle, "}");
     os.close(file_handle);
     return 0;
 }
@@ -279,6 +284,47 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
     }
 
     return false;
+}
+
+load_sprites_from_file_editor :: proc (path: string, allocator := context.temp_allocator) -> ([]string, []Sprite_Data, bool)
+{
+    file, ok := os.read_entire_file(path, context.temp_allocator);
+    if ok
+    {
+        parsed, ok := json.parse(file);
+        parsed_object := parsed.value.(json.Object);
+
+        sprite := Sprite_Data{};
+
+        sprite_count := len(parsed_object);
+        out_data := make([]Sprite_Data, sprite_count, allocator);
+        out_names := make([]string, sprite_count, allocator);
+        cursor := 0;
+        log.info(sprite_count);
+
+        for sprite_name, sprite_data in parsed_object
+        {
+            log.info(sprite_name);
+            sprite_data_root := sprite_data.value.(json.Object);
+            anchor_data := sprite_data_root["anchor"].value.(json.Array);
+            clip_data := sprite_data_root["clip"].value.(json.Object);
+            clip_pos_data := clip_data["pos"].value.(json.Array);
+            clip_size_data := clip_data["size"].value.(json.Array);
+
+            sprite.anchor.x = f32(anchor_data[0].value.(json.Float));
+            sprite.anchor.y = f32(anchor_data[1].value.(json.Float));
+            sprite.clip.pos.x = f32(clip_pos_data[0].value.(json.Float));
+            sprite.clip.pos.y = f32(clip_pos_data[1].value.(json.Float));
+            sprite.clip.size.x = f32(clip_size_data[0].value.(json.Float));
+            sprite.clip.size.y = f32(clip_size_data[1].value.(json.Float));
+
+            out_names[cursor] = sprite_name;
+            out_data[cursor] = sprite;
+            cursor += 1;
+        }
+        return out_names, out_data, true;
+    }
+    return {}, {}, false;
 }
 
 init_sprite_renderer :: proc (result: ^Render_State) -> bool

@@ -170,7 +170,33 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 	}
 	if(imgui.button("Save"))
 	{
-		//render.save_sprites_to_file("test.sprites", {})
+		sprite_names := make([]string, len(sprites_data), context.temp_allocator);
+		sprite_save_data := make([]render.Sprite_Data, len(sprites_data), context.temp_allocator);
+		for sprite_editor_data, index in sprites_data
+		{
+			sprite_names[index] = bytes_to_string(sprite_editor_data.name);
+			sprite_save_data[index] = sprite_editor_data.data;
+		}
+		output_path, was_allocation := strings.replace(texture.path, ".png", ".meta", -1, context.temp_allocator);
+		render.save_sprites_to_file_editor(output_path, sprite_names, sprite_save_data);
+	}
+	if(imgui.button("Load"))
+	{
+		input_path, was_allocation := strings.replace(texture.path, ".png", ".meta", -1, context.temp_allocator);
+		in_names, in_data, ok := render.load_sprites_from_file_editor(input_path, context.temp_allocator);
+		log.info(in_names);
+		if ok
+		{
+			clear(&sprites_data); // TODO : memory leak
+			for sprite_name, index in &in_names
+			{
+				new_sprite := Editor_Sprite_Data{data = in_data[index]};
+				name_copy := strings.clone(sprite_name, context.allocator); // TODO : memory leak
+				new_sprite.name = transmute([]byte)name_copy;
+				log.info(name_copy);
+				append(&sprites_data, new_sprite);
+			}
+		}
 	}
 	imgui.end();
 }
