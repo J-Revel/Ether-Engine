@@ -30,6 +30,7 @@ Component_Model_Data :: struct
 
 Component_Model :: struct
 {
+	id: string,
 	table_index: int,
 	data: Component_Model_Data,
 }
@@ -45,6 +46,20 @@ Prefab :: struct
 	components: []Component_Model,
 }
 
+Named_Component :: struct(T: typeid)
+{
+	name: string,
+	value: Handle(T)
+}
+
+Named_Element :: struct(T: typeid)
+{
+	name: string,
+	value: T
+}
+
+Named_Raw_Handle :: Named_Element(Raw_Handle);
+
 table_database_add :: proc(db: ^Database, name: string, table: ^Table($T))
 {
 	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
@@ -58,12 +73,14 @@ table_database_add_init :: proc(db: ^Database, name: string, table: ^Table($T), 
 	append(db, named_table);
 }
 
-prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[string]any) -> bool
+prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(prefab.components), context.temp_allocator);
 	component_handles := make([]Raw_Handle, len(prefab.components), context.temp_allocator);
 	component_sizes := make([]int, len(prefab.components), context.temp_allocator);
+
+	out_components = make([]Named_Raw_Handle, len(prefab.components), context.temp_allocator);
 
 	for component, i in prefab.components
 	{
@@ -71,6 +88,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 		component_sizes[i] = reflect.size_of_typeid(table.type);
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
 		mem.copy(components_data[i], component.data.data, component_sizes[i]);
+		out_components[i].name = component.id;
 	}
 
 	for component, i in prefab.components
@@ -78,6 +96,7 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 		table := db[component.table_index].table;
 		ok : bool;
 		component_handles[i], ok = table_allocate_raw(table, reflect.size_of_typeid(table.type));
+		out_components[i].value = component_handles[i];
 
 		for ref in component.data.refs
 		{
@@ -105,7 +124,9 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 		mem.copy(component_data, components_data[i], component_sizes[i]);
 	}
 
-	return true;
+	success = true;
+
+	return;
 }
 
 db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
@@ -264,6 +285,7 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 			{
 				prefab.components[component_cursor].table_index = table_index;
 				prefab.components[component_cursor].data = build_component_model_from_json(value.value.(json.Object), table.type, context.temp_allocator, registered_components);
+				prefab.components[component_cursor].id = name;
 				registered_components[name] = {component_cursor, table_index};				
 			}
 			component_cursor += 1;

@@ -3,6 +3,7 @@ package table
 import "core:mem"
 import "core:runtime"
 import "core:log"
+import "core:reflect"
 
 Bit_Array :: struct
 {
@@ -179,9 +180,16 @@ handle_get :: proc(handle: $A/Handle($T)) -> ^T
 	return mem.ptr_offset(cast(^T)handle.table.data, cast(int)handle.id - 1);
 }
 
-handle_get_raw :: proc(handle: Raw_Handle, type_size: int) -> rawptr
+handle_get_raw :: proc { handle_get_raw_by_size, handle_get_raw_by_type };
+
+handle_get_raw_by_size :: proc(handle: Raw_Handle, type_size: int) -> rawptr
 {
 	return table_get_raw(handle.raw_table, handle, type_size);
+}
+
+handle_get_raw_by_type :: proc(handle: Raw_Handle, type_id: typeid) -> rawptr
+{
+	return table_get_raw(handle.raw_table, handle, reflect.size_of_typeid(type_id));
 }
 
 table_print :: proc(table: ^$A/Table($T))

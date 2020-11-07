@@ -275,7 +275,6 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
                 sprite.clip.pos.y = f32(clip_pos_data[1].value.(json.Float));
                 sprite.clip.size.x = f32(clip_size_data[0].value.(json.Float));
                 sprite.clip.size.y = f32(clip_size_data[1].value.(json.Float));
-                log.info(sprite.data);
                 container.table_add(sprites, sprite);
             }
         }

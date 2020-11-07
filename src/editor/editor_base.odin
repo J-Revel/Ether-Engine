@@ -85,7 +85,7 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 	for sprite_data, index in &sprites_data
 	{
 		imgui.push_id(fmt.tprintf("sprite_%d", index));
-		imgui.columns(3);
+		imgui.columns(4);
 		imgui.input_text("name", sprite_data.name[:]);
 		imgui.next_column();
 		if edit_sprite_index != index + 1 && imgui.button("Edit")
@@ -96,19 +96,61 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 		imgui.slider_float2("anchor", &sprite_data.anchor, 0, 1);
 		imgui.next_column();
 
+		if imgui.button("Remove")
+		{
+			for i in index..<(len(sprites_data) - 1)
+			{
+				sprites_data[i] = sprites_data[i + 1];
+			}
+			pop(&sprites_data);
+		}
+		imgui.next_column();
+
 		imgui.pop_id();
 	}
 
-	imgui.columns(1);
-	if edit_sprite_index > 0 && imgui.button("Stop Edition") do edit_sprite_index = 0;
 	draw_list := imgui.get_window_draw_list();
-	pos : imgui.Vec2;
-	imgui.get_cursor_screen_pos(&pos);
-
-
 	texture := container.handle_get(texture_id);
 	texture_raw_id := imgui.Texture_ID(rawptr(uintptr(texture.texture_id)));
 	texture_size : [2]f32 = {f32(texture.size.x), f32(texture.size.y)};
+
+	imgui.columns(1);
+	if edit_sprite_index > 0 && imgui.button("Stop Edition") do edit_sprite_index = 0;
+	
+	if(imgui.button("Save"))
+	{
+		sprite_names := make([]string, len(sprites_data), context.temp_allocator);
+		sprite_save_data := make([]render.Sprite_Data, len(sprites_data), context.temp_allocator);
+		for sprite_editor_data, index in sprites_data
+		{
+			sprite_names[index] = bytes_to_string(sprite_editor_data.name);
+			sprite_save_data[index] = sprite_editor_data.data;
+		}
+		output_path, was_allocation := strings.replace(texture.path, ".png", ".meta", -1, context.temp_allocator);
+		render.save_sprites_to_file_editor(output_path, sprite_names, sprite_save_data);
+	}
+	if(imgui.button("Load"))
+	{
+		input_path, was_allocation := strings.replace(texture.path, ".png", ".meta", -1, context.temp_allocator);
+		in_names, in_data, ok := render.load_sprites_from_file_editor(input_path, context.temp_allocator);
+		log.info(in_names);
+		if ok
+		{
+			clear(&sprites_data); // TODO : memory leak
+			for sprite_name, index in &in_names
+			{
+				new_sprite := Editor_Sprite_Data{data = in_data[index]};
+				name_copy := strings.clone(sprite_name, context.temp_allocator);
+				new_sprite.name = make([]byte, 50, context.allocator); // TODO : memory leak
+				mem.copy(&new_sprite.name[0], &(transmute([]byte)name_copy)[0], len(name_copy));
+				log.info(name_copy);
+				append(&sprites_data, new_sprite);
+			}
+		}
+	}
+
+	pos : imgui.Vec2;
+	imgui.get_cursor_screen_pos(&pos);
 	imgui.draw_list_add_image(draw_list, texture_raw_id, pos, pos + texture_size * scale, {0, 0}, {1, 1}, 0xffffffff);
 
 	for sprite_data, index in sprites_data
@@ -165,36 +207,6 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State)
 			if io.mouse_down[2]
 			{
 				clip.size = relative_mouse_pos - clip.pos;
-			}
-		}
-	}
-	if(imgui.button("Save"))
-	{
-		sprite_names := make([]string, len(sprites_data), context.temp_allocator);
-		sprite_save_data := make([]render.Sprite_Data, len(sprites_data), context.temp_allocator);
-		for sprite_editor_data, index in sprites_data
-		{
-			sprite_names[index] = bytes_to_string(sprite_editor_data.name);
-			sprite_save_data[index] = sprite_editor_data.data;
-		}
-		output_path, was_allocation := strings.replace(texture.path, ".png", ".meta", -1, context.temp_allocator);
-		render.save_sprites_to_file_editor(output_path, sprite_names, sprite_save_data);
-	}
-	if(imgui.button("Load"))
-	{
-		input_path, was_allocation := strings.replace(texture.path, ".png", ".meta", -1, context.temp_allocator);
-		in_names, in_data, ok := render.load_sprites_from_file_editor(input_path, context.temp_allocator);
-		log.info(in_names);
-		if ok
-		{
-			clear(&sprites_data); // TODO : memory leak
-			for sprite_name, index in &in_names
-			{
-				new_sprite := Editor_Sprite_Data{data = in_data[index]};
-				name_copy := strings.clone(sprite_name, context.allocator); // TODO : memory leak
-				new_sprite.name = transmute([]byte)name_copy;
-				log.info(name_copy);
-				append(&sprites_data, new_sprite);
 			}
 		}
 	}

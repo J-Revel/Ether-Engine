@@ -20,6 +20,7 @@ import json "core:encoding/json"
 import gl "shared:odin-gl";
 
 import "../editor"
+import "../animation"
 
 Scene :: struct
 {
@@ -38,21 +39,24 @@ Scene :: struct
     transforms: Transform_Table,
     sprite_components: container.Table(Sprite_Component),
     show_editor: bool,
+    using animation_database: animation.Animation_Database,
 
 	editor_state: editor.Editor_State
 }
 
 init_scene :: proc(using scene: ^Scene)
 {
-	container.table_database_add_init(&db, "building", &buildings, 1000);
-	container.table_database_add_init(&db, "loading_building", &loading_buildings, 1000);
-	container.table_database_add_init(&db, "planet", &planets, 1000);
-	container.table_database_add_init(&db, "arc", &arcs, 1000);
-	container.table_database_add_init(&db, "wave_emitter", &wave_emitters, 100);
-	container.table_database_add_init(&db, "texture", &textures, 100);
-	container.table_database_add_init(&db, "sprite", &sprites, 200);
-	container.table_database_add_init(&db, "transform", &transforms, 10000);
-	container.table_database_add_init(&db, "sprite_component", &sprite_components, 500);
+	using container;
+	table_database_add_init(&db, "building", &buildings, 1000);
+	table_database_add_init(&db, "loading_building", &loading_buildings, 1000);
+	table_database_add_init(&db, "planet", &planets, 1000);
+	table_database_add_init(&db, "arc", &arcs, 1000);
+	table_database_add_init(&db, "wave_emitter", &wave_emitters, 100);
+	table_database_add_init(&db, "texture", &textures, 100);
+	table_database_add_init(&db, "sprite", &sprites, 200);
+	table_database_add_init(&db, "transform", &transforms, 10000);
+	table_database_add_init(&db, "sprite_component", &sprite_components, 500);
+	animation.init_animation_database(&db, &animation_database);
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
 	render.init_color_renderer(&color_renderer.render_state);
@@ -64,21 +68,40 @@ init_scene :: proc(using scene: ^Scene)
 	log.info(sprites);
 	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
 	log.info(spaceship_sprite, sprite_found);
-	prefab_instance, ok := container.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
+	prefab_instance, ok := load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{0, 0};
 	test_input["scale"] = f32(0.1);
 
-	container.prefab_instantiate(&db, &prefab_instance, test_input);
+	log.info(prefab_instantiate(&db, &prefab_instance, test_input));
 
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
 
-	container.prefab_instantiate(&db, &prefab_instance, test_input);
+	prefab_instantiate(&db, &prefab_instance, test_input);
 
-	editor.init_editor(&editor_state, container.handle_get(spaceship_sprite).texture);
+	editor.init_editor(&editor_state, handle_get(spaceship_sprite).texture);
+
+	using animation;
+
+	test_curve: Animation_Curve(f32) = {[]Keyframe(f32){ {0, 0}, {0.5, 1}, {1, 0} } };
+	test_curve_handle, _ := table_add(&animation_curves, test_curve);
+
+	test_animation: Animation_Config = {
+		duration = 3, 
+		float_curves = []Named_Float_Curve {
+			{"test", test_curve_handle}
+		}
+	};
+
+	test_animation_handle, _ := table_add(&animation_configs, test_animation);
+	//test_anim_param : Animation_Param = {"test", };
+
+	animation_player: Animation_Player;
+
+	
 	tool_state = Basic_Tool_State{};
 
 }
