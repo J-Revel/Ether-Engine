@@ -28,7 +28,7 @@ Animation_Param :: struct
 {
 	name: string,
 	handle: container.Raw_Handle,
-	offset: int,
+	offset: uintptr,
 	type_id: typeid,
 }
 
@@ -50,24 +50,29 @@ init_animation_database :: proc(db: ^container.Database, using database: ^Animat
 {
 	container.table_database_add_init(db, "animation_curves", &animation_curves, 5000);
 	container.table_database_add_init(db, "animation_players", &animation_players, 1000);
+	container.table_database_add_init(db, "animation_configs", &animation_configs, 1000);
 }
 
 compute_float_curve_value :: proc(curve: ^Animation_Curve(f32), time_ratio: f32, default_value: f32) -> f32
 {
-	last_keyframe : ^Keyframe(f32) = nil;
+	last_keyframe : Keyframe(f32) = {0, default_value};
 	for keyframe in &curve.keyframes
 	{
-		if keyframe.time < time_ratio
+		if keyframe.time > time_ratio
 		{
-			keyframe_time_ratio := (time_ratio - last_keyframe.time) / (keyframe.time - last_keyframe.time);
+			keyframe_time_ratio : f32 = 0;
+			if(keyframe.time - last_keyframe.time > 0)
+			{
+				keyframe_time_ratio = (keyframe.time - time_ratio) / (keyframe.time - last_keyframe.time);
+			}
 			
-			value1 : f32 = last_keyframe != nil ? default_value : last_keyframe.value;
+			value1 : f32 = last_keyframe.value;
 			value2 : f32 = keyframe.value;
 			return value1 * (1 - keyframe_time_ratio) + value2 * keyframe_time_ratio;
 		}
-		last_keyframe = &keyframe;
+		last_keyframe = keyframe;
 	}
-	return last_keyframe != nil ? default_value : last_keyframe.value;
+	return last_keyframe.value;
 }
 
 update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> bool
@@ -75,7 +80,10 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 	it := container.table_iterator(anim_players);
 	for anim_player in container.table_iterate(&it)
 	{
+		anim_player.time += 1/60.0;
+
 		animation := container.handle_get(anim_player.animation);
+		for anim_player.time > animation.duration do anim_player.time -= animation.duration;
 		time_ratio := anim_player.time / animation.duration;
 		for param in anim_player.params
 		{
@@ -83,6 +91,7 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 			// Find the curve with the right name in the Animation_Config
 			for curve in animation.float_curves
 			{
+				log.info(curve.name);
 				if curve.name == param.name
 				{
 					if param.type_id != typeid_of(f32)

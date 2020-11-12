@@ -22,6 +22,8 @@ import gl "shared:odin-gl";
 import "../editor"
 import "../animation"
 
+import "core:reflect"
+
 Scene :: struct
 {
 	camera: render.Camera,
@@ -44,6 +46,7 @@ Scene :: struct
 	editor_state: editor.Editor_State
 }
 
+test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32){0, 0}, animation.Keyframe(f32){0.5, 1}, animation.Keyframe(f32){0.75, 0.5}, animation.Keyframe(f32){1, 1} };
 init_scene :: proc(using scene: ^Scene)
 {
 	using container;
@@ -74,34 +77,49 @@ init_scene :: proc(using scene: ^Scene)
 	test_input["pos"] = [2]f32{0, 0};
 	test_input["scale"] = f32(0.1);
 
-	log.info(prefab_instantiate(&db, &prefab_instance, test_input));
+	prefab_instance_components, _ := prefab_instantiate(&db, &prefab_instance, test_input);
 
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
 
 	prefab_instantiate(&db, &prefab_instance, test_input);
-
+	
 	editor.init_editor(&editor_state, handle_get(spaceship_sprite).texture);
 
 	using animation;
 
-	test_curve: Animation_Curve(f32) = {[]Keyframe(f32){ {0, 0}, {0.5, 1}, {1, 0} } };
+	test_curve: Animation_Curve(f32);
+	test_curve.keyframes = test_animation_keyframes[:];
 	test_curve_handle, _ := table_add(&animation_curves, test_curve);
 
+	float_curves := make([]Named_Float_Curve, 1, context.allocator);
+	float_curves[0] = {"test", test_curve_handle};
 	test_animation: Animation_Config = {
 		duration = 3, 
-		float_curves = []Named_Float_Curve {
-			{"test", test_curve_handle}
-		}
+		float_curves = float_curves
 	};
 
-	test_animation_handle, _ := table_add(&animation_configs, test_animation);
-	//test_anim_param : Animation_Param = {"test", };
+	test_animation_handle, animation_added := table_add(&animation_configs, test_animation);
+	log.info("Animation added", animation_added);
+	test_anim_param : Animation_Param = {name="test", type_id=typeid_of(f32)};
+	test_anim_param.offset = (reflect.struct_field_by_name(typeid_of(Transform), "scale").offset);
+	for prefab_component in prefab_instance_components
+	{
+		if prefab_component.name == "transform"
+		{
+			test_anim_param.handle = prefab_component.value;
+		}
+	}
+	params_array := make([]Animation_Param, 1, context.allocator);
+	params_array[0] = test_anim_param;
 
-	animation_player: Animation_Player;
-
-	
+	log.info("test anim param", test_anim_param);
+	animation_player := Animation_Player { 
+		animation = test_animation_handle, 
+		params = params_array,
+	};
+	table_add(&animation_players, animation_player);
 	tool_state = Basic_Tool_State{};
 
 }
@@ -164,6 +182,9 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 	update_wave_emitters(&wave_emitters, &buildings, &arcs);
 
     render_wave(&arcs, 10, 5, {1, 1, 0, 1}, &color_renderer);
+
+    log.info("update_animations");
+    animation.update_animations(&animation_players);
 
     it := container.table_iterator(&buildings);
     for b in container.iterate(&it)
