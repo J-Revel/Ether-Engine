@@ -68,9 +68,7 @@ init_scene :: proc(using scene: ^Scene)
 	
 	render.load_sprites_from_file("test.sprites", &textures, &sprites);
 
-	log.info(sprites);
 	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
-	log.info(spaceship_sprite, sprite_found);
 	prefab_instance, ok := load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
@@ -85,7 +83,7 @@ init_scene :: proc(using scene: ^Scene)
 
 	prefab_instantiate(&db, &prefab_instance, test_input);
 	
-	editor.init_editor(&editor_state, handle_get(spaceship_sprite).texture);
+	editor.init_editor(&editor_state);
 
 	using animation;
 
@@ -183,7 +181,6 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 
     render_wave(&arcs, 10, 5, {1, 1, 0, 1}, &color_renderer);
 
-    log.info("update_animations");
     animation.update_animations(&animation_players);
 
     it := container.table_iterator(&buildings);

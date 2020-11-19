@@ -50,51 +50,6 @@ void main()
 }
 `;
 
-Rect :: struct
-{
-	pos: [2]f32,
-	size: [2]f32
-}
-
-is_in_rect :: proc(rect: Rect, pos: [2]f32) -> bool
-{
-    return pos.x >= rect.pos.x && pos.x < rect.pos.x + rect.size.x
-        && pos.y >= rect.pos.y && pos.y < rect.pos.y + rect.size.y;
-}
-
-Texture :: struct
-{
-    path: string,
-	texture_id: u32,
-	size: [2]int,
-}
-
-Sprite_Handle :: container.Handle(Sprite);
-Texture_Handle :: container.Handle(Texture);
-
-Sprite_Data :: struct
-{
-    anchor: [2]f32,
-    clip: Rect,
-}
-
-Sprite :: struct
-{
-	texture: Texture_Handle,
-    id: string,
-    using data: Sprite_Data,
-}
-
-Sprite_Vertex_Data :: struct
-{
-    pos: vec2,
-    uv: vec2,
-    color: Color
-}
-
-Sprite_Render_Buffer :: Render_Buffer(Sprite_Vertex_Data);
-Sprite_Render_System :: Render_System(Sprite_Vertex_Data);
-
 load_texture :: proc(path: string) -> Texture
 {
 	cstring_path := strings.clone_to_cstring(path, context.temp_allocator);
@@ -113,6 +68,11 @@ load_texture :: proc(path: string) -> Texture
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 	return {path, texture_id, {int(surface.w), int(surface.h)}};
+}
+
+unload_texture :: proc(texture: ^Texture)
+{
+    gl.DeleteTextures(1, &texture.texture_id);
 }
 
 get_sprite :: proc(id: string, sprites: ^container.Table(Sprite)) -> (Sprite_Handle, bool)

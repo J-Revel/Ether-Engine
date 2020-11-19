@@ -41,52 +41,10 @@ void main()
 }
 `;
 
-vec2 :: [2]f32;
-Color :: [4]f32;
 
-Render_State :: struct
-{
-    shader: u32,
-
-    camPosZoomAttrib: i32,
-    screenSizeAttrib: i32,
-
-    vao: u32,
-    vbo: u32,
-    elementBuffer: u32,
-}
-
-Color_Vertex_Data :: struct
-{
-    pos: vec2,
-    color: Color
-}
-
-Camera :: struct
-{
-    pos: vec2,
-    zoom: f32,
-}
 
 INDEX_BUFFER_SIZE :: 50000;
 VERTEX_BUFFER_SIZE :: 20000;
-
-
-Render_Buffer :: struct(T: typeid)
-{
-    vertex: [dynamic]T,
-    index: [dynamic]u32,
-}
-
-Render_System :: struct(T: typeid)
-{
-    screen_size: vec2,
-    using buffer: Render_Buffer(T),
-    render_state: Render_State,
-}
-
-Color_Render_Buffer :: Render_Buffer(Color_Vertex_Data);
-Color_Render_System :: Render_System(Color_Vertex_Data);
 
 init_color_renderer :: proc (result: ^Render_State) -> bool
 {
@@ -195,4 +153,45 @@ camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System(Color_Ve
         cast(f32)pos.x + camera.pos.x - render_system.screen_size.x / 2,
         -cast(f32)pos.y + camera.pos.y + render_system.screen_size.y / 2
     };
+}
+
+hex_char_val :: proc(r: rune) -> (u32, bool)
+{
+    if r >= '0' && r <= '9' do return u32(r - '0'), true;
+    if r >= 'a' && r <= 'f' do return u32(r - 'a' + 10), true;
+    return 0, false;
+}
+
+hex_str_val :: proc(str: string) -> (u32, bool)
+{
+    result: u32;
+    for c in str
+    {
+        val, success := hex_char_val(c);
+        if !success do return result, false;
+        result = (result << 4) + val; 
+    }
+    return result, true;
+}
+
+// hex color : rgb(a)
+// u32 color : bgra
+hex_color_to_u32 :: proc(hex: string) -> (u32, bool)
+{
+    result : u32 = 0;
+    if len(hex) != 6 && len(hex) != 8 do return 0, false;
+    r, r_success := hex_str_val(hex[0:2]);
+    g, g_success := hex_str_val(hex[2:4]);
+    b, b_success := hex_str_val(hex[4:6]);
+    result += r + g * (1 << 8) + b * (1 << 16);
+    if len(hex) == 8
+    {
+        a, a_success := hex_str_val(hex[6:8]);
+        result += a * (1 << 24);
+    }
+    else
+    {
+        result += 255 << 24;
+    }
+    return result, true;
 }

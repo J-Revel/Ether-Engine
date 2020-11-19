@@ -91,7 +91,6 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 			// Find the curve with the right name in the Animation_Config
 			for curve in animation.float_curves
 			{
-				log.info(curve.name);
 				if curve.name == param.name
 				{
 					if param.type_id != typeid_of(f32)
