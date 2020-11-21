@@ -99,12 +99,19 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
     {
 
 		imgui.slider_float("scale", &scale, 0.01, 2);
+		imgui.columns(4);
+		draw_list := imgui.get_window_draw_list();
 		for sprite_data, index in &sprites_data
 		{
+			imgui.begin_group();
 			imgui.push_id(fmt.tprintf("sprite_%d", index));
-			imgui.columns(4);
 			imgui.input_text("name", sprite_data.name[:]);
 			imgui.next_column();
+			if imgui.button("Select")
+			{
+				tool_data.tool_type = .Selected;
+				tool_data.edited_sprite_index = index;
+			}
 			
 			imgui.next_column();
 			imgui.slider_float2("anchor", &sprite_data.anchor, 0, 1);
@@ -121,14 +128,26 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 			imgui.next_column();
 
 			imgui.pop_id();
+
+			imgui.end_group();
+
+			if tool_data.tool_type != .None && tool_data.tool_type != .Scroll && tool_data.edited_sprite_index == index
+			{
+				imgui.columns(1);
+	            group_min, group_max : [2]f32;
+	            imgui.get_item_rect_min(&group_min);
+	            imgui.get_item_rect_max(&group_max);
+	            imgui.draw_list_add_rect_filled(draw_list, group_min, group_max, 0x55ffffff);
+	            log.info(group_min, group_max, io.mouse_pos);
+				imgui.columns(4);
+
+			}
 		}
 
-		draw_list := imgui.get_window_draw_list();
 		texture := container.handle_get(texture_id);
 		texture_raw_id := imgui.Texture_ID(rawptr(uintptr(texture.texture_id)));
 		texture_size : [2]f32 = {f32(texture.size.x), f32(texture.size.y)};
 
-		imgui.columns(1);
 		imgui.text(texture.path);
 		
 		if(imgui.button("Save"))
@@ -170,7 +189,6 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 				editor_size
 			},
 			mouse_pos = io.mouse_pos,
-			mouse_offset = last_mouse_pos - io.mouse_pos,
 		};
 
 		imgui.draw_list_add_rect_filled(draw_list, render_data.texture_rect.pos, render_data.texture_rect.pos + render_data.texture_rect.size, 0xaa000000);
@@ -183,9 +201,6 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 		imgui.invisible_button("sprite_editor", size);
 
 		sprite_editor_hovered := true;
-
-
-		last_mouse_pos = io.mouse_pos;
 
 		if io.want_capture_mouse
 		{
@@ -217,29 +232,23 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 				}
 			}
 		}
+		tool_data.last_mouse_pos = io.mouse_pos;
 		imgui.end();
     }
-}
-
-get_relative_pos :: proc(rect: geometry.Rect, pos: [2]f32) -> [2]f32
-{
-	return (pos - rect.pos) / rect.size;
 }
 
 
 update_scroll_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using render_data: Sprite_Editor_Render_Data)
 {
 	io := imgui.get_io();
-	drag_offset += mouse_offset;
-	relative_mouse_pos := get_relative_pos(texture_rect, mouse_pos);
-	tool_data.last_mouse_pos = relative_mouse_pos;
+	mouse_offset := mouse_pos - tool_data.last_mouse_pos;
+	drag_offset -= mouse_offset;
 
 	draw_list := imgui.get_window_draw_list();
 	for sprite_data in sprites_data
 	{
 		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
 		render_sprite_rect(draw_list, sprite_rect, theme.sprite_normal);
-
 	}
 	if mouse_offset.x != 0 || mouse_offset.y != 0
 	{
@@ -253,11 +262,8 @@ update_scroll_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, usin
 		{
 			for sprite_data, index in sprites_data
 			{
-				clip_top_left := sprite_data.clip.pos;
-				clip_bottom_right := (sprite_data.clip.pos + sprite_data.clip.size);
-				clip_size := sprite_data.clip.size;
-				anchor_pos := clip_top_left + clip_size * sprite_data.anchor;
-				sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners({clip_top_left, clip_size}, relative_mouse_pos, 0.01);
+				clip_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+				sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners(clip_rect, mouse_pos, 5);
 				if sprite_hovered
 				{
 					tool_data.edited_sprite_index = index;
@@ -273,7 +279,6 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 {
 	io := imgui.get_io();
 	draw_list := imgui.get_window_draw_list();
-	relative_mouse_pos := get_relative_pos(texture_rect, mouse_pos);
 	editor_hovered := geometry.is_in_rect(editor_rect, mouse_pos);
 	for sprite_data, index in sprites_data
 	{
@@ -282,7 +287,7 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 		
 
 		render_sprite_rect(draw_list, sprite_rect, sprite_hovered ? theme.sprite_hovered : theme.sprite_normal);
-		
+		render_sprite_point(draw_list, sprite_rect, sprite_data.anchor, theme.sprite_normal);
 	}
 	if editor_hovered
 	{
@@ -291,7 +296,6 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 			tool_data.tool_type = .Scroll;
 			tool_data.last_tool = .None;
 			tool_data.moved = false;
-			tool_data.last_mouse_pos = relative_mouse_pos;
 		}
 		if io.mouse_down[2]
 		{
@@ -301,63 +305,64 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 			tool_data.edit_sprite_h_corner = .Max;
 			tool_data.edit_sprite_v_corner = .Max;
 
+			relative_mouse_pos := geometry.get_relative_pos(texture_rect, mouse_pos);
 			drag_start_pos = relative_mouse_pos;
 			drag_rect := render.Sprite_Data{{0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
 			default_sprite_name := "default";
 			sprite_name_data := make([]byte, 50, context.allocator);
 			copy(sprite_name_data, default_sprite_name);
 			sprite_name_data[len(default_sprite_name)] = 0;
-			append(&sprites_data, Editor_Sprite_Data{sprite_name_data, drag_rect, {}});
+			append(&sprites_data, Editor_Sprite_Data{sprite_name_data, drag_rect});
 		}
 		scale += io.mouse_wheel / 10;
 	}
-	tool_data.last_mouse_pos = relative_mouse_pos;
 }
 
 update_selected_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using render_data: Sprite_Editor_Render_Data)
 {
 	io := imgui.get_io();
 	editor_hovered := geometry.is_in_rect(editor_rect, mouse_pos);
-	sprite_index := tool_data.edited_sprite_index;
-	sprite_data := sprites_data[sprite_index]; 
-	clip_top_left := sprite_data.clip.pos;
-	clip_bottom_right := (sprite_data.clip.pos + sprite_data.clip.size);
-	clip_size := sprite_data.clip.size;
-	anchor_pos := clip_top_left + clip_size * sprite_data.anchor;
+	selected_sprite_index := tool_data.edited_sprite_index;
+	selected_sprite_data := sprites_data[selected_sprite_index];
+	selected_sprite_rect := geometry.get_sub_rect(texture_rect, selected_sprite_data.clip);
+	anchor_pos := geometry.relative_to_world(selected_sprite_rect, selected_sprite_data.anchor);
 
-	relative_mouse_pos := get_relative_pos(texture_rect, mouse_pos);
-	sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners({clip_top_left, clip_size}, relative_mouse_pos, 0.01);
-	sprites_data[sprite_index].render_color = editor_hovered && sprite_hovered ? 0xffff88ff : 0xff0088ff;
-	anchor_hovered := linalg.length(anchor_pos - relative_mouse_pos) < 0.01;
+	sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners(selected_sprite_rect, mouse_pos, 5);
+	anchor_hovered := linalg.length(anchor_pos - mouse_pos) < 5;
 	tool_data.last_tool = .Selected;
 
 	draw_list := imgui.get_window_draw_list();
 
-	sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
-	render_sprite_rect(draw_list, sprite_rect, theme.sprite_selected);
+	for sprite_data, index in sprites_data
+	{
+		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		render_color := index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal;
+		render_sprite_rect(draw_list, sprite_rect, render_color);
+		render_sprite_point(draw_list, sprite_rect, sprite_data.anchor, render_color);
+	}
 	if editor_hovered
 	{
 		#partial switch h_edit
 		{
 			case .Min:
 			{
-				render_sprite_corner(draw_list, sprite_rect, .Left, theme.sprite_gizmo);
+				render_sprite_corner(draw_list, selected_sprite_rect, .Left, theme.sprite_gizmo);
 			}
 			case .Max:
 			{
 
-				render_sprite_corner(draw_list, sprite_rect, .Right, theme.sprite_gizmo);
+				render_sprite_corner(draw_list, selected_sprite_rect, .Right, theme.sprite_gizmo);
 			}
 		}
 		#partial switch v_edit
 		{
 			case .Min:
 			{
-				render_sprite_corner(draw_list, sprite_rect, .Up, theme.sprite_gizmo);
+				render_sprite_corner(draw_list, selected_sprite_rect, .Up, theme.sprite_gizmo);
 			}
 			case .Max:
 			{
-				render_sprite_corner(draw_list, sprite_rect, .Down, theme.sprite_gizmo);
+				render_sprite_corner(draw_list, selected_sprite_rect, .Down, theme.sprite_gizmo);
 			}
 		}
 
@@ -377,8 +382,7 @@ update_selected_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, us
 				{
 					tool_data.tool_type = .Resize;
 				}
-				tool_data.last_mouse_pos = relative_mouse_pos;
-				tool_data.edited_sprite_index = sprite_index;
+				tool_data.edited_sprite_index = selected_sprite_index;
 				tool_data.edit_sprite_h_corner = h_edit;
 				tool_data.edit_sprite_v_corner = v_edit;
 			}
@@ -395,58 +399,69 @@ update_selected_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, us
 			tool_data.edit_sprite_h_corner = .Max;
 			tool_data.edit_sprite_v_corner = .Max;
 
-			drag_start_pos = relative_mouse_pos;
-			drag_rect := render.Sprite_Data{{0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
+			drag_start_pos = mouse_pos;
+			drag_rect := render.Sprite_Data{{0.5, 0.5}, {drag_start_pos, {0, 0}}};
 			default_sprite_name := "default";
 			sprite_name_data := make([]byte, 50, context.allocator);
 			copy(sprite_name_data, default_sprite_name);
 			sprite_name_data[len(default_sprite_name)] = 0;
-			append(&sprites_data, Editor_Sprite_Data{sprite_name_data, drag_rect, {}});
+			append(&sprites_data, Editor_Sprite_Data{sprite_name_data, drag_rect});
 		}
-		scale += io.mouse_wheel / 10;
+		if io.mouse_wheel != 0
+		{
+			scale += io.mouse_wheel / 10;
+		}
 	}
-	tool_data.last_mouse_pos = relative_mouse_pos;
 }
 
 update_move_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using render_data: Sprite_Editor_Render_Data)
 {
 	io := imgui.get_io();
-	relative_mouse_pos := get_relative_pos(texture_rect, mouse_pos);
-	offset := relative_mouse_pos - tool_data.last_mouse_pos;
-	tool_data.last_mouse_pos = relative_mouse_pos;
-	sprites_data[tool_data.edited_sprite_index].clip.pos += offset;
+	offset := mouse_pos - tool_data.last_mouse_pos;
+	sprites_data[tool_data.edited_sprite_index].clip.pos += offset / texture_rect.size;
 	if !io.mouse_down[0]
 	{
 		tool_data.tool_type = .Selected;
 	}
 
-	sprite_data := sprites_data[tool_data.edited_sprite_index];
 	draw_list := imgui.get_window_draw_list();
-	sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
-	render_sprite_rect(draw_list, sprite_rect, theme.sprite_selected);
+	selected_sprite_index := tool_data.edited_sprite_index;
+	for sprite_data, index in sprites_data
+	{
+		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		render_sprite_rect(draw_list, sprite_rect, index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal);
+	}
 }
 
 update_resize_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using render_data: Sprite_Editor_Render_Data)
 {
 	io := imgui.get_io();
-	relative_mouse_pos := get_relative_pos(texture_rect, mouse_pos);
-	offset := relative_mouse_pos - tool_data.last_mouse_pos;
+	offset := mouse_pos - tool_data.last_mouse_pos;
 
 	sprite_data := sprites_data[tool_data.edited_sprite_index];
+	selected_sprite_index := tool_data.edited_sprite_index;
 
 	draw_list := imgui.get_window_draw_list();
 	sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
-	render_sprite_rect(draw_list, sprite_rect, theme.sprite_selected);
+	relative_offset := offset / texture_rect.size;
+	log.info(relative_offset);
+
+	for sprite_data, index in sprites_data
+	{
+		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		render_sprite_rect(draw_list, sprite_rect, index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal);
+	}
+
 	#partial switch tool_data.edit_sprite_h_corner
 	{
 		case .Min:
 		{
-			sprites_data[tool_data.edited_sprite_index].clip.pos.x += offset.x;
-			sprites_data[tool_data.edited_sprite_index].clip.size.x -= offset.x;
+			sprites_data[tool_data.edited_sprite_index].clip.pos.x += relative_offset.x;
+			sprites_data[tool_data.edited_sprite_index].clip.size.x -= relative_offset.x;
 		}
 		case .Max:
 		{
-			sprites_data[tool_data.edited_sprite_index].clip.size.x += offset.x;
+			sprites_data[tool_data.edited_sprite_index].clip.size.x += relative_offset.x;
 		}
 
 	}
@@ -454,17 +469,17 @@ update_resize_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, usin
 	{
 		case .Min:
 		{
-			sprites_data[tool_data.edited_sprite_index].clip.pos.y += offset.y;
-			sprites_data[tool_data.edited_sprite_index].clip.size.y -= offset.y;
+			sprites_data[tool_data.edited_sprite_index].clip.pos.y += relative_offset.y;
+			sprites_data[tool_data.edited_sprite_index].clip.size.y -= relative_offset.y;
 		}
 		case .Max:
 		{
-			sprites_data[tool_data.edited_sprite_index].clip.size.y += offset.y;
+			sprites_data[tool_data.edited_sprite_index].clip.size.y += relative_offset.y;
 		}
 
 	}
 	//sprites_data[tool_data.edited_sprite_index].clip.size += relative_mouse_pos - tool_data.last_mouse_pos;
-	tool_data.last_mouse_pos = relative_mouse_pos;
+	
 	if !io.mouse_down[0] && !io.mouse_down[2]
 	{
 		tool_data.tool_type = tool_data.last_tool;
@@ -474,18 +489,24 @@ update_resize_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, usin
 update_move_anchor_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using render_data: Sprite_Editor_Render_Data)
 {
 	io := imgui.get_io();
-	relative_mouse_pos := get_relative_pos(texture_rect, mouse_pos);
-	offset := relative_mouse_pos - tool_data.last_mouse_pos;
-	sprite_index := tool_data.edited_sprite_index;
-	sprite_data := &sprites_data[sprite_index];
-	clip_top_left := sprite_data.clip.pos;
-	clip_bottom_right := (sprite_data.clip.pos + sprite_data.clip.size);
-	clip_size := sprite_data.clip.size;
-	sprite_data.anchor += offset / clip_size;
-	tool_data.last_mouse_pos = relative_mouse_pos;
+	offset := mouse_pos - tool_data.last_mouse_pos;
+	selected_sprite_index := tool_data.edited_sprite_index;
+	selected_sprite_data := &sprites_data[selected_sprite_index];
+	clip_top_left := selected_sprite_data.clip.pos;
+	clip_bottom_right := (selected_sprite_data.clip.pos + selected_sprite_data.clip.size);
+	clip_size := selected_sprite_data.clip.size;
+	selected_sprite_data.anchor += offset / texture_rect.size / clip_size;
 	if !io.mouse_down[0] && !io.mouse_down[2]
 	{
 		tool_data.tool_type = tool_data.last_tool;
+	}
+	draw_list := imgui.get_window_draw_list();
+	for sprite_data, index in sprites_data
+	{
+		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		render_color := index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal;
+		render_sprite_rect(draw_list, sprite_rect, render_color);
+		render_sprite_point(draw_list, sprite_rect, sprite_data.anchor, render_color);
 	}
 }
 
@@ -523,7 +544,6 @@ draw_sprite_gizmos :: proc(using editor_state: ^Sprite_Editor_State, draw_list: 
 		clip_rect := geometry.get_sub_rect(render_data.texture_rect, sprite_data.clip);
 		clip_top_left := clip_rect.pos;
 		clip_bottom_right := clip_rect.pos + clip_rect.size;
-		imgui.draw_list_add_circle(draw_list, clip_top_left + clip_rect.size * sprite_data.anchor, 2, theme.sprite_gizmo);
 	}
 }
 
@@ -545,9 +565,15 @@ load_sprites_for_texture :: proc(using editor_state: ^Sprite_Editor_State, path:
 	}
 }
 
+render_sprite_point :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect, relative_point: [2]f32, color: u32)
+{
+	imgui.draw_list_add_circle(draw_list, rect.pos + rect.size * relative_point, 2, color);
+}
+
 render_sprite_rect :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect, color: u32)
 {
 	imgui.draw_list_add_rect(draw_list, rect.pos, rect.pos + rect.size, color);
+	imgui.draw_list_add_rect_filled(draw_list, rect.pos, rect.pos + rect.size, render.color_replace_alpha(color, 50));
 }
 
 render_sprite_corner :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect, side: Sprite_Side, color: u32)

@@ -31,3 +31,13 @@ get_sub_rect :: proc(parent: Rect, sub_rect: Rect) -> Rect
 {
 	return { parent.pos + sub_rect.pos * parent.size, parent.size * sub_rect.size };
 }
+
+get_relative_pos :: proc(rect: geometry.Rect, pos: [2]f32) -> [2]f32
+{
+	return (pos - rect.pos) / rect.size;
+}
+
+relative_to_world :: proc(rect: geometry.Rect, pos: [2]f32) -> [2]f32
+{
+	return rect.pos + pos * rect.size;
+}

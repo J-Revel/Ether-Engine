@@ -14,8 +14,7 @@ Editor_State :: struct
 Editor_Sprite_Data :: struct
 {
 	name: []u8,
-	using data: render.Sprite_Data,
-	render_color: u32,
+	using data: render.Sprite_Data
 }
 
 Sprite_Edit_Corner :: enum
@@ -82,5 +81,4 @@ Sprite_Editor_Render_Data :: struct
 	editor_rect: geometry.Rect,
 	texture_rect: geometry.Rect,
 	mouse_pos: [2]f32,
-	mouse_offset: [2]f32,
 }

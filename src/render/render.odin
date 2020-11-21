@@ -195,3 +195,8 @@ hex_color_to_u32 :: proc(hex: string) -> (u32, bool)
     }
     return result, true;
 }
+
+color_replace_alpha :: proc(color: u32, alpha: int) -> u32
+{
+    return (color & 0x00ffffff) | u32(alpha << 24);
+}
