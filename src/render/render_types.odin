@@ -1,6 +1,6 @@
 package render
 
-import "../util/container"
+import "../container"
 import "../geometry"
 
 vec2 :: [2]f32;

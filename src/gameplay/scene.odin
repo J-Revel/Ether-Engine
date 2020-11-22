@@ -11,7 +11,7 @@ import "core:math"
 
 import sdl "shared:odin-sdl2"
 
-import container "../util/container"
+import container "../container"
 
 import os "core:os"
 
@@ -21,6 +21,8 @@ import gl "shared:odin-gl";
 
 import "../editor"
 import "../animation"
+
+import "../objects"
 
 import "core:reflect"
 
@@ -50,15 +52,15 @@ test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32)
 init_scene :: proc(using scene: ^Scene)
 {
 	using container;
-	table_database_add_init(&db, "building", &buildings, 1000);
-	table_database_add_init(&db, "loading_building", &loading_buildings, 1000);
-	table_database_add_init(&db, "planet", &planets, 1000);
-	table_database_add_init(&db, "arc", &arcs, 1000);
-	table_database_add_init(&db, "wave_emitter", &wave_emitters, 100);
-	table_database_add_init(&db, "texture", &textures, 100);
-	table_database_add_init(&db, "sprite", &sprites, 200);
-	table_database_add_init(&db, "transform", &transforms, 10000);
-	table_database_add_init(&db, "sprite_component", &sprite_components, 500);
+	objects.table_database_add_init(&db, "building", &buildings, 1000);
+	objects.table_database_add_init(&db, "loading_building", &loading_buildings, 1000);
+	objects.table_database_add_init(&db, "planet", &planets, 1000);
+	objects.table_database_add_init(&db, "arc", &arcs, 1000);
+	objects.table_database_add_init(&db, "wave_emitter", &wave_emitters, 100);
+	objects.table_database_add_init(&db, "texture", &textures, 100);
+	objects.table_database_add_init(&db, "sprite", &sprites, 200);
+	objects.table_database_add_init(&db, "transform", &transforms, 10000);
+	objects.table_database_add_init(&db, "sprite_component", &sprite_components, 500);
 	animation.init_animation_database(&db, &animation_database);
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
@@ -69,19 +71,19 @@ init_scene :: proc(using scene: ^Scene)
 	render.load_sprites_from_file("test.sprites", &textures, &sprites);
 
 	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
-	prefab_instance, ok := load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
+	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{0, 0};
 	test_input["scale"] = f32(0.1);
 
-	prefab_instance_components, _ := prefab_instantiate(&db, &prefab_instance, test_input);
+	prefab_instance_components, _ := objects.prefab_instantiate(&db, &prefab_instance, test_input);
 
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
 
-	prefab_instantiate(&db, &prefab_instance, test_input);
+	objects.prefab_instantiate(&db, &prefab_instance, test_input);
 	
 	editor.init_editor(&editor_state);
 
@@ -104,7 +106,7 @@ init_scene :: proc(using scene: ^Scene)
 	test_anim_param.offset = (reflect.struct_field_by_name(typeid_of(Transform), "scale").offset);
 	for prefab_component in prefab_instance_components
 	{
-		if prefab_component.name == "transform"
+		if prefab_component.name == "main_transform"
 		{
 			test_anim_param.handle = prefab_component.value;
 		}

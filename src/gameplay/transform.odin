@@ -1,6 +1,6 @@
 package gameplay
 
-import "../util/container"
+import "../container"
 import "../render"
 import "core:log"
 

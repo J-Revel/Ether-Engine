@@ -1,5 +1,5 @@
 package editor
-import "../util/container"
+import "../container"
 import "../render"
 import win32 "core:sys/windows"
 import "core:os"
@@ -10,6 +10,10 @@ Editor_State :: struct
 	show_demo_window: bool,
 	sprite_editor: Sprite_Editor_State,
 }
+
+/*----------------------------------------------
+				Sprite Editor
+------------------------------------------------*/
 
 Editor_Sprite_Data :: struct
 {
@@ -37,12 +41,6 @@ Sprite_Tool_Data :: struct
 	edit_sprite_v_corner: Sprite_Edit_Corner,
 	last_tool: Sprite_Editor_Tool,
 	moved: bool
-}
-
-Folder_Display_State :: struct
-{
-	current_path: string,
-	files: []os.File_Info,
 }
 
 Sprite_Editor_Theme :: struct
@@ -81,4 +79,32 @@ Sprite_Editor_Render_Data :: struct
 	editor_rect: geometry.Rect,
 	texture_rect: geometry.Rect,
 	mouse_pos: [2]f32,
+}
+
+/*----------------------------------------------
+				Prefab Editor
+------------------------------------------------*/
+
+Prefab_Editor_State :: struct
+{
+
+}
+
+/*----------------------------------------------
+				Anim Editor
+------------------------------------------------*/
+
+Anim_Editor_State :: struct
+{
+
+}
+
+/*----------------------------------------------
+				Folder Editor
+------------------------------------------------*/
+
+Folder_Display_State :: struct
+{
+	current_path: string,
+	files: []os.File_Info,
 }

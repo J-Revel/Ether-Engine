@@ -5,6 +5,20 @@ import "core:runtime"
 import "core:log"
 import "core:reflect"
 
+Database_Named_Table :: struct { name: string, table: Database_Table };
+Database :: [dynamic]Database_Named_Table;
+Database_Table :: struct
+{
+	using table: ^Raw_Table,
+	type: typeid,
+}
+
+Named_Element :: struct(T: typeid)
+{
+	name: string,
+	value: T
+}
+
 Bit_Array :: struct
 {
 	data: ^u32,
@@ -230,4 +244,16 @@ table_copy :: proc(target: ^$A/Table($T), model: ^Table(T))
 	}
 	mem.copy(target.allocation.data, model.allocation.data, int(model.allocation.cap * size_of(u32)));
 	mem.copy(target.data, model.data, int(model.allocation.cap * 32 * size_of(T)));
+}
+
+db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
+{
+	for table, table_index in db
+	{
+		if table.name == name
+		{
+			return table.table, table_index, true;
+		}
+	}
+	return {}, 0, false;
 }

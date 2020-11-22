@@ -3,7 +3,8 @@ package anim
 import "core:fmt"
 import "core:log"
 import "../util"
-import "../util/container"
+import "../container"
+import "../objects"
 
 Keyframe :: struct(T: typeid)
 {
@@ -16,7 +17,7 @@ Animation_Curve :: struct(T: typeid)
 	keyframes: []Keyframe(T),
 }
 
-Named_Float_Curve :: container.Named_Component(Animation_Curve(f32));
+Named_Float_Curve :: objects.Named_Component(Animation_Curve(f32));
 
 Animation_Config :: struct
 {
@@ -48,9 +49,9 @@ Animation_Database :: struct
 
 init_animation_database :: proc(db: ^container.Database, using database: ^Animation_Database)
 {
-	container.table_database_add_init(db, "animation_curves", &animation_curves, 5000);
-	container.table_database_add_init(db, "animation_players", &animation_players, 1000);
-	container.table_database_add_init(db, "animation_configs", &animation_configs, 1000);
+	objects.table_database_add_init(db, "animation_curves", &animation_curves, 5000);
+	objects.table_database_add_init(db, "animation_players", &animation_players, 1000);
+	objects.table_database_add_init(db, "animation_configs", &animation_configs, 1000);
 }
 
 compute_float_curve_value :: proc(curve: ^Animation_Curve(f32), time_ratio: f32, default_value: f32) -> f32

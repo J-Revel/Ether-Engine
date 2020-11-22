@@ -1,11 +1,13 @@
 {
-	"transform": {
+	"main_transform": {
+		"type": "transform",
 		"pos": "&pos",
 		"scale": "&scale",
 		"angle": 0
 	},
 	"sprite_component": {
-		"transform": "@transform",
+		"type": "sprite_component",
+		"transform": "@main_transform",
 		"sprite": "&sprite"
 	}
 }

@@ -6,10 +6,11 @@ import "core:log"
 import "core:math/linalg"
 import "../imgui"
 import "core:strconv"
-import "../util/container"
+import "../container"
 import "core:math"
 import "core:runtime"
 import "core:reflect"
+import "../objects"
 
 
 Basic_Tool_State :: struct
@@ -90,8 +91,8 @@ update_building_placement_tool :: proc(input_state: ^input.State, scene: ^Scene,
 
 		if(input.get_mouse_state(input_state, 0) == .Pressed)
 		{
-			prefab : container.Prefab;
-			prefab.components = make([]container.Component_Model, 3, context.temp_allocator);
+			new_prefab : objects.Prefab;
+			new_prefab.components = make([]objects.Component_Model, 3, context.temp_allocator);
 			l_b := Loading_Building{container.Handle(Building){0, nil}, 0};
 			wave_emitter := Wave_Emitter{container.Handle(Loading_Building){0, nil}, 0, math.PI / 10};
 			/*prefab.components[0] = {0, &building};

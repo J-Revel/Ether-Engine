@@ -1,4 +1,4 @@
-package table
+package prefab
 
 import "core:log"
 import "core:reflect"
@@ -6,78 +6,27 @@ import "core:mem"
 import "core:os"
 import "core:encoding/json"
 import "core:runtime"
+import "../container"
 
-Database_Named_Table :: struct { name: string, table: Database_Table };
-Database :: [dynamic]Database_Named_Table;
-Database_Table :: struct
-{
-	using table: ^Raw_Table,
-	type: typeid,
-}
 
-Component_Ref :: struct
-{
-	component_index: int,
-	field: reflect.Struct_Field,
-}
-
-Component_Model_Data :: struct
-{
-	data: rawptr,
-	refs: []Component_Ref,
-	inputs: []Component_Input,
-}
-
-Component_Model :: struct
-{
-	id: string,
-	table_index: int,
-	data: Component_Model_Data,
-}
-
-Component_Input :: struct
-{
-	name: string,
-	field: reflect.Struct_Field,
-}
-
-Prefab :: struct
-{
-	components: []Component_Model,
-}
-
-Named_Component :: struct(T: typeid)
-{
-	name: string,
-	value: Handle(T)
-}
-
-Named_Element :: struct(T: typeid)
-{
-	name: string,
-	value: T
-}
-
-Named_Raw_Handle :: Named_Element(Raw_Handle);
-
-table_database_add :: proc(db: ^Database, name: string, table: ^Table($T))
+table_database_add :: proc(db: ^container.Database, name: string, table: ^container.Table($T))
 {
 	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
 	append(db, named_table);
 }
 
-table_database_add_init :: proc(db: ^Database, name: string, table: ^Table($T), size: uint)
+table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
-	table_init(table, size);
-	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
+	container.table_init(table, size);
+	named_table := container.Database_Named_Table{name, container.Database_Table{table, typeid_of(T)}};
 	append(db, named_table);
 }
 
-prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(prefab.components), context.temp_allocator);
-	component_handles := make([]Raw_Handle, len(prefab.components), context.temp_allocator);
+	component_handles := make([]container.Raw_Handle, len(prefab.components), context.temp_allocator);
 	component_sizes := make([]int, len(prefab.components), context.temp_allocator);
 
 	out_components = make([]Named_Raw_Handle, len(prefab.components), context.temp_allocator);
@@ -95,14 +44,14 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 	{
 		table := db[component.table_index].table;
 		ok : bool;
-		component_handles[i], ok = table_allocate_raw(table, reflect.size_of_typeid(table.type));
+		component_handles[i], ok = container.table_allocate_raw(table, reflect.size_of_typeid(table.type));
 		out_components[i].value = component_handles[i];
 
 		for ref in component.data.refs
 		{
 			fieldPtr := rawptr(uintptr(components_data[i]) + ref.field.offset);
 			//log.info(ref);
-			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(Raw_Handle));
+			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(container.Raw_Handle));
 		}
 
 		for input in component.data.inputs
@@ -120,25 +69,13 @@ prefab_instantiate :: proc(db: ^Database, prefab: ^Prefab, input_data: map[strin
 
 	for component, i in prefab.components
 	{
-		component_data := handle_get_raw(component_handles[i], component_sizes[i]);
+		component_data := container.handle_get_raw(component_handles[i], component_sizes[i]);
 		mem.copy(component_data, components_data[i], component_sizes[i]);
 	}
 
 	success = true;
 
 	return;
-}
-
-db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
-{
-	for table, table_index in db
-	{
-		if table.name == name
-		{
-			return table.table, table_index, true;
-		}
-	}
-	return {}, 0, false;
 }
 
 parse_json_float :: proc(json_data: json.Value) -> f32
@@ -236,6 +173,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				{
 					//log.info("REF");
 					ref_name := t[1:];
+					log.info("@", ref_name);
 
 					if component_data, ok := available_component_index[ref_name]; ok {
 						append(&refs, Component_Ref{component_data.component_index, field});
@@ -260,7 +198,7 @@ Registered_Component_Data :: struct
 	table_index: int,
 }
 
-load_prefab :: proc(path: string, db: Database, allocator := context.allocator) -> (Prefab, bool)
+load_prefab :: proc(path: string, db: container.Database, allocator := context.allocator) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path);
 	if ok
@@ -280,11 +218,13 @@ load_prefab :: proc(path: string, db: Database, allocator := context.allocator) 
 		
 		for name, value in parsed_object
 		{
-			table, table_index, ok := db_get_table(db, name);
-			if(ok)
+			value_obj := value.value.(json.Object);
+			table_name := value_obj["type"].value.(json.String);
+			log.info(table_name);
+			if table, table_index, ok := container.db_get_table(db, table_name); ok
 			{
 				prefab.components[component_cursor].table_index = table_index;
-				prefab.components[component_cursor].data = build_component_model_from_json(value.value.(json.Object), table.type, context.temp_allocator, registered_components);
+				prefab.components[component_cursor].data = build_component_model_from_json(value_obj, table.type, context.temp_allocator, registered_components);
 				prefab.components[component_cursor].id = name;
 				registered_components[name] = {component_cursor, table_index};				
 			}

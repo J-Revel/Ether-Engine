@@ -4,7 +4,7 @@ import sdl "shared:odin-sdl2"
 import "core:strings"
 import "core:log"
 import gl "shared:odin-gl";
-import "../util/container"
+import "../container"
 import "core:os"
 import "core:encoding/json"
 import "core:sort"
