@@ -5,13 +5,8 @@ import "core:runtime"
 import "core:log"
 import "core:reflect"
 
-Database_Named_Table :: struct { name: string, table: Database_Table };
+Database_Named_Table :: struct { name: string, table: Raw_Table };
 Database :: [dynamic]Database_Named_Table;
-Database_Table :: struct
-{
-	using table: ^Raw_Table,
-	type: typeid,
-}
 
 Named_Element :: struct(T: typeid)
 {
@@ -82,13 +77,16 @@ Handle :: struct(T: typeid)
 Raw_Table :: struct
 {
 	data: rawptr,
-	allocation: Bit_Array,
-	allocator: mem.Allocator
+	allocation: ^Bit_Array,
+	allocator: mem.Allocator,
+	type_id: typeid
 }
 
 Table :: struct(T: typeid)
 {
-	using raw: Raw_Table
+	data: rawptr,
+	allocation: Bit_Array,
+	allocator: mem.Allocator
 }
 
 Table_Iterator :: struct(T: typeid)
@@ -108,7 +106,7 @@ table_init_cap :: proc(a: ^$A/Table($V), cap: uint, allocator := context.allocat
 {
 	a.allocator = allocator;
 
-	a.data = (mem.alloc(size_of(V) * cast(int)cap, align_of(V), allocator));
+	a.data = (mem.alloc(size_of(V) * int(cap), align_of(V), allocator));
 	bit_array_init(&a.allocation, (cap + 31) / 32, allocator);
 }
 
@@ -129,7 +127,7 @@ ptr_offset :: inline proc(ptr: uintptr, n: int, type_size: int) -> uintptr {
 
 table_add_raw :: proc(table: ^Raw_Table, value: any, type_size: int) -> (Raw_Handle, bool)
 {
-	index, ok := bit_array_allocate(&table.allocation);
+	index, ok := bit_array_allocate(table.allocation);
 	if ok
 	{
 		mem.copy(rawptr(ptr_offset(uintptr(table.data), int(index), type_size)), value.data, type_size);
@@ -138,9 +136,9 @@ table_add_raw :: proc(table: ^Raw_Table, value: any, type_size: int) -> (Raw_Han
 }
 
 // like table_add_raw but does not set the value yed
-table_allocate_raw :: proc(table: ^Raw_Table, type_size: int) -> (Raw_Handle, bool)
+table_allocate_raw :: proc(table: ^Raw_Table) -> (Raw_Handle, bool)
 {
-	index, ok := bit_array_allocate(&table.allocation);
+	index, ok := bit_array_allocate(table.allocation);
 	return Raw_Handle{index + 1, table}, ok;
 }
 
@@ -184,26 +182,17 @@ table_get :: proc(table: ^$A/Table($T), index: Handle(T)) -> ^T
 	return mem.ptr_offset(cast(^T)table.data, cast(int)index.id - 1);
 }
 
-table_get_raw :: proc(table: ^Raw_Table, index: Raw_Handle, type_size: int) -> rawptr
+handle_get_raw :: proc(handle: Raw_Handle) -> rawptr
 {
-	return rawptr(uintptr(int(uintptr(table.data)) + type_size * int(index.id - 1)));
+	table := handle.raw_table;
+	type_size := reflect.size_of_typeid(table.type_id);
+	log.info("HANDLE GET RAW", table.type_id, type_size);
+	return rawptr(uintptr(int(uintptr(table.data)) + type_size * int(handle.id - 1)));
 }
 
 handle_get :: proc(handle: $A/Handle($T)) -> ^T
 {
 	return mem.ptr_offset(cast(^T)handle.table.data, cast(int)handle.id - 1);
-}
-
-handle_get_raw :: proc { handle_get_raw_by_size, handle_get_raw_by_type };
-
-handle_get_raw_by_size :: proc(handle: Raw_Handle, type_size: int) -> rawptr
-{
-	return table_get_raw(handle.raw_table, handle, type_size);
-}
-
-handle_get_raw_by_type :: proc(handle: Raw_Handle, type_id: typeid) -> rawptr
-{
-	return table_get_raw(handle.raw_table, handle, reflect.size_of_typeid(type_id));
 }
 
 table_print :: proc(table: ^$A/Table($T))
@@ -246,7 +235,7 @@ table_copy :: proc(target: ^$A/Table($T), model: ^Table(T))
 	mem.copy(target.data, model.data, int(model.allocation.cap * 32 * size_of(T)));
 }
 
-db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
+db_get_table :: proc(db: Database, name: string) -> (Raw_Table, int, bool)
 {
 	for table, table_index in db
 	{
@@ -256,4 +245,19 @@ db_get_table :: proc(db: Database, name: string) -> (Database_Table, int, bool)
 		}
 	}
 	return {}, 0, false;
+}
+
+db_copy :: proc(db: Database, allocator := context.allocator) -> Database
+{
+	result := make(Database, allocator);
+	for table in db
+	{
+		//table_copy := Database_Named_Table{table.name, };
+	}
+	return result;
+}
+
+to_raw_table :: proc(table: ^Table($T)) -> Raw_Table
+{
+	return Raw_Table{table.data, &table.allocation, table.allocator, typeid_of(T)};
 }

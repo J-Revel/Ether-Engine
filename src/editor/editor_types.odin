@@ -87,7 +87,7 @@ Sprite_Editor_Render_Data :: struct
 
 Prefab_Editor_State :: struct
 {
-
+	db: container.Database,
 }
 
 /*----------------------------------------------

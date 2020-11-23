@@ -5,6 +5,8 @@ import "core:sort";
 import "core:math/linalg"
 import l "core:log"
 
+vec2 :: [2]f32;
+
 Bounding_Box :: struct
 {
 	center: vec2,
@@ -56,17 +58,4 @@ collision_hitbox_empty_circle :: proc(hitbox: ^Bounding_Box, circle: ^Circle) ->
 	}
 
 	return circle.radius > min_distance && circle.radius < max_distance;
-}
-
-collision_bb_arc :: proc(bb: ^Bounding_Box, arc: ^Wave_Arc, step_size: f32) -> bool
-{
-	circle := Circle{arc.center, arc.radius};
-	if collision_hitbox_empty_circle(bb, &circle)
-	{
-		for point in points_along_arc(arc, step_size)
-		{
-			if(is_inside_bb(bb, point)) do return true;
-		}
-	}
-	return false;
 }

@@ -29,12 +29,6 @@ import "core:reflect"
 Scene :: struct
 {
 	camera: render.Camera,
-	tool_state: Tool_State,
-	buildings: container.Table(Building),
-	loading_buildings: container.Table(Loading_Building),
-	wave_emitters: container.Table(Wave_Emitter),
-	planets: container.Table(Planet),
-    arcs: container.Table(Wave_Arc),
     db: container.Database,
     color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
@@ -52,11 +46,6 @@ test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32)
 init_scene :: proc(using scene: ^Scene)
 {
 	using container;
-	objects.table_database_add_init(&db, "building", &buildings, 1000);
-	objects.table_database_add_init(&db, "loading_building", &loading_buildings, 1000);
-	objects.table_database_add_init(&db, "planet", &planets, 1000);
-	objects.table_database_add_init(&db, "arc", &arcs, 1000);
-	objects.table_database_add_init(&db, "wave_emitter", &wave_emitters, 100);
 	objects.table_database_add_init(&db, "texture", &textures, 100);
 	objects.table_database_add_init(&db, "sprite", &sprites, 200);
 	objects.table_database_add_init(&db, "transform", &transforms, 10000);
@@ -83,11 +72,14 @@ init_scene :: proc(using scene: ^Scene)
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
 
-	objects.prefab_instantiate(&db, &prefab_instance, test_input);
 	
 	editor.init_editor(&editor_state);
 
 	using animation;
+
+	test_transform, ok_test := table_add(&transforms, Transform{{}, {50, 1234}, 1.5, 0.3});
+	
+	objects.prefab_instantiate(&db, &prefab_instance, test_input);
 
 	test_curve: Animation_Curve(f32);
 	test_curve.keyframes = test_animation_keyframes[:];
@@ -120,8 +112,8 @@ init_scene :: proc(using scene: ^Scene)
 		params = params_array,
 	};
 	table_add(&animation_players, animation_player);
-	tool_state = Basic_Tool_State{};
 
+	log.info(handle_get(test_transform));
 }
 
 time : f32 = 0;
@@ -132,87 +124,8 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 	color_renderer.screen_size = screen_size;
 	sprite_renderer.screen_size = screen_size;
 	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
-    update_display_tool(&tool_state, scene, input_state, &color_renderer);
-    
-    imgui.begin("tools");
-
-    switch(input.get_mouse_state(input_state, 0))
-    {
-    	case .Pressed:
-    		imgui.text("Pressed");
-    	case .Down:
-    		imgui.text("Down");
-    	case .Released:
-    		imgui.text("Released");
-    	case .Up:
-    		imgui.text("Up");
-    }
-    buttonName := "Building Tool ";
-    if(imgui.button("Building Tool"))
-    {
-    	tool_state = Building_Placement_Tool_State{};
-    }
-    imgui.end();
-
-    if input.get_mouse_state(input_state, 2) == .Pressed
-    {
-    	container.table_add(&arcs, Wave_Arc{100, worldMousePos, {0, 0, 2 * math.PI}, container.invalid_handle(&buildings)});
-	}
-	arc_it := container.table_iterator(&arcs);
-	for arc in container.table_iterate(&arc_it) do arc.radius += deltaTime * 100;
-    
-    planet_it := container.table_iterator(&planets);
-    for planet in container.table_iterate(&planet_it)
-    {
-    	update_wave_collision(&arcs, 100, 500, planet);
-    }
-
-    l_it := container.table_iterator(&loading_buildings);
-    for h in container.iterate(&l_it)
-	{
-		b := container.table_get(&buildings, h.building);
-		bb := to_regular_hitbox(b);
-		arc_it = container.table_iterator(&arcs);
-		for arc in container.table_iterate(&arc_it)
-		{
-			if h.building.id != arc.ignored_building.id && collision_bb_arc(&bb, arc, 10) do h.energy += deltaTime;
-		}
-	}
-
-	update_wave_emitters(&wave_emitters, &buildings, &arcs);
-
-    render_wave(&arcs, 10, 5, {1, 1, 0, 1}, &color_renderer);
 
     animation.update_animations(&animation_players);
-
-    it := container.table_iterator(&buildings);
-    for b in container.iterate(&it)
-	{
-		render_building(b, &color_renderer);
-	}
-
-	planet_it = container.table_iterator(&planets);
-	for p in container.table_iterate(&planet_it)
-	{
-		render_planet(&color_renderer, p, 200);
-	}
-
-	test_arc : Wave_Arc;
-	test_arc.radius = 200;
-	test_arc.center = worldMousePos;
-	test_arc.angular_size = math.PI / 2;
-	test_result := false;
-
-	it = container.table_iterator(&buildings);
-	for b in container.iterate(&it)
-	{
-		hitbox := to_regular_hitbox(b.hitbox);
-		testCircle : Circle = {worldMousePos, 200};
-		if(collision_bb_arc(&hitbox, &test_arc, 10))
-		{
-			test_result = true;
-		}
-	}
 
 	if input.get_key_state(input_state, sdl.Scancode.Tab) == .Pressed do show_editor = !show_editor;
 
@@ -226,7 +139,7 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 
 	spaceship_sprite_data := container.handle_get(spaceship_sprite);
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
-	render_sprite_components(&scene.sprite_renderer.buffer, &sprite_components);
+	//render_sprite_components(&scene.sprite_renderer.buffer, &sprite_components);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	

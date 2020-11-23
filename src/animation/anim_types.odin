@@ -82,13 +82,16 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 	for anim_player in container.table_iterate(&it)
 	{
 		anim_player.time += 1/60.0;
-
+		
 		animation := container.handle_get(anim_player.animation);
 		for anim_player.time > animation.duration do anim_player.time -= animation.duration;
 		time_ratio := anim_player.time / animation.duration;
 		for param in anim_player.params
 		{
-			curve_value_ptr := uintptr(container.handle_get_raw(param.handle, param.type_id)) + uintptr(param.offset);
+			//TODO : fix crash here
+			log.info(param.handle);
+			log.info(container.handle_get_raw(param.handle));
+			curve_value_ptr := uintptr(container.handle_get_raw(param.handle)) + uintptr(param.offset);
 			// Find the curve with the right name in the Animation_Config
 			for curve in animation.float_curves
 			{
@@ -100,6 +103,7 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 						return false;
 					}
 					curve_value := compute_float_curve_value(container.handle_get(curve.value), time_ratio, 0);
+					log.info(curve_value);
 					(cast(^f32)curve_value_ptr)^ = curve_value;
 				}
 			}

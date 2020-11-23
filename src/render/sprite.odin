@@ -156,8 +156,7 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
             os.write(file_handle, write_buf[0:1]);
         }
         encoded, marshal_error := json.marshal(sprite.data);
-        log.info(encoded);
-        if marshal_error == .None do os.write_string(file_handle, encoded);
+        if marshal_error == .None do os.write_string(file_handle, strings.string_from_ptr(&encoded[0], len(encoded)));
         else do log.error(marshal_error);
     }
     fmt.bprint(write_buf, "]}");

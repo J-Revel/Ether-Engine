@@ -36,9 +36,11 @@ Sprite_Component :: struct
 
 render_sprite_components :: proc(render_buffer: ^render.Sprite_Render_Buffer, table: ^container.Table(Sprite_Component))
 {
+	log.info(table);
 	it := container.table_iterator(table);
     for sprite_component in container.table_iterate(&it)
     {
+    	log.info(sprite_component);
     	pos, angle, scale := get_transform_absolute(sprite_component.transform);
     	sprite := container.handle_get(sprite_component.sprite);
     	render.render_sprite(render_buffer, sprite, pos, {1, 1, 1, 1}, scale);

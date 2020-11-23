@@ -18,7 +18,7 @@ table_database_add :: proc(db: ^container.Database, name: string, table: ^contai
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
 	container.table_init(table, size);
-	named_table := container.Database_Named_Table{name, container.Database_Table{table, typeid_of(T)}};
+	named_table := container.Database_Named_Table{name, container.to_raw_table(table)};
 	append(db, named_table);
 }
 
@@ -34,7 +34,7 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 	for component, i in prefab.components
 	{
 		table := db[component.table_index].table;
-		component_sizes[i] = reflect.size_of_typeid(table.type);
+		component_sizes[i] = reflect.size_of_typeid(table.type_id);
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
 		mem.copy(components_data[i], component.data.data, component_sizes[i]);
 		out_components[i].name = component.id;
@@ -44,7 +44,7 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 	{
 		table := db[component.table_index].table;
 		ok : bool;
-		component_handles[i], ok = container.table_allocate_raw(table, reflect.size_of_typeid(table.type));
+		component_handles[i], ok = container.table_allocate_raw(&table);
 		out_components[i].value = component_handles[i];
 
 		for ref in component.data.refs
@@ -69,7 +69,7 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 
 	for component, i in prefab.components
 	{
-		component_data := container.handle_get_raw(component_handles[i], component_sizes[i]);
+		component_data := container.handle_get_raw(component_handles[i]);
 		mem.copy(component_data, components_data[i], component_sizes[i]);
 	}
 
@@ -224,7 +224,7 @@ load_prefab :: proc(path: string, db: container.Database, allocator := context.a
 			if table, table_index, ok := container.db_get_table(db, table_name); ok
 			{
 				prefab.components[component_cursor].table_index = table_index;
-				prefab.components[component_cursor].data = build_component_model_from_json(value_obj, table.type, context.temp_allocator, registered_components);
+				prefab.components[component_cursor].data = build_component_model_from_json(value_obj, table.type_id, context.temp_allocator, registered_components);
 				prefab.components[component_cursor].id = name;
 				registered_components[name] = {component_cursor, table_index};				
 			}
