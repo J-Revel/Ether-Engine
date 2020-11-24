@@ -63,7 +63,7 @@ init_scene :: proc(using scene: ^Scene)
 	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
-	test_input["pos"] = [2]f32{0, 0};
+	test_input["pos"] = [2]f32{10, 50};
 	test_input["scale"] = f32(0.1);
 
 	prefab_instance_components, _ := objects.prefab_instantiate(&db, &prefab_instance, test_input);
@@ -79,7 +79,7 @@ init_scene :: proc(using scene: ^Scene)
 
 	test_transform, ok_test := table_add(&transforms, Transform{{}, {50, 1234}, 1.5, 0.3});
 	
-	objects.prefab_instantiate(&db, &prefab_instance, test_input);
+	//objects.prefab_instantiate(&db, &prefab_instance, test_input);
 
 	test_curve: Animation_Curve(f32);
 	test_curve.keyframes = test_animation_keyframes[:];
@@ -98,6 +98,7 @@ init_scene :: proc(using scene: ^Scene)
 	test_anim_param.offset = (reflect.struct_field_by_name(typeid_of(Transform), "scale").offset);
 	for prefab_component in prefab_instance_components
 	{
+		log.info(prefab_component);
 		if prefab_component.name == "main_transform"
 		{
 			test_anim_param.handle = prefab_component.value;
@@ -139,7 +140,7 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 
 	spaceship_sprite_data := container.handle_get(spaceship_sprite);
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
-	//render_sprite_components(&scene.sprite_renderer.buffer, &sprite_components);
+	render_sprite_components(&scene.sprite_renderer.buffer, &sprite_components);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	

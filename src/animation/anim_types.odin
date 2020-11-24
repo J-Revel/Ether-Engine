@@ -88,9 +88,6 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 		time_ratio := anim_player.time / animation.duration;
 		for param in anim_player.params
 		{
-			//TODO : fix crash here
-			log.info(param.handle);
-			log.info(container.handle_get_raw(param.handle));
 			curve_value_ptr := uintptr(container.handle_get_raw(param.handle)) + uintptr(param.offset);
 			// Find the curve with the right name in the Animation_Config
 			for curve in animation.float_curves

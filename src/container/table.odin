@@ -186,7 +186,6 @@ handle_get_raw :: proc(handle: Raw_Handle) -> rawptr
 {
 	table := handle.raw_table;
 	type_size := reflect.size_of_typeid(table.type_id);
-	log.info("HANDLE GET RAW", table.type_id, type_size);
 	return rawptr(uintptr(int(uintptr(table.data)) + type_size * int(handle.id - 1)));
 }
 

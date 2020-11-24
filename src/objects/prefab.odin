@@ -13,6 +13,8 @@ table_database_add :: proc(db: ^container.Database, name: string, table: ^contai
 {
 	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
 	append(db, named_table);
+	log.info("Create database", name);
+	log.info(table);
 }
 
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
@@ -20,19 +22,22 @@ table_database_add_init :: proc(db: ^container.Database, name: string, table: ^c
 	container.table_init(table, size);
 	named_table := container.Database_Named_Table{name, container.to_raw_table(table)};
 	append(db, named_table);
+	log.info("Create database", name);
+	log.info(table);
 }
 
 prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(prefab.components), context.temp_allocator);
-	component_handles := make([]container.Raw_Handle, len(prefab.components), context.temp_allocator);
+	component_handles := make([]container.Raw_Handle, len(prefab.components), context.allocator);
 	component_sizes := make([]int, len(prefab.components), context.temp_allocator);
 
 	out_components = make([]Named_Raw_Handle, len(prefab.components), context.temp_allocator);
 
 	for component, i in prefab.components
 	{
+		log.info(component);
 		table := db[component.table_index].table;
 		component_sizes[i] = reflect.size_of_typeid(table.type_id);
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
@@ -42,15 +47,15 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 
 	for component, i in prefab.components
 	{
-		table := db[component.table_index].table;
+		table := &db[component.table_index].table;
 		ok : bool;
-		component_handles[i], ok = container.table_allocate_raw(&table);
+		component_handles[i], ok = container.table_allocate_raw(table);
 		out_components[i].value = component_handles[i];
 
 		for ref in component.data.refs
 		{
+			log.info(ref);
 			fieldPtr := rawptr(uintptr(components_data[i]) + ref.field.offset);
-			//log.info(ref);
 			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(container.Raw_Handle));
 		}
 
@@ -176,6 +181,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 					log.info("@", ref_name);
 
 					if component_data, ok := available_component_index[ref_name]; ok {
+						log.info(component_data);
 						append(&refs, Component_Ref{component_data.component_index, field});
 					}
 					else do log.info("Missing component", ref_name);
@@ -192,12 +198,6 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 	return result;
 }
 
-Registered_Component_Data :: struct
-{
-	component_index: int,
-	table_index: int,
-}
-
 load_prefab :: proc(path: string, db: container.Database, allocator := context.allocator) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path);
@@ -209,12 +209,12 @@ load_prefab :: proc(path: string, db: container.Database, allocator := context.a
 
 		component_count := len(parsed.value.(json.Object));
 
-		prefab.components = make([]Component_Model, component_count, context.temp_allocator);
+		prefab.components = make([]Component_Model, component_count, allocator);
 
 		component_cursor := 0;
 		parsed_object := parsed.value.(json.Object);
 
-		registered_components := make(map[string]Registered_Component_Data, 10, context.temp_allocator);
+		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
 		
 		for name, value in parsed_object
 		{

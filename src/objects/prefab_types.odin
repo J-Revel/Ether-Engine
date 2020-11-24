@@ -41,3 +41,9 @@ Named_Component :: struct(T: typeid)
 }
 
 Named_Raw_Handle :: container.Named_Element(container.Raw_Handle);
+
+Registered_Component_Data :: struct
+{
+	component_index: int,
+	table_index: int,
+}
