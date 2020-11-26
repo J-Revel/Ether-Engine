@@ -21,6 +21,7 @@ import "util";
 import "geometry"
 import "input"
 import "gameplay"
+import "editor"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
@@ -43,7 +44,8 @@ main :: proc() {
     log.info("Starting SDL Example...");
     init_err := sdl.init(.Video);
     defer sdl.quit();
-    if init_err == 0 {
+    if init_err == 0 
+    {
         sdl_image.init(.PNG);
         log.info("Setting up the window...");
         window := sdl.create_window("Ether", 100, 100, 1280, 720, .Open_GL|.Mouse_Focus|.Shown|.Resizable);
@@ -88,7 +90,12 @@ main :: proc() {
         screen_size : vec2;
 
         sceneInstance : gameplay.Scene;
-        gameplay.init_scene(&sceneInstance);
+        gameplay.init_main_scene(&sceneInstance);
+
+
+        editor_state: editor.Editor_State;
+        show_editor := false;
+        editor.init_editor(&editor_state);
 
         for running {
             mx, my: i32;
@@ -111,6 +118,13 @@ main :: proc() {
             gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
             gl.Clear(gl.COLOR_BUFFER_BIT);
             gameplay.update_and_render(&sceneInstance, 1.0/60, screen_size, &input_state);
+
+            if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed do show_editor = !show_editor;
+            
+            if show_editor
+            {
+                editor.update_editor(&editor_state, screen_size);
+            }
             imgui.render();
 
             

@@ -19,7 +19,6 @@ import json "core:encoding/json"
 
 import gl "shared:odin-gl";
 
-import "../editor"
 import "../animation"
 
 import "../objects"
@@ -36,16 +35,11 @@ Scene :: struct
     sprites: container.Table(render.Sprite),
     transforms: Transform_Table,
     sprite_components: container.Table(Sprite_Component),
-    show_editor: bool,
     using animation_database: animation.Animation_Database,
-
-	editor_state: editor.Editor_State
 }
 
-test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32){0, 0}, animation.Keyframe(f32){0.5, 1}, animation.Keyframe(f32){0.75, 0.5}, animation.Keyframe(f32){1, 1} };
-init_scene :: proc(using scene: ^Scene)
+init_empty_scene :: proc(using scene: ^Scene)
 {
-	using container;
 	objects.table_database_add_init(&db, "texture", &textures, 100);
 	objects.table_database_add_init(&db, "sprite", &sprites, 200);
 	objects.table_database_add_init(&db, "transform", &transforms, 10000);
@@ -54,6 +48,13 @@ init_scene :: proc(using scene: ^Scene)
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
 	render.init_color_renderer(&color_renderer.render_state);
+}
+
+test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32){0, 0}, animation.Keyframe(f32){0.5, 1}, animation.Keyframe(f32){0.75, 0.5}, animation.Keyframe(f32){1, 1} };
+init_main_scene :: proc(using scene: ^Scene)
+{
+	using container;
+	init_empty_scene(scene);
 
 	camera.zoom = 1;
 	
@@ -71,9 +72,6 @@ init_scene :: proc(using scene: ^Scene)
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
-
-	
-	editor.init_editor(&editor_state);
 
 	using animation;
 
@@ -128,15 +126,8 @@ update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f
 
     animation.update_animations(&animation_players);
 
-	if input.get_key_state(input_state, sdl.Scancode.Tab) == .Pressed do show_editor = !show_editor;
-
 	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
-	if show_editor
-	{
-		sprite_data := container.handle_get(spaceship_sprite);
-		texture_data := container.handle_get(sprite_data.texture);
-		editor.update_editor(&editor_state, screen_size);
-	}
+	
 
 	spaceship_sprite_data := container.handle_get(spaceship_sprite);
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);

@@ -100,7 +100,6 @@ update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> b
 						return false;
 					}
 					curve_value := compute_float_curve_value(container.handle_get(curve.value), time_ratio, 0);
-					log.info(curve_value);
 					(cast(^f32)curve_value_ptr)^ = curve_value;
 				}
 			}

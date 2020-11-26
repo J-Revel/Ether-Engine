@@ -4,11 +4,14 @@ import "../render"
 import win32 "core:sys/windows"
 import "core:os"
 import "../geometry"
+import "../objects"
+import "../gameplay"
 
 Editor_State :: struct
 {
 	show_demo_window: bool,
 	sprite_editor: Sprite_Editor_State,
+	prefab_editor: Prefab_Editor_State,
 }
 
 /*----------------------------------------------
@@ -85,9 +88,15 @@ Sprite_Editor_Render_Data :: struct
 				Prefab Editor
 ------------------------------------------------*/
 
+Editor_Type_Callback :: #type proc(element: any);
+
 Prefab_Editor_State :: struct
 {
-	db: container.Database,
+	scene: gameplay.Scene,
+	components: [dynamic]objects.Component_Model,
+	new_component_index: int,
+	new_component_data: rawptr,
+	editor_type_callbacks: map[typeid]Editor_Type_Callback
 }
 
 /*----------------------------------------------

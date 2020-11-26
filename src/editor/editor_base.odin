@@ -20,9 +20,11 @@ init_editor :: proc(using editor_state: ^Editor_State)
 	sprite_editor.theme.sprite_hovered, _ = render.hex_color_to_u32("f71c1c");
 	sprite_editor.theme.sprite_selected, _ = render.hex_color_to_u32("2980b9");
 	sprite_editor.theme.sprite_gizmo, _ = render.hex_color_to_u32("bdc3c7");
+
+	init_prefab_editor(&prefab_editor);
 }
 
-update_editor :: proc(editor_state: ^Editor_State, screen_size: [2]f32)
+update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
 {
 	imgui.set_next_window_pos({screen_size.x / 2, 0}, .Always);
     imgui.set_next_window_size({screen_size.x / 2, screen_size.y}, .Always);
@@ -32,6 +34,8 @@ update_editor :: proc(editor_state: ^Editor_State, screen_size: [2]f32)
     imgui.checkbox("Show Demo Window", &editor_state.show_demo_window);
 
 	update_sprite_editor(&editor_state.sprite_editor, screen_size);
+    imgui.separator();
+	update_prefab_editor(&prefab_editor);
 
     if editor_state.show_demo_window
     {
