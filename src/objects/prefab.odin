@@ -8,24 +8,25 @@ import "core:encoding/json"
 import "core:runtime"
 import "../container"
 
-
-table_database_add :: proc(db: ^container.Database, name: string, table: ^container.Table($T))
-{
-	named_table := Database_Named_Table{name, Database_Table{table, typeid_of(T)}};
-	append(db, named_table);
-	log.info("Create database", name);
-	log.info(table);
-}
-
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
 	container.table_init(table, size);
 	named_table := container.Database_Named_Table{name, container.to_raw_table(table)};
-	append(db, named_table);
+	append(&db.tables, named_table);
+	type_already_added := false;
+	for type in db.component_types 
+	{
+		if type.value == typeid_of(container.Handle(T))
+		{
+			type_already_added = true;
+		}
+	}
+	if !type_already_added do append(&db.component_types, container.Named_Element(typeid){name, typeid_of(container.Handle(T))});
 	log.info("Create database", name);
 	log.info(table);
 }
 
+// TODO Error with transform that is its own parent, must be a bug in the ref handling
 prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	data_total_size := 0;
@@ -38,7 +39,7 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 	for component, i in prefab.components
 	{
 		log.info(component);
-		table := db[component.table_index].table;
+		table := db.tables[component.table_index].table;
 		component_sizes[i] = reflect.size_of_typeid(table.type_id);
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
 		mem.copy(components_data[i], component.data.data, component_sizes[i]);
@@ -47,20 +48,23 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 
 	for component, i in prefab.components
 	{
-		table := &db[component.table_index].table;
+		table := &db.tables[component.table_index].table;
 		ok : bool;
 		component_handles[i], ok = container.table_allocate_raw(table);
 		out_components[i].value = component_handles[i];
 
-		for ref in component.data.refs
+		using component.data;
+		for ref_index in 0..ref_count
 		{
+			ref := refs[ref_index];
 			log.info(ref);
 			fieldPtr := rawptr(uintptr(components_data[i]) + ref.field.offset);
 			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(container.Raw_Handle));
 		}
 
-		for input in component.data.inputs
+		for input_index in 0..input_count
 		{
+			input := inputs[input_index];
 			if input_value, ok := input_data[input.name]; ok {
 				if input_value.id == input.field.type {
 					field_ptr := rawptr(uintptr(components_data[i]) + input.field.offset);
@@ -128,8 +132,6 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 	ti := type_info_of(type);
 	base_ti := runtime.type_info_base(ti);
 	result.data = mem.alloc(ti.size, ti.align, allocator);
-	refs : [dynamic]Component_Ref;
-	inputs : [dynamic]Component_Input;
 	
 	for name, value in json_data
 	{
@@ -172,7 +174,8 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				{
 					//log.info("INPUT");
 					input_name := t[1:];
-					append(&inputs, Component_Input{input_name, field});
+					result.inputs[result.input_count] = Component_Input{input_name, field};
+					result.input_count += 1;
 				}
 				if(t[0] == '@')
 				{
@@ -182,23 +185,20 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 
 					if component_data, ok := available_component_index[ref_name]; ok {
 						log.info(component_data);
-						append(&refs, Component_Ref{component_data.component_index, field});
+						result.refs[result.ref_count] = Component_Ref{component_data.component_index, field};
+						result.ref_count += 1;
 					}
 					else do log.info("Missing component", ref_name);
 				}
 			}
 		}
 	}
-	result.inputs = make([]Component_Input, len(inputs), allocator);
-	for input, index in inputs do result.inputs[index] = inputs[index];
-	result.refs = make([]Component_Ref, len(refs), allocator);
-	for ref, index in refs do result.refs[index] = refs[index];
 
 	//log.info(result);
 	return result;
 }
 
-load_prefab :: proc(path: string, db: container.Database, allocator := context.allocator) -> (Prefab, bool)
+load_prefab :: proc(path: string, db: ^container.Database, allocator := context.allocator) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path);
 	if ok

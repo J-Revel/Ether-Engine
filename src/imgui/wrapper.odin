@@ -436,21 +436,21 @@ swr_igInputFloat :: proc(label: string, v: ^f32, step: f32, step_fast: f32, form
 }
 
 // AUTO_GENERATED for 'igInputFloat2'
-swr_igInputFloat2 :: proc(label: string, v: [2]f32, format: string, flags: Input_Text_Flags) -> bool {
+swr_igInputFloat2 :: proc(label: string, v: ^f32, format: string, flags: Input_Text_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str2 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igInputFloat2(str0, v, str2, flags);
 }
 
 // AUTO_GENERATED for 'igInputFloat3'
-swr_igInputFloat3 :: proc(label: string, v: [3]f32, format: string, flags: Input_Text_Flags) -> bool {
+swr_igInputFloat3 :: proc(label: string, v: ^f32, format: string, flags: Input_Text_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str2 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igInputFloat3(str0, v, str2, flags);
 }
 
 // AUTO_GENERATED for 'igInputFloat4'
-swr_igInputFloat4 :: proc(label: string, v: [4]f32, format: string, flags: Input_Text_Flags) -> bool {
+swr_igInputFloat4 :: proc(label: string, v: ^f32, format: string, flags: Input_Text_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str2 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igInputFloat4(str0, v, str2, flags);
@@ -463,19 +463,19 @@ swr_igInputInt :: proc(label: string, v: ^i32, step: i32, step_fast: i32, flags:
 }
 
 // AUTO_GENERATED for 'igInputInt2'
-swr_igInputInt2 :: proc(label: string, v: [2]i32, flags: Input_Text_Flags) -> bool {
+swr_igInputInt2 :: proc(label: string, v: ^i32, flags: Input_Text_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igInputInt2(str0, v, flags);
 }
 
 // AUTO_GENERATED for 'igInputInt3'
-swr_igInputInt3 :: proc(label: string, v: [3]i32, flags: Input_Text_Flags) -> bool {
+swr_igInputInt3 :: proc(label: string, v: ^i32, flags: Input_Text_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igInputInt3(str0, v, flags);
 }
 
 // AUTO_GENERATED for 'igInputInt4'
-swr_igInputInt4 :: proc(label: string, v: [4]i32, flags: Input_Text_Flags) -> bool {
+swr_igInputInt4 :: proc(label: string, v: ^i32, flags: Input_Text_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	return igInputInt4(str0, v, flags);
 }

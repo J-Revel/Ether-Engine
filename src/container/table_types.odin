@@ -3,7 +3,10 @@ package table
 import "core:mem"
 
 Database_Named_Table :: struct { name: string, table: Raw_Table };
-Database :: [dynamic]Database_Named_Table;
+Database :: struct {
+	tables: [dynamic]Database_Named_Table,
+	component_types: [dynamic]Named_Element(typeid),
+}
 
 Named_Element :: struct(T: typeid)
 {
@@ -30,7 +33,8 @@ Raw_Table :: struct
 	data: rawptr,
 	allocation: ^Bit_Array,
 	allocator: mem.Allocator,
-	type_id: typeid
+	type_id: typeid,
+	handle_type_id: typeid
 }
 
 Table :: struct(T: typeid)

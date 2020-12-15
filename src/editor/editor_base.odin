@@ -1,6 +1,6 @@
 package editor
 
-import imgui "../imgui";
+import "../imgui";
 import "../render"
 import "core:log"
 import "core:strings"
@@ -12,14 +12,85 @@ import "core:math/linalg"
 
 import "../geometry"
 
+apply_style :: proc()
+{
+	style := imgui.get_style();
+	colors := style.colors;
+
+	colors[imgui.Col.Text]                   = [4]f32{0.9, 0.9, 0.9, 1};
+	colors[imgui.Col.TextDisabled]           = [4]f32{0.500, 0.500, 0.500, 1.000};
+	colors[imgui.Col.WindowBg]               = [4]f32{0.09, 0.09, 0.09, 1.000};
+	colors[imgui.Col.ChildBg]                = [4]f32{0.280, 0.280, 0.280, 0.100};
+	colors[imgui.Col.PopupBg]                = [4]f32{0.313, 0.313, 0.313, 1.000};
+	colors[imgui.Col.Border]                 = [4]f32{0.266, 0.266, 0.266, 1.000};
+	colors[imgui.Col.BorderShadow]           = [4]f32{0.000, 0.000, 0.000, 0.000};
+	colors[imgui.Col.FrameBg]                = [4]f32{0.160, 0.160, 0.160, 1.000};
+	colors[imgui.Col.FrameBgHovered]         = [4]f32{0.200, 0.200, 0.200, 1.000};
+	colors[imgui.Col.FrameBgActive]          = [4]f32{0.280, 0.280, 0.280, 1.000};
+	colors[imgui.Col.TitleBg]                = [4]f32{0.148, 0.148, 0.148, 1.000};
+	colors[imgui.Col.TitleBgActive]          = [4]f32{0.148, 0.148, 0.148, 1.000};
+	colors[imgui.Col.TitleBgCollapsed]       = [4]f32{0.148, 0.148, 0.148, 1.000};
+	colors[imgui.Col.MenuBarBg]              = [4]f32{0.3, 0.3, 0.3, 1.000};
+	colors[imgui.Col.ScrollbarBg]            = [4]f32{0.160, 0.160, 0.160, 1.000};
+	colors[imgui.Col.ScrollbarGrab]          = [4]f32{0.277, 0.277, 0.277, 1.000};
+	colors[imgui.Col.ScrollbarGrabHovered]   = [4]f32{0.300, 0.300, 0.300, 1.000};
+	colors[imgui.Col.ScrollbarGrabActive]    = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.CheckMark]              = [4]f32{1.000, 1.000, 1.000, 1.000};
+	colors[imgui.Col.SliderGrab]             = [4]f32{0.391, 0.391, 0.391, 1.000};
+	colors[imgui.Col.SliderGrabActive]       = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.Button]                 = [4]f32{1.000, 1.000, 1.000, 0.000};
+	colors[imgui.Col.ButtonHovered]          = [4]f32{1.000, 1.000, 1.000, 0.156};
+	colors[imgui.Col.ButtonActive]           = [4]f32{1.000, 1.000, 1.000, 0.391};
+	colors[imgui.Col.Header]                 = [4]f32{0.43, 0.353, 0.353, 1.000};
+	colors[imgui.Col.HeaderHovered]          = [4]f32{0.469, 0.469, 0.469, 1.000};
+	colors[imgui.Col.HeaderActive]           = [4]f32{0.469, 0.469, 0.469, 1.000};
+	colors[imgui.Col.Separator]              = colors[imgui.Col.Border];
+	colors[imgui.Col.SeparatorHovered]       = [4]f32{0.391, 0.391, 0.391, 1.000};
+	colors[imgui.Col.SeparatorActive]        = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.ResizeGrip]             = [4]f32{1.000, 1.000, 1.000, 0.250};
+	colors[imgui.Col.ResizeGripHovered]      = [4]f32{1.000, 1.000, 1.000, 0.670};
+	colors[imgui.Col.ResizeGripActive]       = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.Tab]                    = [4]f32{0.098, 0.098, 0.098, 1.000};
+	colors[imgui.Col.TabHovered]             = [4]f32{0.352, 0.352, 0.352, 1.000};
+	colors[imgui.Col.TabActive]              = [4]f32{0.195, 0.195, 0.195, 1.000};
+	colors[imgui.Col.TabUnfocused]           = [4]f32{0.098, 0.098, 0.098, 1.000};
+	colors[imgui.Col.TabUnfocusedActive]     = [4]f32{0.195, 0.195, 0.195, 1.000};
+	//colors[imgui.Col.DockingPreview]         = [4]f32{1.000, 0.391, 0.000, 0.781};
+	//colors[imgui.Col.DockingEmptyBg]         = [4]f32{0.180, 0.180, 0.180, 1.000};
+	colors[imgui.Col.PlotLines]              = [4]f32{0.469, 0.469, 0.469, 1.000};
+	colors[imgui.Col.PlotLinesHovered]       = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.PlotHistogram]          = [4]f32{0.586, 0.586, 0.586, 1.000};
+	colors[imgui.Col.PlotHistogramHovered]   = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.TextSelectedBg]         = [4]f32{1.000, 1.000, 1.000, 0.156};
+	colors[imgui.Col.DragDropTarget]         = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.NavHighlight]           = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.NavWindowingHighlight]  = [4]f32{1.000, 0.391, 0.000, 1.000};
+	colors[imgui.Col.NavWindowingDimBg]      = [4]f32{0.000, 0.000, 0.000, 0.586};
+	colors[imgui.Col.ModalWindowDimBg]       = [4]f32{0.000, 0.000, 0.000, 0.586};
+
+	style.child_rounding = 4;
+	style.frame_border_size = 1;
+	style.frame_rounding = 2;
+	style.grab_min_size = 7;
+	style.popup_rounding = 2;
+	style.scrollbar_rounding = 12;
+	style.scrollbar_size = 13;
+	style.tab_border_size = 1;
+	style.tab_rounding = 0;
+	style.window_rounding = 4;
+	style.colors = colors;
+}
+
 init_editor :: proc(using editor_state: ^Editor_State)
 {
+
 	container.table_init(&editor_state.sprite_editor.loaded_textures, 10);
 	sprite_editor.scale = 1;
 	sprite_editor.theme.sprite_normal, _ = render.hex_color_to_u32("e74c3c");
 	sprite_editor.theme.sprite_hovered, _ = render.hex_color_to_u32("f71c1c");
 	sprite_editor.theme.sprite_selected, _ = render.hex_color_to_u32("2980b9");
 	sprite_editor.theme.sprite_gizmo, _ = render.hex_color_to_u32("bdc3c7");
+	apply_style();
 
 	init_prefab_editor(&prefab_editor);
 }
@@ -55,7 +126,7 @@ save_sprites :: proc(output_path: string, using editor_state: ^Sprite_Editor_Sta
 	texture: ^render.Texture = container.handle_get(texture_id);
 	temp_sprite_table : container.Table(render.Sprite);
 	container.table_init(&temp_sprite_table, uint(len(sprites_data)), context.temp_allocator);
-
+	
 	for sprite_data in &sprites_data
 	{
 		sprite: render.Sprite = {

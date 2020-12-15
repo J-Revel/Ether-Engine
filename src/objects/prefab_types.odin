@@ -3,6 +3,9 @@ package prefab
 import "core:reflect"
 import "../container"
 
+MAX_REF_COUNT :: 256;
+MAX_INPUT_COUNT :: 256;
+
 Component_Ref :: struct
 {
 	component_index: int,
@@ -12,8 +15,10 @@ Component_Ref :: struct
 Component_Model_Data :: struct
 {
 	data: rawptr,
-	refs: []Component_Ref,
-	inputs: []Component_Input,
+	refs: [MAX_REF_COUNT]Component_Ref,
+	ref_count: int,
+	inputs: [MAX_REF_COUNT]Component_Input,
+	input_count: int,
 }
 
 Component_Model :: struct

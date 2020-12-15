@@ -1,5 +1,8 @@
 package imgui;
 
+import "core:runtime"
+import "core:strings"
+
 color_hsv     :: inline proc(pOut: ^Color, self: ^Color, h: f32, s: f32, v: f32, a := f32(1.0)) do ImColor_HSV(pOut, self, h, s, v, a);
 color_set_hsv :: inline proc(self: ^Color, h: f32, s: f32, v: f32, a := f32(1.0))        do ImColor_SetHSV(self, h, s, v, a);
 
@@ -371,16 +374,29 @@ image_button                           :: inline proc(user_texture_id: Texture_I
 indent                                 :: inline proc(indent_w := f32(0.0))                                                                                                                                                  do igIndent(indent_w);
 input_double                           :: inline proc(label: string, v: ^f64, step := f64(0.0), step_fast := f64(0.0), format := "%.6f", flags := Input_Text_Flags(0)) -> bool                                               do return swr_igInputDouble(label, v, step, step_fast, format, flags);
 input_float                            :: inline proc(label: string, v: ^f32, step := f32(0.0), step_fast := f32(0.0), format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                               do return swr_igInputFloat(label, v, step, step_fast, format, flags);
-input_float2                           :: inline proc(label: string, v: [2]f32, format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                                                                      do return swr_igInputFloat2(label, v, format, flags);
-input_float3                           :: inline proc(label: string, v: [3]f32, format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                                                                      do return swr_igInputFloat3(label, v, format, flags);
-input_float4                           :: inline proc(label: string, v: [4]f32, format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                                                                      do return swr_igInputFloat4(label, v, format, flags);
+input_float2                           :: inline proc(label: string, v: ^f32, format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                                                                      do return swr_igInputFloat2(label, v, format, flags);
+input_float3                           :: inline proc(label: string, v: ^f32, format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                                                                      do return swr_igInputFloat3(label, v, format, flags);
+input_float4                           :: inline proc(label: string, v: ^f32, format := "%.3f", flags := Input_Text_Flags(0)) -> bool                                                                                      do return swr_igInputFloat4(label, v, format, flags);
 input_int                              :: inline proc(label: string, v: ^i32, step := i32(1), step_fast := i32(100), flags := Input_Text_Flags(0)) -> bool                                                                   do return swr_igInputInt(label, v, step, step_fast, flags);
-input_int2                             :: inline proc(label: string, v: [2]i32, flags := Input_Text_Flags(0)) -> bool                                                                                                        do return swr_igInputInt2(label, v, flags);
-input_int3                             :: inline proc(label: string, v: [3]i32, flags := Input_Text_Flags(0)) -> bool                                                                                                        do return swr_igInputInt3(label, v, flags);
-input_int4                             :: inline proc(label: string, v: [4]i32, flags := Input_Text_Flags(0)) -> bool                                                                                                        do return swr_igInputInt4(label, v, flags);
+input_int2                             :: inline proc(label: string, v: ^i32, flags := Input_Text_Flags(0)) -> bool                                                                                                        do return swr_igInputInt2(label, v, flags);
+input_int3                             :: inline proc(label: string, v: ^i32, flags := Input_Text_Flags(0)) -> bool                                                                                                        do return swr_igInputInt3(label, v, flags);
+input_int4                             :: inline proc(label: string, v: ^i32, flags := Input_Text_Flags(0)) -> bool                                                                                                        do return swr_igInputInt4(label, v, flags);
 input_scalar                           :: inline proc(label: string, data_type: Data_Type, p_data: rawptr, p_step : rawptr = nil, p_step_fast : rawptr = nil, format := "", flags := Input_Text_Flags(0)) -> bool            do return swr_igInputScalar(label, data_type, p_data, p_step, p_step_fast, format, flags);
 input_scalar_n                         :: inline proc(label: string, data_type: Data_Type, p_data: rawptr, components: i32, p_step : rawptr = nil, p_step_fast : rawptr = nil, format := "", flags := Input_Text_Flags(0)) -> bool do return swr_igInputScalarN(label, data_type, p_data, components, p_step, p_step_fast, format, flags);
 input_text                             :: inline proc(label: string, buf: []u8, flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool                                        do return wrapper_input_text(label, buf, flags, callback, user_data);
+input_string                           :: inline proc(label: string, value: ^string, max_length: int = 100, flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool                                        
+{
+	c := make([]byte, max_length, context.temp_allocator);
+	copy(c, value^);
+	if input_text(label, c[:])
+	{
+		if value != nil do delete(value^);
+		new_str := runtime.cstring_to_string(cstring(&c[0]));
+		value^ = strings.clone(new_str, context.allocator);
+		return true;
+	}
+	return false;
+}
 input_text_multiline                   :: inline proc(label: string, buf: string, buf_size: uint, size := Vec2(Vec2 {0,0}), flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool do return swr_igInputTextMultiline(label, buf, buf_size, size, flags, callback, user_data);
 input_text_with_hint                   :: inline proc(label: string, hint: string, buf: string, buf_size: uint, flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool        do return swr_igInputTextWithHint(label, hint, buf, buf_size, flags, callback, user_data);
 invisible_button                       :: inline proc(str_id: string, size: Vec2, flags := Button_Flags(0)) -> bool                                                                                                          do return swr_igInvisibleButton(str_id, size, flags);

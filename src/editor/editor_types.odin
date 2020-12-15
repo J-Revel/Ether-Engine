@@ -88,15 +88,40 @@ Sprite_Editor_Render_Data :: struct
 				Prefab Editor
 ------------------------------------------------*/
 
-Editor_Type_Callback :: #type proc(element: any);
+Editor_Type_Callback :: #type proc
+(
+	using editor_state: ^Prefab_Editor_State, 
+	using field: Component_Model_Field
+);
+
+Component_Model_Field :: struct
+{
+	name: string,
+	component: ^objects.Component_Model,
+	offset_in_component: uintptr,
+	type_id: typeid,
+}
+
+Prefab_Editor_Input :: struct
+{
+	name: string,
+	type: typeid,
+}
+
+Prefab_Input_Type :: struct
+{
+	name: string,
+	type: typeid,
+}
 
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
 	components: [dynamic]objects.Component_Model,
-	new_component_index: int,
-	new_component_data: rawptr,
-	editor_type_callbacks: map[typeid]Editor_Type_Callback
+	components_history: [dynamic][]objects.Component_Model,
+	editor_type_callbacks: map[typeid]Editor_Type_Callback,
+	inputs: [dynamic]Prefab_Editor_Input,
+	input_types: [dynamic]Prefab_Input_Type,
 }
 
 /*----------------------------------------------

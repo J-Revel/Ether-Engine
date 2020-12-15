@@ -39,9 +39,9 @@ main :: proc() {
         .Procedure,
     };
     context.logger = log.create_console_logger(opt = logger_opts);
-    
 
     log.info("Starting SDL Example...");
+    
     init_err := sdl.init(.Video);
     defer sdl.quit();
     if init_err == 0 
@@ -81,7 +81,6 @@ main :: proc() {
         imgui_state := init_imgui_state(window);
         input_state : input.State;
         input.setup_state(&input_state);
-
         
         //building.size = vec2{20, 20};
 
@@ -126,7 +125,7 @@ main :: proc() {
                 editor.update_editor(&editor_state, screen_size);
             }
             imgui.render();
-
+            
             
             if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed) do running = false;
 
@@ -231,7 +230,7 @@ Imgui_State :: struct {
 
 init_imgui_state :: proc(window: ^sdl.Window) -> Imgui_State {
     using res := Imgui_State{};
-
+    
     imgui.create_context();
     imgui.style_colors_dark();
     
