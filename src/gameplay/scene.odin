@@ -69,6 +69,11 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_input["scale"] = f32(0.1);
 
 	prefab_instance_components, _ := objects.prefab_instantiate(&db, &prefab_instance, test_input);
+	it := container.table_iterator(&transforms);
+	for transform in container.table_iterate(&it)
+	{
+		log.info(transform);
+	}
 
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{-350, 0};

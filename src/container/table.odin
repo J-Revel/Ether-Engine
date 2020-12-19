@@ -21,7 +21,7 @@ bit_array_get :: proc(bit_array: ^Bit_Array, bit: int) -> bool
 	return (value & (1 << uint(bit_index))) > 0;
 }
 
-bit_array_allocate :: proc(bit_array: ^Bit_Array) -> (int, bool)
+bit_array_allocate :: proc(bit_array: Bit_Array) -> (int, bool)
 {
 	for i in 0..<cast(uint)len(bit_array) * 32
 	{
@@ -38,6 +38,11 @@ bit_array_allocate :: proc(bit_array: ^Bit_Array) -> (int, bool)
 	return 0, false;
 }
 
+handle_type_of :: proc(table: ^$A/Table($V)) -> typeid
+{
+	return typeid_of(Handle(V));
+}
+
 table_init :: proc{table_init_none, table_init_cap};
 
 table_init_none :: proc(a: ^$A/Table, allocator:= context.allocator)
@@ -45,22 +50,17 @@ table_init_none :: proc(a: ^$A/Table, allocator:= context.allocator)
 	table_init_cap(a, 100, allocator);
 }
 
-handle_type_of :: proc(table: ^$A/Table($V)) -> typeid
+table_init_cap :: proc(table: ^$A/Table($V), cap: uint, allocator := context.allocator)
 {
-	return typeid_of(Handle(V));
-}
+	table.allocator = allocator;
 
-table_init_cap :: proc(a: ^$A/Table($V), cap: uint, allocator := context.allocator)
-{
-	a.allocator = allocator;
-
-	a.data = (mem.alloc(size_of(V) * int(cap), align_of(V), allocator));
-	a.allocation = make(Bit_Array, (cap + 31) / 32, allocator);
+	table.data = (mem.alloc(size_of(V) * int(cap), align_of(V), allocator));
+	table.allocation = make(Bit_Array, (cap + 31) / 32, allocator);
 }
 
 table_add :: proc(table: ^$A/Table($T), value: T) -> (Handle(T), bool)
 {
-	index, ok := bit_array_allocate(&table.allocation);
+	index, ok := bit_array_allocate(table.allocation);
 	if ok
 	{
 		mem.ptr_offset(cast(^T)table.data, index)^ = value;
@@ -202,5 +202,5 @@ db_get_tables_of_type :: proc(db: ^Database, type_id: typeid, allocator := conte
 
 to_raw_table :: proc(table: ^Table($T)) -> Raw_Table
 {
-	return Raw_Table{table.data, &table.allocation, table.allocator, typeid_of(T), typeid_of(Handle(T))};
+	return Raw_Table{table, typeid_of(T), typeid_of(Handle(T))};
 }

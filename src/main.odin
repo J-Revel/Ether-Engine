@@ -36,7 +36,7 @@ main :: proc() {
     logger_opts := log.Options {
         .Level,
         .Line,
-        .Procedure,
+        .Short_File_Path,
     };
     context.logger = log.create_console_logger(opt = logger_opts);
 

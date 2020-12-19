@@ -10,7 +10,9 @@ import "../container"
 
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
+	log.info("Init table", name, table);
 	container.table_init(table, size);
+	log.info("table created", name);
 	named_table := container.Database_Named_Table{name, container.to_raw_table(table)};
 	append(&db.tables, named_table);
 	type_already_added := false;
@@ -23,7 +25,6 @@ table_database_add_init :: proc(db: ^container.Database, name: string, table: ^c
 	}
 	if !type_already_added do append(&db.component_types, container.Named_Element(typeid){name, typeid_of(container.Handle(T))});
 	log.info("Create database", name);
-	log.info(table);
 }
 
 // TODO Error with transform that is its own parent, must be a bug in the ref handling
@@ -31,17 +32,19 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(prefab.components), context.temp_allocator);
-	component_handles := make([]container.Raw_Handle, len(prefab.components), context.allocator);
+	component_handles := make([]container.Raw_Handle, len(prefab.components), context.allocator); // TODO : can use temp allocator instead ?
 	component_sizes := make([]int, len(prefab.components), context.temp_allocator);
 
 	out_components = make([]Named_Raw_Handle, len(prefab.components), context.temp_allocator);
 
 	for component, i in prefab.components
 	{
-		log.info(component);
 		table := db.tables[component.table_index].table;
 		component_sizes[i] = reflect.size_of_typeid(table.type_id);
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
+
+		log.info("START DATA", components_data[i]);
+		log.info(any{components_data[i], table.type_id});
 		mem.copy(components_data[i], component.data.data, component_sizes[i]);
 		out_components[i].name = component.id;
 	}
@@ -54,15 +57,23 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 		out_components[i].value = component_handles[i];
 
 		using component.data;
-		for ref_index in 0..ref_count
+		for ref_index in 0..<ref_count
 		{
 			ref := refs[ref_index];
-			log.info(ref);
-			fieldPtr := rawptr(uintptr(components_data[i]) + ref.field.offset);
-			mem.copy(fieldPtr, &component_handles[ref.component_index], size_of(container.Raw_Handle));
+			ref_ptr := rawptr(uintptr(components_data[i]) + ref.field.offset);
+			component_data := cast(^u8)components_data[i];
+			mem.copy(ref_ptr, &component_handles[ref.component_index], type_info_of(ref.field.type).size);
+			log.info(any{components_data[i], typeid_of(container.Raw_Handle)});
+			log.info(ref.field.type);
+			handle: ^container.Raw_Handle = &component_handles[ref.component_index];
+			table_data: ^container.Table_Data = handle.raw_table.table;
+			generic_handle := container.Generic_Handle{handle.id, table_data};
+			
+			field_ptr := rawptr(uintptr(components_data[i]) + ref.field.offset);
+			mem.copy(field_ptr, &generic_handle, reflect.size_of_typeid(ref.field.type));
 		}
 
-		for input_index in 0..input_count
+		for input_index in 0..<input_count
 		{
 			input := inputs[input_index];
 			if input_value, ok := input_data[input.name]; ok {
@@ -73,14 +84,21 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 				else do log.info("Wrong input value : ", input_value.id, " vs ", input.field.type);
 			}
 			else do log.info("Input not found ", input);
+			log.info(any{components_data[i], table.type_id});
 		}
 	}
 
 	for component, i in prefab.components
 	{
+		table := &db.tables[component.table_index].table;
+		data_ptr := components_data[i];
+		log.info(table.type_id, component_sizes[i]);
+		log.info("FINAL DATA 1", any{data_ptr, table.type_id});
 		component_data := container.handle_get_raw(component_handles[i]);
 		mem.copy(component_data, components_data[i], component_sizes[i]);
+		log.info("FINAL DATA 2", any{components_data[i], table.type_id});
 	}
+	log.info("FINISHED");
 
 	success = true;
 
@@ -135,6 +153,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 	
 	for name, value in json_data
 	{
+		if name == "type" do continue;
 		field, field_found := find_struct_field(type, name);
 		#partial switch t in value.value
 		{
@@ -144,7 +163,6 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 			}
 			case json.Array:
 			{
-
 				if(type_info_of(field.type).size == size_of(f32) * len(t))
 				{
 					for i := 0; i < len(t); i += 1
@@ -161,6 +179,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 			case json.Integer:
 			case json.Float:
 			{
+				// TODO : maybe handle f64 ?
 				if(field.type == typeid_of(f32))
 				{
 					value: f32 = f32(t);
@@ -187,6 +206,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 						log.info(component_data);
 						result.refs[result.ref_count] = Component_Ref{component_data.component_index, field};
 						result.ref_count += 1;
+						log.info("REF ADDED ", ref_name, result.refs[:result.ref_count]);
 					}
 					else do log.info("Missing component", ref_name);
 				}
@@ -220,7 +240,6 @@ load_prefab :: proc(path: string, db: ^container.Database, allocator := context.
 		{
 			value_obj := value.value.(json.Object);
 			table_name := value_obj["type"].value.(json.String);
-			log.info(table_name);
 			if table, table_index, ok := container.db_get_table(db, table_name); ok
 			{
 				prefab.components[component_cursor].table_index = table_index;
@@ -230,22 +249,23 @@ load_prefab :: proc(path: string, db: ^container.Database, allocator := context.
 			}
 			component_cursor += 1;
 		}
-
-		//l_b := gameplay.Loading_Building{Handle(Building){0, nil}, 0};
-		//wave_emitter := Wave_Emitter{Handle(Loading_Building){0, nil}, 0, math.PI / 10};
-		//prefab.components[0] = {0, &building};
-		//prefab.components[1] = {1, &l_b};
-		//prefab.components[2] = {4, &wave_emitter};
-
-		//prefab.refs = make([]Component_Ref, 2, context.temp_allocator);
-		//test_offset := (reflect.struct_field_by_name(typeid_of(Loading_Building), "building").offset);
-		//prefab.refs[0] = {1, int(test_offset), 0};
-
-		//test_offset = (reflect.struct_field_by_name(typeid_of(Wave_Emitter), "loading_building").offset);
-		//prefab.refs[1] = {2, int(test_offset), 1};
-	
-		//log.info(parsed.value.(json.Object)["building"].value.(json.Object)["size"].value.(json.Array)[0].value.(f64));
+		for component in &prefab.components
+		{
+			log.info("COMPONENT", component.id);
+			log.info(component_refs(&component.data));
+			log.info(component_inputs(&component.data));
+		}
 		return prefab, true;
 	}
 	return {}, false;
+}
+
+component_refs :: inline proc(component: ^Component_Model_Data) -> []Component_Ref
+{
+	return component.refs[0:component.ref_count];
+}
+
+component_inputs :: inline proc(component: ^Component_Model_Data) -> []Component_Input
+{
+	return component.inputs[0:component.ref_count];
 }

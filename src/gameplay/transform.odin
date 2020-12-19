@@ -21,6 +21,7 @@ get_transform_absolute :: proc(transform_id: Transform_Handle) -> (pos: [2]f32, 
 	for cursor := transform_id; cursor.id > 0;
 	{
 		cursor_data := container.handle_get(cursor);
+		log.info(cursor_data.parent);
 		if cursor_data != nil
 		{
 			pos += cursor_data.pos;

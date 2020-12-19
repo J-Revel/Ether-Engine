@@ -28,20 +28,30 @@ Handle :: struct(T: typeid)
 	table: ^Table(T)
 }
 
-Raw_Table :: struct
+Generic_Handle :: struct
+{
+	id: int,
+	table_data: ^Table_Data
+}
+
+// TODO : turn into Raw_Table with raw data and 
+Table_Data :: struct
 {
 	data: rawptr,
-	allocation: ^Bit_Array,
+	allocation: Bit_Array,
 	allocator: mem.Allocator,
-	type_id: typeid,
-	handle_type_id: typeid
 }
 
 Table :: struct(T: typeid)
 {
-	data: rawptr,
-	allocation: Bit_Array,
-	allocator: mem.Allocator
+	using raw: Table_Data,
+}
+
+Raw_Table :: struct
+{
+	using table: ^Table_Data,
+	type_id: typeid,
+	handle_type_id: typeid,
 }
 
 Table_Iterator :: struct(T: typeid)
