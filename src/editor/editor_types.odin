@@ -122,6 +122,7 @@ Prefab_Editor_State :: struct
 	editor_type_callbacks: map[typeid]Editor_Type_Callback,
 	inputs: [dynamic]Prefab_Editor_Input,
 	input_types: [dynamic]Prefab_Input_Type,
+	z_down: bool,
 }
 
 /*----------------------------------------------
