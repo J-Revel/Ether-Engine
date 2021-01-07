@@ -67,7 +67,7 @@ Sprite_Editor_State :: struct
 	
 	tool_data: Sprite_Tool_Data,
 	searching_file: bool,
-	folder_display_state: Folder_Display_State,
+	file_selection_data: File_Selection_Data,
 	drag_offset: [2]f32,
 	theme: Sprite_Editor_Theme,
 }
@@ -138,8 +138,36 @@ Anim_Editor_State :: struct
 				Folder Editor
 ------------------------------------------------*/
 
+File_Search_State :: enum
+{
+	Stopped,
+	Searching,
+	Found,
+}
+
 Folder_Display_State :: struct
 {
 	current_path: string,
 	files: []os.File_Info,
+}
+
+File_Filter_Type :: enum
+{
+	All,
+	Show_With_Ext,
+	Hide_With_Ext
+}
+
+File_Search_Config :: struct
+{
+	start_folder: string,
+	filter_type: File_Filter_Type,
+	extensions: []string,
+	hide_folders: bool
+}
+
+File_Selection_Data :: struct
+{
+	current_path: string,
+	display_data: []os.File_Info
 }

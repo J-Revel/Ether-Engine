@@ -92,6 +92,8 @@ init_editor :: proc(using editor_state: ^Editor_State)
 	sprite_editor.theme.sprite_gizmo, _ = render.hex_color_to_u32("bdc3c7");
 	apply_style();
 
+	sprite_editor.file_selection_data.current_path = strings.clone("resources/textures");
+
 	init_prefab_editor(&prefab_editor);
 }
 
@@ -142,34 +144,22 @@ save_sprites :: proc(output_path: string, using editor_state: ^Sprite_Editor_Sta
 update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_size: [2]f32)
 {
 	io := imgui.get_io();
+	extensions := []string{".png"};
+	search_config := File_Search_Config{"resources/textures", .Show_With_Ext, extensions, false};
+	path, file_search_state := file_selector_popup("sprite_selector", "Select Sprite", search_config);
 
-	if imgui.button("Open Texture")
-    {
-    	init_folder_display("resources/textures", &folder_display_state);
-    	editor_state.searching_file = true;
-    }
-
-    if editor_state.searching_file
-    {
-    	path, was_allocated := folder_display(&folder_display_state, context.temp_allocator);
-    	if len(path) > 0
-    	{
-    		if strings.has_suffix(path, ".png")
-    		{
-    			if texture_id.id > 0
-    			{
-    				render.unload_texture(container.handle_get(texture_id));
-    			}
-    			searching_file = false;
-				path_copy := strings.clone(path, context.allocator);
-    			texture := render.load_texture(path_copy);
-    			texture_id, _ = container.table_add(&loaded_textures, texture);
-				load_sprites_for_texture(editor_state, texture.path);
-    		}
-    		folder_display_state.current_path = path;
-    		update_folder_display(&folder_display_state);
-    	}
-    }
+	if file_search_state == .Found
+	{
+		if texture_id.id > 0
+		{
+			render.unload_texture(container.handle_get(texture_id));
+		}
+		searching_file = false;
+		path_copy := strings.clone(path, context.allocator);
+		texture := render.load_texture(path_copy);
+		texture_id, _ = container.table_add(&loaded_textures, texture);
+		load_sprites_for_texture(editor_state, texture.path);
+	}
     if texture_id.id > 0
     {
 

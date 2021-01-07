@@ -517,6 +517,10 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 {
 	io := imgui.get_io();
+	
+	extensions := []string{".prefab"};
+	search_config := File_Search_Config{"config/prefabs", .Show_With_Ext, extensions, false};
+	path, file_search_state := file_selector_popup("prefab_load", "Load Prefab", search_config);
 	if io.key_ctrl && io.keys_down[sdl.Scancode.W] && !z_down
 	{
 		undo_history(editor_state);
