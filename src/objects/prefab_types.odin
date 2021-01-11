@@ -34,6 +34,12 @@ Component_Input :: struct
 	field: reflect.Struct_Field,
 }
 
+Prefab_Input_Type :: struct
+{
+	name: string,
+	type: typeid,
+}
+
 Prefab_Input :: struct
 {
 	name: string,

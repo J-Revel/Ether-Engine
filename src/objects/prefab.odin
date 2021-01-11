@@ -9,6 +9,14 @@ import "core:runtime"
 import "../container"
 import "core:strconv"
 
+default_input_types := [?]Prefab_Input_Type{
+	{"int", typeid_of(int)}, 
+	{"u32", typeid_of(u32)}, 
+	{"i32", typeid_of(i32)}, 
+	{"float", typeid_of(f32)}, 
+	{"vec2", typeid_of([2]f32)},
+};
+
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
 	log.info("Init table", name, table);
@@ -238,8 +246,16 @@ load_prefab :: proc(path: string, db: ^container.Database, allocator := context.
 		component_cursor := 0;
 
 		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
+
+		input_objects := json_object["inputs"].value.(json.Array);
+		for input_data in input_objects
+		{
+			input_name := input_data.value.(json.Object)["name"].value.(string);
+			input_type := input_data.value.(json.Object)["type"].value.(string);
+
+		}
 		
-		for name, value in json_object
+		for name, value in json_object["components"].value.(json.Object)
 		{
 			value_obj := value.value.(json.Object);
 			log.info(value_obj["type"]);

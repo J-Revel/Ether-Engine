@@ -1,13 +1,25 @@
 {
-	"main_transform": {
-		"type": "transform",
-		"pos": "&pos",
-		"scale": "&scale",
-		"angle": 0
-	},
-	"sprite_component": {
-		"type": "sprite_component",
-		"transform": "@main_transform",
-		"sprite": "&sprite"
+	"inputs": [
+		{
+			"name": "pos",
+			"type": "vec2",
+		},
+		{
+			"name": "scale",
+			"type": "f32"
+		},
+	],
+	"components": {
+		"main_transform": {
+			"type": "transform",
+			"pos": "&0",
+			"scale": "&1",
+			"angle": 0
+		},
+		"sprite_component": {
+			"type": "sprite_component",
+			"transform": "@main_transform",
+			"sprite": "&sprite"
+		}
 	}
 }

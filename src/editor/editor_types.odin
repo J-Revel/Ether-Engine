@@ -102,12 +102,6 @@ Component_Model_Field :: struct
 	type_id: typeid,
 }
 
-Prefab_Input_Type :: struct
-{
-	name: string,
-	type: typeid,
-}
-
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
@@ -115,7 +109,7 @@ Prefab_Editor_State :: struct
 	components_history: [dynamic][]objects.Component_Model,
 	editor_type_callbacks: map[typeid]Editor_Type_Callback,
 	inputs: [dynamic]objects.Prefab_Input,
-	input_types: [dynamic]Prefab_Input_Type,
+	input_types: [dynamic]objects.Prefab_Input_Type,
 	z_down: bool,
 }
 

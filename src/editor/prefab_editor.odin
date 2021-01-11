@@ -18,25 +18,18 @@ import "../gameplay"
 import "../render"
 import "../container"
 import "../objects"
-default_input_types := [?]Prefab_Input_Type{
-	{"int", typeid_of(int)}, 
-	{"u32", typeid_of(u32)}, 
-	{"i32", typeid_of(i32)}, 
-	{"float", typeid_of(f32)}, 
-	{"vec2", typeid_of([2]f32)},
-};
 
 init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 {
 	gameplay.init_empty_scene(&scene);
-	for type in default_input_types
+	for type in objects.default_input_types
 	{
 		append(&input_types, type);
 	}
 	for component_type_id in &scene.db.component_types
 	{
 		editor_type_callbacks[component_type_id.value] = handle_editor_callback;
-		append(&input_types, Prefab_Input_Type{component_type_id.name, component_type_id.value});
+		append(&input_types, objects.Prefab_Input_Type{component_type_id.name, component_type_id.value});
 	}
 }
 

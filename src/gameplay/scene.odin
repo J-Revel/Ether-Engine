@@ -44,7 +44,7 @@ init_empty_scene :: proc(using scene: ^Scene)
 	objects.table_database_add_init(&db, "sprite", &sprites, 200);
 	objects.table_database_add_init(&db, "transform", &transforms, 10000);
 	objects.table_database_add_init(&db, "sprite_component", &sprite_components, 500);
-	log.info(db.component_types);
+	
 	animation.init_animation_database(&db, &animation_database);
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
