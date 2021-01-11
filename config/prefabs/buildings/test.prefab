@@ -1,2 +1,14 @@
 {
+	"aaa":{
+		"type":"sprite",
+		"texture":"&Bla",
+		"id":"test",
+		"data":{
+			"anchor":[0.000, 0.000],
+			"clip":{
+				"pos":[0.000, 0.000],
+				"size":[0.000, 0.000]
+			}
+		}
+	}
 }

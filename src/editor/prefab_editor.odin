@@ -191,7 +191,8 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 	selected_input_name : string;
 	if selected_input_index >= 0 
 	{
-		selected_input_name = field.component.data.inputs[selected_input_index].name;
+		input_index := field.component.data.inputs[selected_input_index].input_index;
+		selected_input_name = inputs[input_index].name;
 		current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 	}
 	else if selected_ref_index >= 0
@@ -235,7 +236,7 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 				input_found = true;
 				if imgui.selectable(input.name, selected_input_name == input.name)
 				{
-					new_input := objects.Component_Input{input.name, struct_field};
+					new_input := objects.Component_Input{index, struct_field};
 					set_field_input(field, new_input);
 					modified = true;
 				}
@@ -259,7 +260,8 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 	selected_input_name : string;
 	if selected_input_index >= 0 
 	{
-		selected_input_name = field.component.data.inputs[selected_input_index].name;
+		input_index := field.component.data.inputs[selected_input_index].input_index;
+		selected_input_name = inputs[input_index].name;
 		current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 	}
 	else if selected_ref_index >= 0
@@ -439,7 +441,7 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 					record_history_step(editor_state);
 				}
 				imgui.same_line();
-					if imgui.button("input")
+				if imgui.button("input")
 				{
 					struct_field := reflect.Struct_Field
 					{
@@ -447,7 +449,7 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 						type = field.type_id, 
 						offset = field.offset_in_component
 					};
-					new_input := objects.Component_Input{"", struct_field};
+					new_input := objects.Component_Input{-1, struct_field};
 					set_field_input(field, new_input);
 					record_history_step(editor_state);
 				}
@@ -521,6 +523,18 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	extensions := []string{".prefab"};
 	search_config := File_Search_Config{"config/prefabs", .Show_With_Ext, extensions, false};
 	path, file_search_state := file_selector_popup("prefab_load", "Load Prefab", search_config);
+	
+	if file_search_state == .Found
+	{
+		loaded_prefab, success := objects.load_prefab(path, &scene.db, context.temp_allocator);
+		fmt.println(loaded_prefab, success);
+		clear(&components);
+		for component in loaded_prefab.components
+		{
+			append(&components, component);
+		}
+	}
+
 	if io.key_ctrl && io.keys_down[sdl.Scancode.W] && !z_down
 	{
 		undo_history(editor_state);
@@ -563,7 +577,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 			imgui.next_column();
 		}
 		imgui.columns(1);
-		if imgui.button("Add Input") do append(&inputs, Prefab_Editor_Input{});
+		if imgui.button("Add Input") do append(&inputs, objects.Prefab_Input{});
 		imgui.end_child();
 	}
 	to_remove: int;
@@ -637,10 +651,10 @@ json_write_value :: inline proc(file: os.Handle, name: string, using write_state
 	os.write_byte(file, '\"');
 }
 
-json_write_input :: inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
+json_write_input :: inline proc(file: os.Handle, input_index: int, using write_state: ^Json_Write_State)
 {
 	os.write_string(file, "\"&");
-	os.write_string(file, name);
+	os.write_string(file, fmt.tprint(input_index));
 	os.write_byte(file, '\"');
 }
 
@@ -669,7 +683,7 @@ json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab
 		input := component.inputs[input_index];
 		if input.field.offset == offset
 		{
-			json_write_input(file, input.name, write_state);
+			json_write_input(file, input.input_index, write_state);
 			return;
 		}
 	}

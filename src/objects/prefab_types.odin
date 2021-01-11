@@ -30,13 +30,20 @@ Component_Model :: struct
 
 Component_Input :: struct
 {
-	name: string,
+	input_index: int,
 	field: reflect.Struct_Field,
+}
+
+Prefab_Input :: struct
+{
+	name: string,
+	type: typeid
 }
 
 Prefab :: struct
 {
 	components: []Component_Model,
+	inputs: []Prefab_Input,
 }
 
 Named_Component :: struct(T: typeid)

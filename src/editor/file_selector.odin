@@ -7,65 +7,6 @@ import path "core:path/filepath"
 import "../imgui";
 import "core:strings"
 
-init_folder_display :: proc(path: string, state: ^Folder_Display_State) -> os.Errno
-{
-	handle, errno1 := os.open(path);
-	state.current_path = path;
-
-	files, errno2 := os.read_dir(handle, 100, context.allocator);
-	os.close(handle);
-	state.files = files;
-
-	return errno1;
-}
-
-update_folder_display :: proc(state: ^Folder_Display_State) -> os.Errno
-{
-	delete(state.files);
-	handle, errno1 := os.open(state.current_path);
-
-	files, errno2 := os.read_dir(handle, 100, context.allocator);
-	state.files = files;
-	os.close(handle);
-
-	return errno1;
-}
-
-folder_display :: proc(using state: ^Folder_Display_State, allocator := context.allocator) -> (out_file: string, was_allocation: bool)
-{
-	if imgui.button("Select Folder")
-	{
-		imgui.open_popup("Select Folder");
-	}
-	if imgui.begin_popup_modal("Select Folder", nil, .AlwaysAutoResize)
-	{
-		imgui.text(state.current_path);
-		was_allocation = false;
-		out_file = "";
-		if imgui.button("Parent")
-		{
-			folder := path.dir(state.current_path);
-			log.info(folder);
-			out_file = folder;
-		}
-		else
-		{
-			for file in files
-			{
-				if (path.ext(file.name) == ".png" || path.ext(file.name) == "") && imgui.button(file.name)
-				{
-					file_name := strings.clone(file.name);
-					was_allocation = true;
-					out_file = strings.concatenate([]string{state.current_path, "/", file_name}, allocator);
-				}
-			}
-
-		}
-		imgui.end_popup();
-	}
-	return;
-}
-
 file_selectors: map[string]File_Selection_Data;
 
 is_file_selector_open :: proc(selector_id: string) -> bool
@@ -139,6 +80,28 @@ is_file_visible :: proc (file: os.File_Info, using search_config: File_Search_Co
 	return false;
 }
 
+has_extension :: proc (path: string, using search_config: File_Search_Config) -> bool
+{
+	switch search_config.filter_type
+	{
+		case .All:
+			return true;
+		case .Show_With_Ext:
+			for ext in extensions
+			{
+				if strings.has_suffix(path, ext) do return true;
+			}
+			return false;
+		case .Hide_With_Ext:
+			for ext in extensions
+			{
+				if strings.has_suffix(path, ext) do return false;
+			}
+			return true;
+	}
+	return false;
+}
+
 filter_files :: proc(files: []os.File_Info, search_config: File_Search_Config, allocator := context.temp_allocator) -> []os.File_Info
 {
 	r := make([dynamic]os.File_Info, 0, 0, allocator);
@@ -159,9 +122,9 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 
 	imgui.text(current_path);
 
-
 	path_change := false;
 	new_path: string;
+	new_file: os.File_Info;
 	
 	if current_path != ""
 	{
@@ -178,6 +141,7 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 		if imgui.button(file.name)
 		{
 			path_change = true;
+			new_file = file;
 			new_path = strings.concatenate([]string{current_path, "/", file.name}, context.allocator);
 			break;
 		}
@@ -189,7 +153,7 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 		delete(current_path);
 		log.info(new_path);
 		current_path = new_path;
-		if path.ext(current_path) == ".png"
+		if has_extension(current_path, search_config)
 		{
 			search_state = .Found;
 			delete_key(&file_selectors, selector_id);

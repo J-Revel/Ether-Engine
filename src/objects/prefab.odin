@@ -7,6 +7,7 @@ import "core:os"
 import "core:encoding/json"
 import "core:runtime"
 import "../container"
+import "core:strconv"
 
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
@@ -75,15 +76,16 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 
 		for input_index in 0..<input_count
 		{
-			input := inputs[input_index];
-			if input_value, ok := input_data[input.name]; ok {
-				if input_value.id == input.field.type {
-					field_ptr := rawptr(uintptr(components_data[i]) + input.field.offset);
-					mem.copy(field_ptr, input_value.data, reflect.size_of_typeid(input.field.type));
+			component_input := inputs[input_index];
+			prefab_input := prefab.inputs[component_input.input_index];
+			if input_value, ok := input_data[prefab_input.name]; ok {
+				if input_value.id == component_input.field.type {
+					field_ptr := rawptr(uintptr(components_data[i]) + component_input.field.offset);
+					mem.copy(field_ptr, input_value.data, reflect.size_of_typeid(component_input.field.type));
 				}
-				else do log.info("Wrong input value : ", input_value.id, " vs ", input.field.type);
+				else do log.info("Wrong input value : ", input_value.id, " vs ", component_input.field.type);
 			}
-			else do log.info("Input not found ", input);
+			else do log.info("Input not found ", component_input);
 			log.info(any{components_data[i], table.type_id});
 		}
 	}
@@ -192,8 +194,8 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				if(t[0] == '&')
 				{
 					//log.info("INPUT");
-					input_name := t[1:];
-					result.inputs[result.input_count] = Component_Input{input_name, field};
+					input_index, parse_success := strconv.parse_int(t[1:]);
+					result.inputs[result.input_count] = Component_Input{input_index, field};
 					result.input_count += 1;
 				}
 				if(t[0] == '@')
@@ -220,25 +222,27 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 
 load_prefab :: proc(path: string, db: ^container.Database, allocator := context.allocator) -> (Prefab, bool)
 {
-	file, ok := os.read_entire_file(path);
+	file, ok := os.read_entire_file(path, context.temp_allocator);
 	if ok
 	{
-		parsed, ok := json.parse(file);
+		parsed_json, ok := json.parse(file);
+		log.info(ok);
 
 		prefab : Prefab;
 
-		component_count := len(parsed.value.(json.Object));
+		json_object: json.Object = parsed_json.value.(json.Object);
+		component_count := len(json_object);
 
 		prefab.components = make([]Component_Model, component_count, allocator);
 
 		component_cursor := 0;
-		parsed_object := parsed.value.(json.Object);
 
 		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
 		
-		for name, value in parsed_object
+		for name, value in json_object
 		{
 			value_obj := value.value.(json.Object);
+			log.info(value_obj["type"]);
 			table_name := value_obj["type"].value.(json.String);
 			if table, table_index, ok := container.db_get_table(db, table_name); ok
 			{
