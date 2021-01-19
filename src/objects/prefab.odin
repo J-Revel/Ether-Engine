@@ -8,6 +8,7 @@ import "core:encoding/json"
 import "core:runtime"
 import "../container"
 import "core:strconv"
+import "core:strings"
 
 default_input_types := [?]Prefab_Input_Type{
 	{"int", typeid_of(int)}, 
@@ -17,11 +18,41 @@ default_input_types := [?]Prefab_Input_Type{
 	{"vec2", typeid_of([2]f32)},
 };
 
+get_input_types_list :: proc(db: ^container.Database, allocator := context.allocator) -> []Prefab_Input_Type
+{
+	result := make([dynamic]Prefab_Input_Type, allocator);
+	
+	for type in default_input_types
+	{
+		append(&result, type);
+	}
+
+	for component_type_id in &db.component_types
+	{
+		append(&result, Prefab_Input_Type{component_type_id.name, component_type_id.value});
+	}
+	return result[:];	
+}
+
+get_input_types_map :: proc(db: ^container.Database, allocator := context.allocator) -> map[string]typeid
+{
+	result := make(map[string]typeid, 100, allocator);
+	
+	for type in default_input_types
+	{
+		result[type.name] = type.type_id;
+	}
+
+	for type in &db.component_types
+	{
+		result[type.name] = type.value;
+	}
+	return result;	
+}
+
 table_database_add_init :: proc(db: ^container.Database, name: string, table: ^container.Table($T), size: uint)
 {
-	log.info("Init table", name, table);
 	container.table_init(table, size);
-	log.info("table created", name);
 	named_table := container.Database_Named_Table{name, container.to_raw_table(table)};
 	append(&db.tables, named_table);
 	type_already_added := false;
@@ -234,27 +265,32 @@ load_prefab :: proc(path: string, db: ^container.Database, allocator := context.
 	if ok
 	{
 		parsed_json, ok := json.parse(file);
-		log.info(ok);
 
-		prefab : Prefab;
+		prefab: Prefab;
 
 		json_object: json.Object = parsed_json.value.(json.Object);
-		component_count := len(json_object);
+		component_count := len(json_object["components"].value.(json.Object));
+		
+		component_cursor := 0;
 
 		prefab.components = make([]Component_Model, component_count, allocator);
-
-		component_cursor := 0;
 
 		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
 
 		input_objects := json_object["inputs"].value.(json.Array);
-		for input_data in input_objects
+		prefab.inputs = make([]Prefab_Input, len(input_objects), allocator);
+		for input_data, index in input_objects
 		{
 			input_name := input_data.value.(json.Object)["name"].value.(string);
 			input_type := input_data.value.(json.Object)["type"].value.(string);
-
+			prefab.inputs[index].name = strings.clone(input_name);
+			input_types_map := get_input_types_map(db);
+			if input_type in input_types_map
+			{
+				prefab.inputs[index].type_id = input_types_map[input_type];
+			}
 		}
-		
+
 		for name, value in json_object["components"].value.(json.Object)
 		{
 			value_obj := value.value.(json.Object);
@@ -263,21 +299,69 @@ load_prefab :: proc(path: string, db: ^container.Database, allocator := context.
 			if table, table_index, ok := container.db_get_table(db, table_name); ok
 			{
 				prefab.components[component_cursor].table_index = table_index;
-				prefab.components[component_cursor].data = build_component_model_from_json(value_obj, table.type_id, context.temp_allocator, registered_components);
+				prefab.components[component_cursor].data = build_component_model_from_json(value_obj, table.type_id, allocator, registered_components);
 				prefab.components[component_cursor].id = name;
 				registered_components[name] = {component_cursor, table_index};				
 			}
 			component_cursor += 1;
 		}
-		for component in &prefab.components
-		{
-			log.info("COMPONENT", component.id);
-			log.info(component_refs(&component.data));
-			log.info(component_inputs(&component.data));
-		}
+		delete(registered_components);
 		return prefab, true;
 	}
 	return {}, false;
+}
+
+load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^container.Database, allocator := context.allocator) -> bool
+{
+	file, ok := os.read_entire_file(path, context.temp_allocator);
+	if ok
+	{
+		parsed_json, ok := json.parse(file);
+
+		json_object: json.Object = parsed_json.value.(json.Object);
+		component_count := len(json_object["components"].value.(json.Object));
+
+		clear(&prefab.components);
+		clear(&prefab.inputs);
+
+		component_cursor := 0;
+
+		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
+
+		input_objects := json_object["inputs"].value.(json.Array);
+		for input_data, index in input_objects
+		{
+			new_input: Prefab_Input;
+			input_name := input_data.value.(json.Object)["name"].value.(string);
+			input_type := input_data.value.(json.Object)["type"].value.(string);
+			new_input.name = strings.clone(input_name);
+			input_types_map := get_input_types_map(db);
+			if input_type in input_types_map
+			{
+				new_input.type_id = input_types_map[input_type];
+			}
+			append(&prefab.inputs, new_input);
+		}
+
+		for name, value in json_object["components"].value.(json.Object)
+		{
+			value_obj := value.value.(json.Object);
+			table_name := value_obj["type"].value.(json.String);
+			if table, table_index, ok := container.db_get_table(db, table_name); ok
+			{
+				new_component: Component_Model;
+				new_component.table_index = table_index;
+				new_component.data = build_component_model_from_json(value_obj, table.type_id, allocator, registered_components);
+				new_component.id = name;
+				append(&prefab.components, new_component);
+				registered_components[name] = {component_cursor, table_index};				
+			}
+			component_cursor += 1;
+		}
+		delete(registered_components);
+		return true;
+	}
+	return false;
 }
 
 component_refs :: inline proc(component: ^Component_Model_Data) -> []Component_Ref

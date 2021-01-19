@@ -37,13 +37,20 @@ Component_Input :: struct
 Prefab_Input_Type :: struct
 {
 	name: string,
-	type: typeid,
+	type_id: typeid,
 }
 
+// TODO : maybe remove Prefab_Input_Type ? Same data
 Prefab_Input :: struct
 {
 	name: string,
-	type: typeid
+	type_id: typeid
+}
+
+Dynamic_Prefab :: struct
+{
+	components: [dynamic]Component_Model,
+	inputs: [dynamic]Prefab_Input
 }
 
 Prefab :: struct

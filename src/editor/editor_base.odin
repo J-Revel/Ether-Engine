@@ -145,7 +145,7 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 {
 	io := imgui.get_io();
 	extensions := []string{".png"};
-	search_config := File_Search_Config{"resources/textures", .Show_With_Ext, extensions, false};
+	search_config := File_Search_Config{"resources/textures", .Show_With_Ext, extensions, false, false, false};
 	path, file_search_state := file_selector_popup("sprite_selector", "Select Sprite", search_config);
 
 	if file_search_state == .Found

@@ -26,7 +26,7 @@ update_display_data :: proc(using state: ^File_Selection_Data)
 
 open_file_selector :: proc(selector_id: string, starting_folder: string)
 {
-	file_selector_data := File_Selection_Data{strings.clone(starting_folder), {}};
+	file_selector_data := File_Selection_Data{strings.clone(starting_folder), "", {}};
 	update_display_data(&file_selector_data);
 	file_selectors[selector_id] = file_selector_data;
 }
@@ -40,7 +40,7 @@ file_selector_popup :: proc(selector_id: string, button_text: string, search_con
 	}
 	center := [2]f32{imgui.get_io().display_size.x * 0.5, imgui.get_io().display_size.y * 0.5};
 	imgui.set_next_window_pos(center, .Appearing, [2]f32{0.5, 0.5});
-	imgui.set_next_window_size({500, 500});
+	//imgui.set_next_window_size_constraints({500, 500}, {});
 	if imgui.begin_popup_modal(selector_id, nil, .AlwaysAutoResize)
 	{
 		out_path, search_state = file_selector(selector_id, search_config);
@@ -117,6 +117,23 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 {
 	assert(selector_id in file_selectors);
 	using file_selector_data: ^File_Selection_Data = &file_selectors[selector_id];
+
+	if search_config.can_create
+	{
+		imgui.input_string("", &new_file_name, 200);
+		if imgui.button("Save")
+		{
+			new_file_path := strings.concatenate([]string{current_path, "/", new_file_name, ".prefab"});
+			delete(display_data);
+			delete(current_path);
+			search_state = .Found;
+			delete_key(&file_selectors, selector_id);
+			out_path = new_file_path;
+			log.info("Save as", new_file_path);
+			update_display_data(file_selector_data);
+			return;
+		}
+	}
 
 	search_state = .Searching;
 

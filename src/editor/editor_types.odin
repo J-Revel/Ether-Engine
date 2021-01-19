@@ -105,10 +105,9 @@ Component_Model_Field :: struct
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
-	components: [dynamic]objects.Component_Model,
+	using prefab: objects.Dynamic_Prefab,
 	components_history: [dynamic][]objects.Component_Model,
 	editor_type_callbacks: map[typeid]Editor_Type_Callback,
-	inputs: [dynamic]objects.Prefab_Input,
 	input_types: [dynamic]objects.Prefab_Input_Type,
 	z_down: bool,
 }
@@ -151,11 +150,14 @@ File_Search_Config :: struct
 	start_folder: string,
 	filter_type: File_Filter_Type,
 	extensions: []string,
-	hide_folders: bool
+	hide_folders: bool,
+	can_create: bool,
+	confirm_dialog: bool,
 }
 
 File_Selection_Data :: struct
 {
 	current_path: string,
+	new_file_name: string,
 	display_data: []os.File_Info
 }

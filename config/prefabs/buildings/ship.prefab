@@ -2,12 +2,16 @@
 	"inputs": [
 		{
 			"name": "pos",
-			"type": "vec2",
+			"type": "[2]f32",
 		},
 		{
 			"name": "scale",
 			"type": "f32"
 		},
+		{
+			"name": "sprite",
+			"type": "Sprite"
+		}
 	],
 	"components": {
 		"main_transform": {
@@ -19,7 +23,7 @@
 		"sprite_component": {
 			"type": "sprite_component",
 			"transform": "@main_transform",
-			"sprite": "&sprite"
+			"sprite": "&2"
 		}
 	}
 }
