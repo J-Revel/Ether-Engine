@@ -11,6 +11,7 @@ import "core:fmt"
 import "core:math/linalg"
 
 import "../geometry"
+import "../animation"
 
 apply_style :: proc()
 {
@@ -95,6 +96,7 @@ init_editor :: proc(using editor_state: ^Editor_State)
 	sprite_editor.file_selection_data.current_path = strings.clone("resources/textures");
 
 	init_prefab_editor(&prefab_editor);
+	init_anim_editor(&anim_editor);
 }
 
 update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
@@ -109,7 +111,8 @@ update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
 	update_sprite_editor(&editor_state.sprite_editor, screen_size);
     imgui.separator();
 	update_prefab_editor(&prefab_editor);
-
+	keyframe : animation.Keyframe(f32);
+	curve_editor(&anim_editor.curve_editor_state, &anim_editor.anim_curve);
     if editor_state.show_demo_window
     {
     	imgui.show_demo_window(&editor_state.show_demo_window);

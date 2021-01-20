@@ -17,6 +17,11 @@ Animation_Curve :: struct(T: typeid)
 	keyframes: []Keyframe(T),
 }
 
+Dynamic_Animation_Curve :: struct(T: typeid)
+{
+	keyframes: [dynamic]Keyframe(T),
+}
+
 Named_Float_Curve :: objects.Named_Component(Animation_Curve(f32));
 
 Animation_Config :: struct

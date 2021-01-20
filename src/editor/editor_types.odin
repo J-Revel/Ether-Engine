@@ -6,12 +6,14 @@ import "core:os"
 import "../geometry"
 import "../objects"
 import "../gameplay"
+import "../animation"
 
 Editor_State :: struct
 {
 	show_demo_window: bool,
 	sprite_editor: Sprite_Editor_State,
 	prefab_editor: Prefab_Editor_State,
+	anim_editor: Anim_Editor_State,
 }
 
 /*----------------------------------------------
@@ -116,9 +118,15 @@ Prefab_Editor_State :: struct
 				Anim Editor
 ------------------------------------------------*/
 
+Curve_Editor_State :: struct
+{
+	scrolling: [2]f32,
+}
+
 Anim_Editor_State :: struct
 {
-
+	anim_curve: animation.Dynamic_Animation_Curve(f32)
+	curve_editor_state: Curve_Editor_State,
 }
 
 /*----------------------------------------------
