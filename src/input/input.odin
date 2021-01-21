@@ -108,14 +108,14 @@ process_events :: proc(state: ^State) {
             }
 
             case .Mouse_Button_Down: {
-                if e.button.button == 1   do state.mouse_states[0] = current_frame;
-                if e.button.button == 2  do state.mouse_states[1] = current_frame;
+                if e.button.button == 1 do state.mouse_states[0] = current_frame;
+                if e.button.button == 2 do state.mouse_states[1] = current_frame;
                 if e.button.button == 3 do state.mouse_states[2] = current_frame;
             }
 
             case .Mouse_Button_Up: {
-                if e.button.button == 1   do state.mouse_states[0] = -current_frame;
-                if e.button.button == 2  do state.mouse_states[1] = -current_frame;
+                if e.button.button == 1 do state.mouse_states[0] = -current_frame;
+                if e.button.button == 2 do state.mouse_states[1] = -current_frame;
                 if e.button.button == 3 do state.mouse_states[2] = -current_frame;
             }
 
@@ -169,8 +169,9 @@ update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     mx, my: i32;
     sdl.get_mouse_state(&mx, &my);
     io.mouse_down[0] = is_down(get_mouse_state(state, 0));
-    io.mouse_down[1] = is_down(get_mouse_state(state, 1));
-    io.mouse_down[2] = is_down(get_mouse_state(state, 2));
+    io.mouse_down[1] = is_down(get_mouse_state(state, 2));
+    io.mouse_down[2] = is_down(get_mouse_state(state, 1));
+    log.info(io.mouse_down);
 
     // Set mouse pos if window is focused
     io.mouse_pos = imgui.Vec2{min(f32), min(f32)};

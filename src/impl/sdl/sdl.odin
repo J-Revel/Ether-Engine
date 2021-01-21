@@ -6,6 +6,7 @@ import "core:fmt";
 import sdl "shared:odin-sdl2";
 
 import imgui "../../imgui";
+import "core:log"
 
 SDL_State :: struct {
     time: u64,
@@ -54,43 +55,6 @@ setup_state :: proc(using state: ^SDL_State) {
     cursor_handles[imgui.Mouse_Cursor.Hand]       = sdl.create_system_cursor(sdl.System_Cursor.Hand);
     cursor_handles[imgui.Mouse_Cursor.NotAllowed] = sdl.create_system_cursor(sdl.System_Cursor.No);
 } 
-
-process_event :: proc(e: sdl.Event, state: ^SDL_State) {
-    io := imgui.get_io();
-    #partial switch e.type {
-        case .Mouse_Wheel: {
-            if e.wheel.x > 0 do io.mouse_wheel_h += 1;
-            if e.wheel.x < 0 do io.mouse_wheel_h -= 1;
-            if e.wheel.y > 0 do io.mouse_wheel   += 1;
-            if e.wheel.y < 0 do io.mouse_wheel   -= 1;
-        }
-
-        case .Text_Input: {
-            text := e.text;
-            imgui.ImGuiIO_AddInputCharactersUTF8(io, cstring(&text.text[0]));
-        }
-
-        case .Mouse_Button_Down: {
-            if e.button.button == u8(sdl.Mousecode.Left)   do state.mouse_down[0] = true;
-            if e.button.button == u8(sdl.Mousecode.Right)  do state.mouse_down[1] = true;
-            if e.button.button == u8(sdl.Mousecode.Middle) do state.mouse_down[2] = true;
-        }
-
-        case .Key_Down, .Key_Up: {
-            sc := e.key.keysym.scancode;
-            io.keys_down[sc] = e.type == .Key_Down;
-            io.key_shift = sdl.get_mod_state() & (sdl.Keymod.LShift|sdl.Keymod.RShift) != nil;
-            io.key_ctrl  = sdl.get_mod_state() & (sdl.Keymod.LCtrl|sdl.Keymod.RCtrl)   != nil;
-            io.key_alt   = sdl.get_mod_state() & (sdl.Keymod.LAlt|sdl.Keymod.RAlt)     != nil;
-
-            when ODIN_OS == "windows" {
-                io.key_super = false;
-            } else {
-                io.key_super = sdl.get_mod_state() & (sdl.Keymod.LGui|sdl.Keymod.RGui) != nil;
-            }
-        }
-    }
-}
 
 update_dt :: proc(state: ^SDL_State) {
     io := imgui.get_io();
