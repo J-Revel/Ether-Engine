@@ -16,6 +16,9 @@ import "../geometry"
 init_anim_editor :: proc(using editor_state: ^Anim_Editor_State)
 {
 	anim_curve.keyframes = make([dynamic]animation.Keyframe(f32));
+	append(&anim_curve.keyframes, animation.Keyframe(f32){0, 1});
+	append(&anim_curve.keyframes, animation.Keyframe(f32){0.5, 0.3});
+	append(&anim_curve.keyframes, animation.Keyframe(f32){1, 0.5});
 }
 
 curve_editor :: proc(using curve_editor_state: ^Curve_Editor_State, curve: ^animation.Dynamic_Animation_Curve($T))
@@ -42,6 +45,12 @@ curve_editor :: proc(using curve_editor_state: ^Curve_Editor_State, curve: ^anim
     relative_mouse_pos := io.mouse_pos - origin;
     
     imgui.text(fmt.tprint(is_hovered, is_active));
+
+    for keyframe in curve.keyframes
+    {
+    	imgui.draw_list_add_circle_filled(draw_list, origin + [2]f32{keyframe.time * widget_size.x, keyframe.value * widget_size.y}, 3, 0xffff5555, 8);
+    	imgui.draw_list_add_circle(draw_list, origin + [2]f32{keyframe.time * widget_size.x, keyframe.value * widget_size.y}, 3, 0xffffffff, 8, 1);
+    }
 
     // Add first and second point
     // if (is_hovered && imgui.mouse_clicked(imgui.Mouse_Button.Left))
