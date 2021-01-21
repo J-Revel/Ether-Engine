@@ -46,16 +46,28 @@ curve_editor :: proc(using curve_editor_state: ^Curve_Editor_State, curve: ^anim
     
     imgui.text(fmt.tprint(is_hovered, is_active));
 
-    for keyframe in curve.keyframes
+    hovered_point := 0;
+
+    for keyframe, index in curve.keyframes
     {
-    	imgui.draw_list_add_circle_filled(draw_list, origin + [2]f32{keyframe.time * widget_size.x, keyframe.value * widget_size.y}, 3, 0xffff5555, 8);
-    	imgui.draw_list_add_circle(draw_list, origin + [2]f32{keyframe.time * widget_size.x, keyframe.value * widget_size.y}, 3, 0xffffffff, 8, 1);
+        point_pos :=  [2]f32{keyframe.time * widget_size.x, keyframe.value * widget_size.y};
+        distance_to_mouse := linalg.length(relative_mouse_pos - point_pos);
+        fill_color : u32 = 0xffffffff;
+        outline_color : u32 = 0xff000000;
+        if distance_to_mouse < 5
+        {
+            fill_color = 0xff00ffff;
+            outline_color = 0xffffffff;
+            hovered_point = index;
+        }
+    	imgui.draw_list_add_circle_filled(draw_list, origin + point_pos, 3, fill_color, 8);
+    	imgui.draw_list_add_circle(draw_list, origin + point_pos, 3, outline_color, 8, 1);
     }
 
     // Add first and second point
-    // if (is_hovered && imgui.mouse_clicked(imgui.Mouse_Button.Left))
-    // {
-
-    // }
+    if (is_hovered && imgui.mouse_clicked(imgui.Mouse_Button.Left))
+    {
+        hovered_point 
+    }
 
 }

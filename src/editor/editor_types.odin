@@ -121,6 +121,7 @@ Prefab_Editor_State :: struct
 Curve_Editor_State :: struct
 {
 	scrolling: [2]f32,
+	hovered_point: int,
 }
 
 Anim_Editor_State :: struct
