@@ -171,7 +171,6 @@ update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     io.mouse_down[0] = is_down(get_mouse_state(state, 0));
     io.mouse_down[1] = is_down(get_mouse_state(state, 2));
     io.mouse_down[2] = is_down(get_mouse_state(state, 1));
-    log.info(io.mouse_down);
 
     // Set mouse pos if window is focused
     io.mouse_pos = imgui.Vec2{min(f32), min(f32)};

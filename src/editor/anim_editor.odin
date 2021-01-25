@@ -23,12 +23,11 @@ init_anim_editor :: proc(using editor_state: ^Anim_Editor_State)
 
 curve_editor :: proc(using curve_editor_state: ^Curve_Editor_State, curve: ^animation.Dynamic_Animation_Curve($T))
 {
-
 	start_pos, widget_size: [2]f32;
 	imgui.get_cursor_screen_pos(&start_pos);
     imgui.get_content_region_avail(&widget_size);   // Resize canvas to what's available
     if (widget_size.x < 50) do widget_size.x = 50;
-    if (widget_size.y < 50) do widget_size.y = 50;
+    widget_size.y = 50;
     
     // Draw border and background color
     io := imgui.get_io();
@@ -121,12 +120,11 @@ curve_editor :: proc(using curve_editor_state: ^Curve_Editor_State, curve: ^anim
 	    }
 		// Add first and second point
 	    if (is_hovered && imgui.is_mouse_clicked(imgui.Mouse_Button.Left))
-	    {
-	    	log.info("CLICK");
+		{
 	    	if hovered_point >= 0
-	    	{
-		        dragged_point = hovered_point;
-		        dragging = true;
+			{
+				dragged_point = hovered_point;
+				dragging = true;
 	    	}
 	    }
 	    if (is_hovered && imgui.is_mouse_clicked(imgui.Mouse_Button.Right))
@@ -135,7 +133,4 @@ curve_editor :: proc(using curve_editor_state: ^Curve_Editor_State, curve: ^anim
     		insert_at(&curve.keyframes, insert_index + 1, animation.Keyframe(f32){relative_mouse_pos.x/widget_size.x, relative_mouse_pos.y/widget_size.y});
 	    }
     }
-
-    
-
 }

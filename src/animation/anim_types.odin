@@ -6,6 +6,15 @@ import "../util"
 import "../container"
 import "../objects"
 
+Curve_Type :: enum
+{
+	Float, 
+	Bool, 
+	Integer, 
+	Color, 
+	Vec2
+}
+
 Keyframe :: struct(T: typeid)
 {
 	time: f32,
@@ -54,9 +63,9 @@ Animation_Database :: struct
 
 init_animation_database :: proc(db: ^container.Database, using database: ^Animation_Database)
 {
-	objects.table_database_add_init(db, "animation_curves", &animation_curves, 5000);
-	objects.table_database_add_init(db, "animation_players", &animation_players, 1000);
-	objects.table_database_add_init(db, "animation_configs", &animation_configs, 1000);
+	objects.table_database_add_init(db, "animation_curve", &animation_curves, 5000);
+	objects.table_database_add_init(db, "animation_player", &animation_players, 1000);
+	objects.table_database_add_init(db, "animation_config", &animation_configs, 1000);
 }
 
 compute_float_curve_value :: proc(curve: ^Animation_Curve(f32), time_ratio: f32, default_value: f32) -> f32
