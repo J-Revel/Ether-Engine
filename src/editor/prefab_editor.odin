@@ -36,14 +36,14 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	editor_type_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
 }
 
-get_component_field_data :: proc(using field: Component_Model_Field) -> uintptr
+get_component_field_data :: proc(components: []objects.Component_Model, using field: Component_Model_Field) -> uintptr
 {
-	return (uintptr(component.data.data) + field.offset_in_component);
+	return (uintptr(components[field.component_index].data.data) + field.offset_in_component);
 }
 
-get_component_input_index :: proc(field: Component_Model_Field) -> int
+get_component_input_index :: proc(components: []objects.Component_Model, field: Component_Model_Field) -> int
 {
-	using field.component.data;
+	using components[field.component_index].data;
 	for input_index in 0..input_count
 	{
 		input := inputs[input_index];
@@ -55,9 +55,9 @@ get_component_input_index :: proc(field: Component_Model_Field) -> int
 	return -1;
 }
 
-get_component_ref_index :: proc(field: Component_Model_Field) -> (int, int)
+get_component_ref_index :: proc(components: []objects.Component_Model, field: Component_Model_Field) -> (int, int)
 {
-	using field.component.data;
+	using components[field.component_index].data;
 	for ref, index in refs[0:ref_count]
 	{
 		if ref.field.offset == field.offset_in_component
@@ -68,12 +68,12 @@ get_component_ref_index :: proc(field: Component_Model_Field) -> (int, int)
 	return -1, -1;
 }
 
-set_field_ref :: proc(field: Component_Model_Field, new_ref: objects.Component_Ref) -> bool
+set_field_ref :: proc(components: []objects.Component_Model, field: Component_Model_Field, new_ref: objects.Component_Ref) -> bool
 {
 	modified := false;
-	input_index := get_component_input_index(field);
-	ref_index, ref_target := get_component_ref_index(field);
-	using field.component.data;
+	input_index := get_component_input_index(components[:], field);
+	ref_index, ref_target := get_component_ref_index(components[:], field);
+	using components[field.component_index].data;
 	if input_index >= 0
 	{
 		slice.swap(inputs[0:ref_count], input_index, ref_count - 1);
@@ -93,22 +93,22 @@ set_field_ref :: proc(field: Component_Model_Field, new_ref: objects.Component_R
 	return modified;
 }
 
-remove_field_ref :: proc(field: Component_Model_Field, ref_index: int)
+remove_field_ref :: proc(components: []objects.Component_Model, field: Component_Model_Field, ref_index: int)
 {
-	using field.component.data;
+	using components[field.component_index].data;
 	refs[ref_index] = refs[ref_count - 1];
 	ref_count -= 1;
 }
 
-set_field_input :: proc(field: Component_Model_Field, new_input: objects.Component_Input)
+set_field_input :: proc(components: []objects.Component_Model, field: Component_Model_Field, new_input: objects.Component_Input)
 {
-	input_index := get_component_input_index(field);
-	ref_index, ref_target := get_component_ref_index(field);
-	using field.component.data;
+	input_index := get_component_input_index(components, field);
+	ref_index, ref_target := get_component_ref_index(components, field);
+	using components[field.component_index].data;
 	// Remove selected ref
 	if ref_index >= 0
 	{
-		old_refs := field.component.data.refs;
+		old_refs := refs;
 		slice.swap(refs[0:input_count], ref_index, ref_count - 1);
 		ref_count -= 1;
 	}
@@ -124,18 +124,19 @@ set_field_input :: proc(field: Component_Model_Field, new_input: objects.Compone
 	}
 }
 
-remove_field_input :: proc(field: Component_Model_Field, input_index: int)
+remove_field_input :: proc(components: []objects.Component_Model, field: Component_Model_Field, input_index: int)
 {
-	using field.component.data;
+	using components[field.component_index].data;
 	inputs[input_index] = inputs[ref_count - 1];
 	input_count -= 1;
 }
 
-remove_field_input_ref :: proc(field: Component_Model_Field)
+remove_field_input_ref :: proc(components: []objects.Component_Model, field: Component_Model_Field)
 {
-	input_index := get_component_input_index(field);
-	ref_index, ref_target := get_component_ref_index(field);
-	using field.component.data;
+	input_index := get_component_input_index(components, field);
+	ref_index, ref_target := get_component_ref_index(components, field);
+	
+	using components[field.component_index].data;
 	// Remove selected ref
 	if ref_index >= 0
 	{
@@ -192,14 +193,14 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_state: ^Prefab_Editor_State) -> bool
 {
 	modified := false;
-	selected_ref_index, selected_ref_target := get_component_ref_index(field);
+	selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
 	
-	selected_input_index := get_component_input_index(field);
+	selected_input_index := get_component_input_index(components[:], field);
 	current_value_name := "nil";
 	selected_input_name : string;
 	if selected_input_index >= 0 
 	{
-		input_index := field.component.data.inputs[selected_input_index].input_index;
+		input_index := components[field.component_index].data.inputs[selected_input_index].input_index;
 		selected_input_name = inputs[input_index].name;
 		current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 	}
@@ -232,7 +233,7 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 				{
 					new_ref := objects.Component_Ref{index, struct_field};
 
-					set_field_ref(field, new_ref);
+					set_field_ref(components[:], field, new_ref);
 					modified = true;
 				}
 			}
@@ -249,7 +250,7 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 				if imgui.selectable(input.name, selected_input_name == input.name)
 				{
 					new_input := objects.Component_Input{index, struct_field};
-					set_field_input(field, new_input);
+					set_field_input(components[:], field, new_input);
 					modified = true;
 				}
 			}
@@ -261,11 +262,11 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 		{
 			if reference_found
 			{
-				remove_field_ref(field, ref_input_index);
+				remove_field_ref(components[:], field, ref_input_index);
 			}
 			else if input_found
 			{
-				remove_field_input(field, ref_input_index);
+				remove_field_input(components[:], field, ref_input_index);
 
 			}
 		}
@@ -292,7 +293,7 @@ component_editor :: proc
 	component_editor_child
 };
 
-component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, component: ^objects.Component_Model)
+component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, component: ^objects.Component_Model, component_index: int)
 {
 	component_table := scene.db.tables[component.table_index];
 	component_type_id := runtime.typeid_base(component_table.table.type_id);
@@ -327,7 +328,7 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 	imgui.columns(1);
 	callback, callback_found := editor_type_callbacks[component_type_id];
 
-	field_cursor := Component_Model_Field{component.id, component, 0, component_type_id};
+	field_cursor := Component_Model_Field{component.id, component_index, 0, component_type_id};
 
 	if callback_found
 	{
@@ -350,7 +351,7 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 				imgui.push_id(structInfo.names[i]);
 				//field := rawptr(uintptr(component_data.data) + structInfo.offsets[i]);
 				field_cursor.offset_in_component = structInfo.offsets[i];
-				child_field := Component_Model_Field{structInfo.names[i], component, structInfo.offsets[i], structInfo.types[i].id};
+				child_field := Component_Model_Field{structInfo.names[i], component_index, structInfo.offsets[i], structInfo.types[i].id};
 				component_editor_child(editor_state, structInfo.names[i], child_field);
 				imgui.pop_id();
 				imgui.end_group();
@@ -375,8 +376,8 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 	}
 	text_buffer := make([]u8, 200, context.temp_allocator);
 
-	input_index := get_component_input_index(field);
-	ref_index, ref_target := get_component_ref_index(field);
+	input_index := get_component_input_index(components[:], field);
+	ref_index, ref_target := get_component_ref_index(components[:], field);
 	
 	type_info := type_info_of(field.type_id);
 	#partial switch variant in type_info.variant
@@ -386,9 +387,8 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 			{
 				A, B: [2]f32;
 				imgui.get_cursor_screen_pos(&A);
-				structInfo, ok := type_info.variant.(runtime.Type_Info_Struct);
 				offset_cursor: uintptr = 0;
-				for _, i in structInfo.names
+				for _, i in variant.names
 				{
 					imgui.separator();
 					imgui.dummy([2]f32{1, 0});
@@ -396,11 +396,11 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 					imgui.same_line();
 					imgui.begin_group();
 					width := imgui.calc_item_width();
-					imgui.push_id(structInfo.names[i]);
-					child_type := structInfo.types[i];
+					imgui.push_id(variant.names[i]);
+					child_type := variant.types[i];
 					imgui.text(fmt.tprint(child_type));
-					child_field := Component_Model_Field{structInfo.names[i], field.component, field.offset_in_component + structInfo.offsets[i], child_type.id};
-					component_editor_child(editor_state, structInfo.names[i], child_field);
+					child_field := Component_Model_Field{variant.names[i], field.component_index, field.offset_in_component + variant.offsets[i], child_type.id};
+					component_editor_child(editor_state, variant.names[i], child_field);
 
 					imgui.pop_id();
 					imgui.end_group();
@@ -422,13 +422,13 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 				imgui.same_line();
 				if imgui.button("remove input")
 				{
-					remove_field_input_ref(field);
+					remove_field_input_ref(components[:], field);
 				}
 			}
 			else
 			{
 				imgui.push_item_width(imgui.get_window_width() * 0.5);
-				if imgui.input_int("", cast(^i32) get_component_field_data(field))
+				if imgui.input_int("", cast(^i32) get_component_field_data(components[:], field))
 				{
 					record_history_step(editor_state);
 				}
@@ -442,14 +442,14 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 						offset = field.offset_in_component
 					};
 					new_input := objects.Component_Input{-1, struct_field};
-					set_field_input(field, new_input);
+					set_field_input(components[:], field, new_input);
 					record_history_step(editor_state);
 				}
 				imgui.pop_item_width();
 			}
 		case runtime.Type_Info_Float:
 			imgui.push_item_width(imgui.get_window_width() * 0.5);
-			if imgui.input_float("", cast(^f32) get_component_field_data(field))
+			if imgui.input_float("", cast(^f32) get_component_field_data(components[:], field))
 			{
 				record_history_step(editor_state);
 			}
@@ -457,7 +457,7 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 			imgui.button("input");
 			imgui.pop_item_width();
 		case runtime.Type_Info_String:
-			str := cast(^string)get_component_field_data(field);
+			str := cast(^string)get_component_field_data(components[:], field);
 			if imgui.input_string("", str, 200)
 			{
 				record_history_step(editor_state);
@@ -485,7 +485,7 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 					data_type = .Double;
 					format = "%.6f";
 			}
-			if imgui.input_scalar_n("", data_type, rawptr(get_component_field_data(field)), i32(variant.count), nil, nil, format)
+			if imgui.input_scalar_n("", data_type, rawptr(get_component_field_data(components[:], field)), i32(variant.count), nil, nil, format)
 			{
 				record_history_step(editor_state);
 			}
@@ -498,7 +498,7 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 					imgui.push_id(fmt.tprintf("element_%d", i));
 					char := 'x' + i;
 					txt := fmt.tprintf("%c", char);
-					component_editor_child(editor_state, txt, {"", field.component, field.offset_in_component + uintptr(variant.elem_size * i), variant.elem.id});
+					component_editor_child(editor_state, txt, {"", field.component_index, field.offset_in_component + uintptr(variant.elem_size * i), variant.elem.id});
 					imgui.pop_id();
 					imgui.next_column();
 				}
@@ -529,7 +529,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 		clear(&components);
 		for component in loaded_prefab.components
 		{
-			// TODO : copy the data of the components, currently it's allocated in temp memory
 			append(&components, component);
 		}
 		clear(&inputs);
@@ -593,7 +592,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 		table_name := scene.db.tables[component.table_index].name;
 		if(imgui.begin_child("component", [2]f32{0, 130}, true, .MenuBar))
 		{
-			component_editor(editor_state, &component);
+			component_editor(editor_state, &component, index);
 
 			if imgui.button("Remove Component")
 			{

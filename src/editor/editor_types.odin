@@ -99,7 +99,7 @@ Editor_Type_Callback :: #type proc
 Component_Model_Field :: struct
 {
 	name: string,
-	component: ^objects.Component_Model,
+	component_index: int,
 	offset_in_component: uintptr,
 	type_id: typeid,
 }
