@@ -8,6 +8,12 @@
 			"type":"transform"
 		}
 	],
+	"anim-params":{
+		"param1": {
+			"component": 0,
+			"field": "scale"
+		}
+	},
 	"components":{
 		"Test":{
 			"type":"transform",

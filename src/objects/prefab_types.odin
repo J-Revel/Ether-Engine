@@ -47,16 +47,25 @@ Prefab_Input :: struct
 	type_id: typeid
 }
 
+Prefab_Exposed_Param :: struct
+{
+	component_index: int,
+	type_id: typeid,
+	offset: uintptr,
+}
+
 Dynamic_Prefab :: struct
 {
 	components: [dynamic]Component_Model,
-	inputs: [dynamic]Prefab_Input
+	inputs: [dynamic]Prefab_Input,
+	exposed_params: [dynamic]Prefab_Exposed_Param,
 }
 
 Prefab :: struct
 {
 	components: []Component_Model,
 	inputs: []Prefab_Input,
+	exposed_params: []Prefab_Exposed_Param,
 }
 
 Named_Component :: struct(T: typeid)

@@ -70,6 +70,11 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 		imgui.columns(2);
 		imgui.input_string("name", &param.name);
 		imgui.next_column();
+
+		//current_value := (cast(^container.Raw_Handle)field_data);
+
+		selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
+
 		if imgui.begin_combo("value", "Display Value", .PopupAlignLeft)
 		{
 			fields := find_component_fields_of_type(&scene.db, components[:], param.type_id);
@@ -78,7 +83,10 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 			{
 				if imgui.selectable(component_field.name, false)
 				{
-					//param.handle = field.
+					// handle_offset := type_info_of(animation.Animation_Param).offsets[1]; // get offset of field "handle" in Animation_Param
+					// modified_field: Component_Model_Field = {field.name, field.component_index, field.offset_in_component + handle_offset, component_field.type_id};
+					// set_field_ref(components, modified_field, objects.Component_Ref{component_field.component_index, });
+				
 				}
 			}
 			imgui.end_combo();

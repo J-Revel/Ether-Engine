@@ -201,8 +201,17 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 	if selected_input_index >= 0 
 	{
 		input_index := components[field.component_index].data.inputs[selected_input_index].input_index;
-		selected_input_name = inputs[input_index].name;
-		current_value_name = fmt.tprintf("(input)%s", selected_input_name);
+		
+		if input_index < 0
+		{
+			selected_input_name = "nil";
+			current_value_name = "nil";
+		}
+		else
+		{
+			selected_input_name = inputs[input_index].name;
+			current_value_name = fmt.tprintf("(input)%s", selected_input_name);
+		}
 	}
 	else if selected_ref_index >= 0
 	{
@@ -343,18 +352,15 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 		{
 			case runtime.Type_Info_Struct:
 			structInfo, ok := type_info.variant.(runtime.Type_Info_Struct);
+			imgui.columns(2);
+			imgui.set_column_width(0, 150);
 			for _, i in structInfo.names
 			{
-				imgui.text_unformatted(fmt.tprintf("%s : ", structInfo.names[i]));
-				imgui.same_line();
-				imgui.begin_group();
-				imgui.push_id(structInfo.names[i]);
+				
 				//field := rawptr(uintptr(component_data.data) + structInfo.offsets[i]);
 				field_cursor.offset_in_component = structInfo.offsets[i];
 				child_field := Component_Model_Field{structInfo.names[i], component_index, structInfo.offsets[i], structInfo.types[i].id};
 				component_editor_child(editor_state, structInfo.names[i], child_field);
-				imgui.pop_id();
-				imgui.end_group();
 			}
 			return;
 
@@ -366,12 +372,24 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 
 component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_name: string, field: Component_Model_Field)
 {
+	type_info := type_info_of(field.type_id);
+	#partial switch variant in type_info.variant
+	{
+		case runtime.Type_Info_Struct:
+		case runtime.Type_Info_Named:
+		case:
+			imgui.text_unformatted(base_name);
+			imgui.next_column();
+	}
 	imgui.push_id(base_name);
 	callback, callback_found := editor_type_callbacks[field.type_id];
 	if callback_found
 	{
+		imgui.text_unformatted(base_name);
+		imgui.next_column();
 		callback(editor_state, field);
 		imgui.pop_id();
+		imgui.next_column();
 		return;
 	}
 	text_buffer := make([]u8, 200, context.temp_allocator);
@@ -379,42 +397,32 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 	input_index := get_component_input_index(components[:], field);
 	ref_index, ref_target := get_component_ref_index(components[:], field);
 	
-	type_info := type_info_of(field.type_id);
 	#partial switch variant in type_info.variant
 	{
 		case runtime.Type_Info_Struct:
 			if imgui.tree_node(base_name)
 			{
+				imgui.next_column();
+				imgui.next_column();
 				A, B: [2]f32;
 				imgui.get_cursor_screen_pos(&A);
 				offset_cursor: uintptr = 0;
 				for _, i in variant.names
 				{
-					imgui.separator();
-					imgui.dummy([2]f32{1, 0});
-					imgui.same_line();
-					imgui.same_line();
-					imgui.begin_group();
 					width := imgui.calc_item_width();
 					imgui.push_id(variant.names[i]);
 					child_type := variant.types[i];
-					imgui.text(fmt.tprint(child_type));
-					child_field := Component_Model_Field{variant.names[i], field.component_index, field.offset_in_component + variant.offsets[i], child_type.id};
+					child_field: Component_Model_Field = {variant.names[i], field.component_index, field.offset_in_component + variant.offsets[i], child_type.id};
 					component_editor_child(editor_state, variant.names[i], child_field);
-
 					imgui.pop_id();
-					imgui.end_group();
 				}
-				imgui.separator();
 				imgui.get_cursor_screen_pos(&B);
-				draw_list := imgui.get_window_draw_list();
-				imgui.draw_list_add_rect(draw_list, A, [2]f32{A.x + 1, B.y}, 0xffaaaaaa);
 				imgui.tree_pop();
 			}
 		case runtime.Type_Info_Named:
 			child_field := field;
 			child_field.type_id = variant.base.id;
-			component_editor_child(editor_state, variant.name, child_field);
+			component_editor_child(editor_state, base_name, child_field);
 		case runtime.Type_Info_Integer:
 			if input_index >= 0
 			{
@@ -454,7 +462,18 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 				record_history_step(editor_state);
 			}
 			imgui.same_line();
-			imgui.button("input");
+			if imgui.button("input")
+			{
+				struct_field := reflect.Struct_Field
+				{
+					name = field.name, 
+					type = field.type_id, 
+					offset = field.offset_in_component
+				};
+				new_input := objects.Component_Input{-1, struct_field};
+				set_field_input(components[:], field, new_input);
+				record_history_step(editor_state);
+			}
 			imgui.pop_item_width();
 		case runtime.Type_Info_String:
 			str := cast(^string)get_component_field_data(components[:], field);
@@ -492,7 +511,6 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 
 			if data_type == .Count
 			{
-				imgui.columns(i32(variant.count));
 				for i in 0..<variant.count
 				{
 					imgui.push_id(fmt.tprintf("element_%d", i));
@@ -500,12 +518,11 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 					txt := fmt.tprintf("%c", char);
 					component_editor_child(editor_state, txt, {"", field.component_index, field.offset_in_component + uintptr(variant.elem_size * i), variant.elem.id});
 					imgui.pop_id();
-					imgui.next_column();
 				}
-				imgui.columns(1);
 			}
 	}
 	imgui.pop_id();
+	imgui.next_column();
 }
 
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
@@ -552,6 +569,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 			imgui.end_menu_bar();
 		}
 		imgui.columns(2);
+		imgui.set_column_width(0, 150);
 		for input, index in &inputs
 		{
 			imgui.push_id(fmt.tprintf("input_%d", index));
@@ -590,10 +608,10 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 		imgui.push_id(fmt.tprintf("Component_%d", index));
 		flags : imgui.Tree_Node_Flags = .SpanFullWidth | .DefaultOpen;
 		table_name := scene.db.tables[component.table_index].name;
-		if(imgui.begin_child("component", [2]f32{0, 130}, true, .MenuBar))
+		if(imgui.begin_child("component", [2]f32{0, 250}, true, .MenuBar))
 		{
 			component_editor(editor_state, &component, index);
-
+			imgui.columns(1);
 			if imgui.button("Remove Component")
 			{
 				to_remove = index + 1;
