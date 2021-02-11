@@ -26,21 +26,27 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 	field_data := get_component_field_data(components[:], field);
 	current_value := (cast(^container.Raw_Handle)field_data);
 
-	selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
-	
-	selected_input_index := get_component_input_index(components[:], field);
+	metadata_index := get_component_field_metadata_index(components[:], field);
+
 	current_value_name := "";
 	selected_input_name : string;
-	if selected_input_index >= 0 
+
+	component := editor_state.components[field.component_index];
+	if metadata_index >= 0
 	{
-		component := editor_state.components[field.component_index];
-		input_index := component.data.inputs[selected_input_index].input_index;
-		selected_input_name = inputs[input_index].name;
-		current_value_name = fmt.tprintf("(input)%s", selected_input_name);
-	}
-	else if selected_ref_index >= 0
-	{
-		current_value_name = fmt.tprintf("(ref)%s", components[selected_ref_target].id);
+		switch metadata_content in component.data.metadata[metadata_index]
+		{
+			case objects.Component_Ref:
+				current_value_name = fmt.tprintf("(ref)%s", components[metadata_content.component_index].id);
+
+			case objects.Component_Input:
+				input_index := metadata_content.input_index;
+				selected_input_name = inputs[input_index].name;
+				current_value_name = fmt.tprintf("(input)%s", selected_input_name);
+
+			case objects.Component_Field_Ref:
+
+		}
 	}
 
 	display_value := current_value_name;
@@ -73,7 +79,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 
 		//current_value := (cast(^container.Raw_Handle)field_data);
 
-		selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
+		// selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
 
 		if imgui.begin_combo("value", "Display Value", .PopupAlignLeft)
 		{
@@ -86,7 +92,6 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 					// handle_offset := type_info_of(animation.Animation_Param).offsets[1]; // get offset of field "handle" in Animation_Param
 					// modified_field: Component_Model_Field = {field.name, field.component_index, field.offset_in_component + handle_offset, component_field.type_id};
 					// set_field_ref(components, modified_field, objects.Component_Ref{component_field.component_index, });
-				
 				}
 			}
 			imgui.end_combo();

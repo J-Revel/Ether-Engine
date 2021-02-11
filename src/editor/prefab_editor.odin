@@ -41,114 +41,45 @@ get_component_field_data :: proc(components: []objects.Component_Model, using fi
 	return (uintptr(components[field.component_index].data.data) + field.offset_in_component);
 }
 
-get_component_input_index :: proc(components: []objects.Component_Model, field: Component_Model_Field) -> int
+get_component_field_metadata_index :: proc(components: []objects.Component_Model, field: Component_Model_Field) -> int
 {
 	using components[field.component_index].data;
-	for input_index in 0..input_count
+	for index in 0..<metadata_count
 	{
-		input := inputs[input_index];
-		if input.field.type == field.type_id && input.field.offset == field.offset_in_component
+		if metadata_offsets[index] == field.offset_in_component
 		{
-			return input_index;
+			return index;
 		}
 	}
 	return -1;
 }
 
-get_component_ref_index :: proc(components: []objects.Component_Model, field: Component_Model_Field) -> (int, int)
+set_component_field_metadata :: proc(components: []objects.Component_Model, field: Component_Model_Field, new_data: objects.Component_Field_Metadata)
 {
-	using components[field.component_index].data;
-	for ref, index in refs[0:ref_count]
-	{
-		if ref.field.offset == field.offset_in_component
-		{
-			return index, ref.component_index;
-		}
-	}
-	return -1, -1;
-}
-
-set_field_ref :: proc(components: []objects.Component_Model, field: Component_Model_Field, new_ref: objects.Component_Ref) -> bool
-{
-	modified := false;
-	input_index := get_component_input_index(components[:], field);
-	ref_index, ref_target := get_component_ref_index(components[:], field);
-	using components[field.component_index].data;
-	if input_index >= 0
-	{
-		slice.swap(inputs[0:ref_count], input_index, ref_count - 1);
-		ref_count -= 1;
-	}
-
-	if ref_index >= 0
-	{
-		if new_ref != refs[ref_index] do modified = true;
-		refs[ref_index] = new_ref;
-	}
-	else
-	{
-		refs[ref_count] = new_ref;
-		ref_count += 1;
-	}
-	return modified;
-}
-
-remove_field_ref :: proc(components: []objects.Component_Model, field: Component_Model_Field, ref_index: int)
-{
-	using components[field.component_index].data;
-	refs[ref_index] = refs[ref_count - 1];
-	ref_count -= 1;
-}
-
-set_field_input :: proc(components: []objects.Component_Model, field: Component_Model_Field, new_input: objects.Component_Input)
-{
-	input_index := get_component_input_index(components, field);
-	ref_index, ref_target := get_component_ref_index(components, field);
-	using components[field.component_index].data;
-	// Remove selected ref
-	if ref_index >= 0
-	{
-		old_refs := refs;
-		slice.swap(refs[0:input_count], ref_index, ref_count - 1);
-		ref_count -= 1;
-	}
-
-	if input_index >= 0
-	{
-		inputs[input_index] = new_input;
-	}
-	else
-	{
-		inputs[input_count] = new_input;
-		input_count += 1;
-	}
-}
-
-remove_field_input :: proc(components: []objects.Component_Model, field: Component_Model_Field, input_index: int)
-{
-	using components[field.component_index].data;
-	inputs[input_index] = inputs[ref_count - 1];
-	input_count -= 1;
-}
-
-remove_field_input_ref :: proc(components: []objects.Component_Model, field: Component_Model_Field)
-{
-	input_index := get_component_input_index(components, field);
-	ref_index, ref_target := get_component_ref_index(components, field);
+	metadata_index := get_component_field_metadata_index(components, field);
 	
 	using components[field.component_index].data;
-	// Remove selected ref
-	if ref_index >= 0
-	{
-		slice.swap(refs[:], ref_index, ref_count - 1);
-		ref_count -= 1;
-	}
 
-	if input_index >= 0
+	if metadata_index < 0
 	{
-		slice.swap(inputs[:], input_index, ref_count - 1);
-		ref_count -= 1;
+		metadata_index = metadata_count;
+		metadata_offsets[metadata_index] = field.offset_in_component;
+		metadata_count += 1;
 	}
+	metadata[metadata_index] = new_data;
+}
+
+remove_component_field_metadata :: proc(components: []objects.Component_Model, field: Component_Model_Field)
+{
+	using components[field.component_index].data;
+	metadata_index := get_component_field_metadata_index(components, field);
+	if metadata_index >= 0 && metadata_count > 0
+	{
+		metadata[metadata_index] = metadata[metadata_count - 1];
+		metadata_types[metadata_index] = metadata_types[metadata_count - 1];
+		metadata_offsets[metadata_index] = metadata_offsets[metadata_count - 1];
+	}
+	if metadata_count > 0 do metadata_count -= 1;
 }
 
 slice_remove_at :: proc(array: []$T, to_remove: []int) -> (new_len: int)
@@ -171,21 +102,34 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 	log.info("Remove component", to_remove_index);
 	for component in &components
 	{
-		refs_to_remove: [dynamic]int;
+		metadata_to_remove: [dynamic]int;
 		using component.data;
-		for ref_index in 0..<ref_count
+		for metadata_index in 0..<metadata_count
 		{
-			if refs[ref_index].component_index == to_remove_index
+			#partial switch metadata_info in &metadata[metadata_index]
 			{
-				append(&refs_to_remove, ref_index);
-			}
-			else if refs[ref_index].component_index > to_remove_index
-			{
-				refs[ref_index].component_index -= 1;
+				case objects.Component_Ref:
+					if metadata_info.component_index == to_remove_index
+					{
+						append(&metadata_to_remove, metadata_index);
+					}
+					else if metadata_info.component_index > to_remove_index
+					{
+						metadata_info.component_index -= 1;
+					}
+				case objects.Component_Field_Ref:
+					if metadata_info.component_index == to_remove_index
+					{
+						append(&metadata_to_remove, metadata_index);
+					}
+					else if metadata_info.component_index > to_remove_index
+					{
+						metadata_info.component_index -= 1;
+					}
 			}
 		}
 
-		ref_count = slice_remove_at(component.data.refs[0:ref_count], refs_to_remove[:]);
+		metadata_count = slice_remove_at(component.data.metadata[0:metadata_count], metadata_to_remove[:]);
 	}
 	ordered_remove(&components, to_remove_index);
 }
@@ -193,39 +137,40 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_state: ^Prefab_Editor_State) -> bool
 {
 	modified := false;
-	selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
+	metadata_index := get_component_field_metadata_index(components[:], field);
 	
-	selected_input_index := get_component_input_index(components[:], field);
 	current_value_name := "nil";
 	selected_input_name : string;
-	if selected_input_index >= 0 
+	using components[field.component_index].data;
+
+	selected_component_index := -1;
+	if metadata_index >= 0 
 	{
-		input_index := components[field.component_index].data.inputs[selected_input_index].input_index;
+		switch metadata_info in metadata[metadata_index]
+		{
+			case objects.Component_Ref:
+				selected_component_index = metadata_info.component_index;
+				current_value_name = fmt.tprintf("(ref)%s", components[selected_component_index].id);
+
+			case objects.Component_Input:
+				if metadata_info.input_index < 0
+				{
+					selected_input_name = "nil";
+					current_value_name = "nil";
+				}
+				else
+				{
+					selected_input_name = inputs[metadata_info.input_index].name;
+					current_value_name = fmt.tprintf("(input)%s", selected_input_name);
+				}
+
+			case objects.Component_Field_Ref:
+		}
 		
-		if input_index < 0
-		{
-			selected_input_name = "nil";
-			current_value_name = "nil";
-		}
-		else
-		{
-			selected_input_name = inputs[input_index].name;
-			current_value_name = fmt.tprintf("(input)%s", selected_input_name);
-		}
-	}
-	else if selected_ref_index >= 0
-	{
-		current_value_name = fmt.tprintf("(ref)%s", components[selected_ref_target].id);
 	}
 
 	display_value := current_value_name;
 
-	struct_field := reflect.Struct_Field
-	{
-		name = field.name, 
-		type = field.type_id, 
-		offset = field.offset_in_component
-	};
 	if imgui.begin_combo(id, display_value, .PopupAlignLeft)
 	{
 		reference_found, input_found: bool;
@@ -235,14 +180,14 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 		{
 			if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
 			{
-				ref_input_index = index;
 				if !reference_found do imgui.text_unformatted("References :");
 				reference_found = true;
-				if imgui.selectable(component.id, selected_ref_target == index)
+				is_selected := false;
+				if imgui.selectable(component.id, selected_component_index == index)
 				{
-					new_ref := objects.Component_Ref{index, struct_field};
+					new_ref := objects.Component_Ref{index};
 
-					set_field_ref(components[:], field, new_ref);
+					set_component_field_metadata(components[:], field, new_ref);
 					modified = true;
 				}
 			}
@@ -258,8 +203,8 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 				input_found = true;
 				if imgui.selectable(input.name, selected_input_name == input.name)
 				{
-					new_input := objects.Component_Input{index, struct_field};
-					set_field_input(components[:], field, new_input);
+					new_input := objects.Component_Input{index};
+					set_component_field_metadata(components[:], field, new_input);
 					modified = true;
 				}
 			}
@@ -269,15 +214,7 @@ input_ref_combo :: proc(id: string, field: Component_Model_Field, using editor_s
 
 		if imgui.selectable("nil", !reference_found && !input_found)
 		{
-			if reference_found
-			{
-				remove_field_ref(components[:], field, ref_input_index);
-			}
-			else if input_found
-			{
-				remove_field_input(components[:], field, ref_input_index);
-
-			}
+			remove_component_field_metadata(components[:], field);
 		}
 		imgui.end_combo();
 	}
@@ -394,8 +331,7 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 	}
 	text_buffer := make([]u8, 200, context.temp_allocator);
 
-	input_index := get_component_input_index(components[:], field);
-	ref_index, ref_target := get_component_ref_index(components[:], field);
+	metadata_index := get_component_field_metadata_index(components[:], field);
 	
 	#partial switch variant in type_info.variant
 	{
@@ -424,13 +360,13 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 			child_field.type_id = variant.base.id;
 			component_editor_child(editor_state, base_name, child_field);
 		case runtime.Type_Info_Integer:
-			if input_index >= 0
+			if metadata_index >= 0
 			{
 				if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
 				imgui.same_line();
 				if imgui.button("remove input")
 				{
-					remove_field_input_ref(components[:], field);
+					remove_component_field_metadata(components[:], field);
 				}
 			}
 			else
@@ -449,8 +385,8 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 						type = field.type_id, 
 						offset = field.offset_in_component
 					};
-					new_input := objects.Component_Input{-1, struct_field};
-					set_field_input(components[:], field, new_input);
+					new_input := objects.Component_Input{-1};
+					set_component_field_metadata(components[:], field, new_input);
 					record_history_step(editor_state);
 				}
 				imgui.pop_item_width();
@@ -464,14 +400,8 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 			imgui.same_line();
 			if imgui.button("input")
 			{
-				struct_field := reflect.Struct_Field
-				{
-					name = field.name, 
-					type = field.type_id, 
-					offset = field.offset_in_component
-				};
-				new_input := objects.Component_Input{-1, struct_field};
-				set_field_input(components[:], field, new_input);
+				new_input := objects.Component_Input{-1};
+				set_component_field_metadata(components[:], field, new_input);
 				record_history_step(editor_state);
 			}
 			imgui.pop_item_width();
@@ -729,21 +659,19 @@ Json_Write_State :: struct
 
 json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab_Editor_State, component: objects.Component_Model_Data, type_info: ^runtime.Type_Info, offset: uintptr, write_state: ^Json_Write_State)
 {
-	for input_index in 0..<component.input_count
+	for index in 0..<component.metadata_count
 	{
-		input := component.inputs[input_index];
-		if input.field.offset == offset
+		if component.metadata_offsets[index] == offset
 		{
-			json_write_input(file, input.input_index, write_state);
-			return;
-		}
-	}
-	for ref_index in 0..<component.ref_count
-	{
-		ref := component.refs[ref_index];
-		if ref.field.offset == offset
-		{
-			json_write_ref(file, components[ref.component_index].id, write_state);
+			switch metadata in component.metadata[index]
+			{
+				case objects.Component_Ref:
+					json_write_ref(file, components[metadata.component_index].id, write_state);
+				
+				case objects.Component_Input:
+					json_write_input(file, metadata.input_index, write_state);
+				case objects.Component_Field_Ref:
+			}
 			return;
 		}
 	}

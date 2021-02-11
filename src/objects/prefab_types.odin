@@ -3,35 +3,50 @@ package prefab
 import "core:reflect"
 import "../container"
 
-MAX_REF_COUNT :: 256;
+MAX_METADATA_COUNT :: 256;
 MAX_INPUT_COUNT :: 256;
 
+// Reference to another component of the prefab
 Component_Ref :: struct
 {
 	component_index: int,
-	field: reflect.Struct_Field,
+}
+
+Component_Input :: struct
+{
+	input_index: int,
+}
+
+// Reference to the field on another component of the prefab
+Component_Field_Ref :: struct
+{
+	component_index: int,
+	offset_in_component: int,
+}
+
+// Every data that a component field can have that must be computed during the prefab instantiation
+Component_Field_Metadata :: union
+{
+	Component_Ref,
+	Component_Input,
+	Component_Field_Ref,
 }
 
 Component_Model_Data :: struct
 {
 	data: rawptr,
-	refs: [MAX_REF_COUNT]Component_Ref,
-	ref_count: int,
-	inputs: [MAX_REF_COUNT]Component_Input,
-	input_count: int,
+	metadata: [MAX_METADATA_COUNT]Component_Field_Metadata,
+	metadata_offsets: [MAX_METADATA_COUNT]uintptr,
+	metadata_types: [MAX_METADATA_COUNT]typeid,
+	metadata_count: int,
 }
 
 Component_Model :: struct
 {
 	id: string,
 	table_index: int,
+	// TODO : maybe try with a using ?
 	data: Component_Model_Data,
-}
-
-Component_Input :: struct
-{
-	input_index: int,
-	field: reflect.Struct_Field,
 }
 
 Prefab_Input_Type :: struct
@@ -47,25 +62,16 @@ Prefab_Input :: struct
 	type_id: typeid
 }
 
-Prefab_Exposed_Param :: struct
-{
-	component_index: int,
-	type_id: typeid,
-	offset: uintptr,
-}
-
 Dynamic_Prefab :: struct
 {
 	components: [dynamic]Component_Model,
-	inputs: [dynamic]Prefab_Input,
-	exposed_params: [dynamic]Prefab_Exposed_Param,
+	inputs: [dynamic]Prefab_Input
 }
 
 Prefab :: struct
 {
 	components: []Component_Model,
 	inputs: []Prefab_Input,
-	exposed_params: []Prefab_Exposed_Param,
 }
 
 Named_Component :: struct(T: typeid)

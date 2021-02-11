@@ -97,35 +97,38 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 		out_components[i].value = component_handles[i];
 
 		using component.data;
-		for ref_index in 0..<ref_count
+		for metadata_index in 0..<metadata_count
 		{
-			ref := refs[ref_index];
-			ref_ptr := rawptr(uintptr(components_data[i]) + ref.field.offset);
-			component_data := cast(^u8)components_data[i];
-			mem.copy(ref_ptr, &component_handles[ref.component_index], type_info_of(ref.field.type).size);
-			log.info(any{components_data[i], typeid_of(container.Raw_Handle)});
-			log.info(ref.field.type);
-			handle: ^container.Raw_Handle = &component_handles[ref.component_index];
-			table_data: ^container.Table_Data = handle.raw_table.table;
-			generic_handle := container.Generic_Handle{handle.id, table_data};
-			
-			field_ptr := rawptr(uintptr(components_data[i]) + ref.field.offset);
-			mem.copy(field_ptr, &generic_handle, reflect.size_of_typeid(ref.field.type));
-		}
+			offset := metadata_offsets[metadata_index];
+			field_type := metadata_types[metadata_index];
+			field_size := reflect.size_of_typeid(field_type);
+			switch metadata_info in metadata[metadata_index]
+			{
+				case Component_Ref:
+					ref_ptr := rawptr(uintptr(components_data[i]) + offset);
+					component_data := cast(^u8)components_data[i];
 
-		for input_index in 0..<input_count
-		{
-			component_input := inputs[input_index];
-			prefab_input := prefab.inputs[component_input.input_index];
-			if input_value, ok := input_data[prefab_input.name]; ok {
-				if input_value.id == component_input.field.type {
-					field_ptr := rawptr(uintptr(components_data[i]) + component_input.field.offset);
-					mem.copy(field_ptr, input_value.data, reflect.size_of_typeid(component_input.field.type));
-				}
-				else do log.info("Wrong input value : ", input_value.id, " vs ", component_input.field.type);
+					mem.copy(ref_ptr, &component_handles[metadata_info.component_index], field_size);
+					log.info(any{components_data[i], typeid_of(container.Raw_Handle)});
+					handle: ^container.Raw_Handle = &component_handles[metadata_info.component_index];
+					table_data: ^container.Table_Data = handle.raw_table.table;
+					generic_handle := container.Generic_Handle{handle.id, table_data};
+					
+					field_ptr := rawptr(uintptr(components_data[i]) + offset);
+					mem.copy(field_ptr, &generic_handle, field_size);
+				case Component_Input:
+					prefab_input := prefab.inputs[metadata_info.input_index];
+					if input_value, ok := input_data[prefab_input.name]; ok {
+						if input_value.id == field_type {
+							field_ptr := rawptr(uintptr(components_data[i]) + offset);
+							mem.copy(field_ptr, input_value.data, field_size);
+						}
+						else do log.info("Wrong input type : ", input_value.id);
+					}
+					else do log.info("Input not found ", prefab_input.name);
+					log.info(any{components_data[i], table.type_id});
+				case Component_Field_Ref:
 			}
-			else do log.info("Input not found ", component_input);
-			log.info(any{components_data[i], table.type_id});
 		}
 	}
 
@@ -234,8 +237,10 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				{
 					//log.info("INPUT");
 					input_index, parse_success := strconv.parse_int(t[1:]);
-					result.inputs[result.input_count] = Component_Input{input_index, field};
-					result.input_count += 1;
+					result.metadata[result.metadata_count] = Component_Input{input_index};
+					result.metadata_offsets[result.metadata_count] = field.offset;
+					result.metadata_types[result.metadata_count] = field.type;
+					result.metadata_count += 1;
 				}
 				if(t[0] == '@')
 				{
@@ -245,9 +250,11 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 
 					if component_data, ok := available_component_index[ref_name]; ok {
 						log.info(component_data);
-						result.refs[result.ref_count] = Component_Ref{component_data.component_index, field};
-						result.ref_count += 1;
-						log.info("REF ADDED ", ref_name, result.refs[:result.ref_count]);
+						result.metadata[result.metadata_count] = Component_Ref{component_data.component_index};
+						result.metadata_offsets[result.metadata_count] = field.offset;
+						result.metadata_types[result.metadata_count] = field.type;
+						result.metadata_count += 1;
+						log.info("REF ADDED ", ref_name, result.metadata[:result.metadata_count]);
 					}
 					else do log.info("Missing component", ref_name);
 				}
@@ -362,14 +369,4 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^containe
 		return true;
 	}
 	return false;
-}
-
-component_refs :: inline proc(component: ^Component_Model_Data) -> []Component_Ref
-{
-	return component.refs[0:component.ref_count];
-}
-
-component_inputs :: inline proc(component: ^Component_Model_Data) -> []Component_Input
-{
-	return component.inputs[0:component.ref_count];
 }

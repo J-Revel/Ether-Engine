@@ -34,7 +34,6 @@ Generic_Handle :: struct
 	table_data: ^Table_Data
 }
 
-// TODO : turn into Raw_Table with raw data and 
 Table_Data :: struct
 {
 	data: rawptr,
