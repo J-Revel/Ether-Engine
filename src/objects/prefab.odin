@@ -67,17 +67,26 @@ table_database_add_init :: proc(db: ^container.Database, name: string, table: ^c
 	log.info("Create database", name);
 }
 
-// TODO Error with transform that is its own parent, must be a bug in the ref handling
+prefab_instantiate_dynamic :: proc(db: ^container.Database, prefab: ^Dynamic_Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
+{
+	return components_instantiate(db, prefab.components[:], prefab.inputs[:], input_data);
+}
+
 prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
 {
+	return components_instantiate(db, prefab.components, prefab.inputs, input_data);
+}
+
+components_instantiate :: proc(db: ^container.Database, components: []Component_Model, inputs: []Prefab_Input, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
+{
 	data_total_size := 0;
-	components_data := make([]rawptr, len(prefab.components), context.temp_allocator);
-	component_handles := make([]container.Raw_Handle, len(prefab.components), context.allocator); // TODO : can use temp allocator instead ?
-	component_sizes := make([]int, len(prefab.components), context.temp_allocator);
+	components_data := make([]rawptr, len(components), context.temp_allocator);
+	component_handles := make([]container.Raw_Handle, len(components), context.allocator); // TODO : can use temp allocator instead ?
+	component_sizes := make([]int, len(components), context.temp_allocator);
 
-	out_components = make([]Named_Raw_Handle, len(prefab.components), context.temp_allocator);
+	out_components = make([]Named_Raw_Handle, len(components), context.temp_allocator);
 
-	for component, i in prefab.components
+	for component, i in components
 	{
 		table := db.tables[component.table_index].table;
 		component_sizes[i] = reflect.size_of_typeid(table.type_id);
@@ -89,7 +98,7 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 		out_components[i].name = component.id;
 	}
 
-	for component, i in prefab.components
+	for component, i in components
 	{
 		table := &db.tables[component.table_index].table;
 		ok : bool;
@@ -104,7 +113,7 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 			field_size := reflect.size_of_typeid(field_type);
 			switch metadata_info in metadata[metadata_index]
 			{
-				case Component_Ref:
+				case Ref_Metadata:
 					ref_ptr := rawptr(uintptr(components_data[i]) + offset);
 					component_data := cast(^u8)components_data[i];
 
@@ -116,8 +125,8 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 					
 					field_ptr := rawptr(uintptr(components_data[i]) + offset);
 					mem.copy(field_ptr, &generic_handle, field_size);
-				case Component_Input:
-					prefab_input := prefab.inputs[metadata_info.input_index];
+				case Input_Metadata:
+					prefab_input := inputs[metadata_info.input_index];
 					if input_value, ok := input_data[prefab_input.name]; ok {
 						if input_value.id == field_type {
 							field_ptr := rawptr(uintptr(components_data[i]) + offset);
@@ -127,12 +136,12 @@ prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data:
 					}
 					else do log.info("Input not found ", prefab_input.name);
 					log.info(any{components_data[i], table.type_id});
-				case Component_Field_Ref:
+				case Anim_Param_List_Metadata:
 			}
 		}
 	}
 
-	for component, i in prefab.components
+	for component, i in components
 	{
 		table := &db.tables[component.table_index].table;
 		data_ptr := components_data[i];
@@ -237,7 +246,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 				{
 					//log.info("INPUT");
 					input_index, parse_success := strconv.parse_int(t[1:]);
-					result.metadata[result.metadata_count] = Component_Input{input_index};
+					result.metadata[result.metadata_count] = Input_Metadata{input_index};
 					result.metadata_offsets[result.metadata_count] = field.offset;
 					result.metadata_types[result.metadata_count] = field.type;
 					result.metadata_count += 1;
@@ -250,7 +259,7 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 
 					if component_data, ok := available_component_index[ref_name]; ok {
 						log.info(component_data);
-						result.metadata[result.metadata_count] = Component_Ref{component_data.component_index};
+						result.metadata[result.metadata_count] = Ref_Metadata{component_data.component_index};
 						result.metadata_offsets[result.metadata_count] = field.offset;
 						result.metadata_types[result.metadata_count] = field.type;
 						result.metadata_count += 1;

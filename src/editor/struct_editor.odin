@@ -20,7 +20,7 @@ import "../container"
 import "../objects"
 import "../animation"
 
-handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Component_Model_Field)
+handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
 	tables := container.db_get_tables_of_type(&scene.db, field.type_id);
 	field_data := get_component_field_data(components[:], field);
@@ -36,15 +36,15 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 	{
 		switch metadata_content in component.data.metadata[metadata_index]
 		{
-			case objects.Component_Ref:
+			case objects.Ref_Metadata:
 				current_value_name = fmt.tprintf("(ref)%s", components[metadata_content.component_index].id);
 
-			case objects.Component_Input:
+			case objects.Input_Metadata:
 				input_index := metadata_content.input_index;
 				selected_input_name = inputs[input_index].name;
 				current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 
-			case objects.Component_Field_Ref:
+			case objects.Anim_Param_List_Metadata:
 
 		}
 	}
@@ -62,42 +62,97 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 	imgui.pop_id();
 }
 
-struct_field_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Component_Model_Field)
+struct_field_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
 	
 }
 
-animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Component_Model_Field)
+animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
+	selected_metadata_index := get_component_field_metadata_index(components[:], field);
+	component_data := &components[field.component_index].data;
 	params := cast(^[]animation.Animation_Param)get_component_field_data(components[:], field);
+	
+	if selected_metadata_index < 0
+	{
+		anim_param_list := objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
+		component_data.metadata[component_data.metadata_count] = anim_param_list;
+		component_data.metadata_offsets[component_data.metadata_count] = field.offset_in_component;
+		component_data.metadata_types[component_data.metadata_count] = field.type_id;
+		selected_metadata_index = component_data.metadata_count;
+		component_data.metadata_count += 1;
+	}
+
+	metadata_info, ok := component_data.metadata[selected_metadata_index].(objects.Anim_Param_List_Metadata);
+
+	if !ok
+	{
+		anim_param_list := objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
+		component_data.metadata[component_data.metadata_count] = anim_param_list;
+		metadata_info = component_data.metadata[selected_metadata_index].(objects.Anim_Param_List_Metadata);
+	}
+
 	for param, index in params
 	{
 		imgui.push_id(i32(index));
-		imgui.columns(2);
 		imgui.input_string("name", &param.name);
 		imgui.next_column();
 
-		//current_value := (cast(^container.Raw_Handle)field_data);
+		selected_component_id: string = "nil";
+		anim_param_data := &metadata_info.anim_params[index];
 
-		// selected_ref_index, selected_ref_target := get_component_ref_index(components[:], field);
-
-		if imgui.begin_combo("value", "Display Value", .PopupAlignLeft)
+		if anim_param_data.component_index > 0
 		{
-			fields := find_component_fields_of_type(&scene.db, components[:], param.type_id);
-			imgui.text(fmt.tprintf("%d", len(fields)));
-			for component_field in fields
+			selected_component_id = components[anim_param_data.component_index - 1].id;
+		}
+
+		if imgui.begin_combo("Component", selected_component_id, .PopupAlignLeft)
+		{
+			for component, index in components
 			{
-				if imgui.selectable(component_field.name, false)
+				if imgui.tree_node(component.id)
 				{
-					// handle_offset := type_info_of(animation.Animation_Param).offsets[1]; // get offset of field "handle" in Animation_Param
-					// modified_field: Component_Model_Field = {field.name, field.component_index, field.offset_in_component + handle_offset, component_field.type_id};
-					// set_field_ref(components, modified_field, objects.Component_Ref{component_field.component_index, });
+					component_type := scene.db.tables[component.table_index].table.type_id;
+					for field in find_component_fields_of_type(component_type, typeid_of(f32))
+					{
+						is_selected_component := index == anim_param_data.component_index - 1;
+						is_selected_field := field.offset == uintptr(anim_param_data.offset_in_component);
+						if imgui.selectable(field.name, is_selected_component && is_selected_field)
+						{
+							anim_param_data.component_index = index + 1;
+							anim_param_data.offset_in_component = int(field.offset);
+						}
+
+					}
+					imgui.tree_pop();
 				}
+			}
+			if imgui.selectable("nil", anim_param_data.component_index == 0)
+			{
+				anim_param_data.component_index = 0;
 			}
 			imgui.end_combo();
 		}
+		if anim_param_data.component_index > 0
+		{
+			selected_field_name := "nil";
+			selectable_fields: [dynamic]Prefab_Field;
+			selected_component_index := anim_param_data.component_index-1;
+			selected_component_type := scene.db.tables[selected_component_index].table.type_id;
+
+
+			for component_field in find_component_fields_of_type(selected_component_type, typeid_of(f32))
+			{
+				if int(component_field.offset) == anim_param_data.offset_in_component 
+				{
+					if int(component_field.offset) == anim_param_data.offset_in_component
+					{
+						selected_field_name = component_field.name;
+					}
+				}
+			}
+		}
 		imgui.next_column();
-		imgui.columns(1);
 		imgui.pop_id();
 	}
 	if imgui.button("+")
@@ -124,9 +179,22 @@ find_struct_fields_of_type :: proc(type_info: runtime.Type_Info_Struct, expected
 	return result[:];
 }
 
-find_component_fields_of_type :: proc(db: ^container.Database, components: []objects.Component_Model, expected_type_id: typeid) -> []Component_Model_Field
+find_component_fields_of_type :: proc(struct_type_id: typeid, expected_type_id: typeid) -> []reflect.Struct_Field
 {
-	result := make([dynamic]Component_Model_Field, context.temp_allocator);
+	#partial switch variant in type_info_of(struct_type_id).variant
+	{
+		case runtime.Type_Info_Named:
+			return find_struct_fields_of_type(variant.base.variant.(runtime.Type_Info_Struct), expected_type_id);
+
+		case runtime.Type_Info_Struct:
+			return find_struct_fields_of_type(variant, expected_type_id);
+	}
+	return make([]reflect.Struct_Field, 0);
+}
+
+find_components_fields_of_type :: proc(db: ^container.Database, components: []objects.Component_Model, expected_type_id: typeid) -> []Prefab_Field
+{
+	result := make([dynamic]Prefab_Field, context.temp_allocator);
 	for component, component_index in components
 	{
 		component_type_id := db.tables[component.table_index].table.type_id;
@@ -137,7 +205,7 @@ find_component_fields_of_type :: proc(db: ^container.Database, components: []obj
 				for field in fields
 				{
 					field_name := fmt.tprintf("%s/%s", component.id, field.name);
-					append(&result, Component_Model_Field{field_name, component_index, field.offset, expected_type_id});
+					append(&result, Prefab_Field{field_name, component_index, field.offset, expected_type_id});
 				}
 
 			case runtime.Type_Info_Struct:
@@ -145,7 +213,7 @@ find_component_fields_of_type :: proc(db: ^container.Database, components: []obj
 				for field in fields
 				{
 					field_name := fmt.tprintf("%s/%s", component.id, field.name);
-					append(&result, Component_Model_Field{field_name, component_index, field.offset, expected_type_id});
+					append(&result, Prefab_Field{field_name, component_index, field.offset, expected_type_id});
 				}
 		}
 	}

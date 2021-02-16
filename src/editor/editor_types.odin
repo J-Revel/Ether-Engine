@@ -93,10 +93,10 @@ Sprite_Editor_Render_Data :: struct
 Editor_Type_Callback :: #type proc
 (
 	using editor_state: ^Prefab_Editor_State, 
-	using field: Component_Model_Field
+	using field: Prefab_Field
 );
 
-Component_Model_Field :: struct
+Prefab_Field :: struct
 {
 	name: string,
 	component_index: int,
@@ -104,14 +104,23 @@ Component_Model_Field :: struct
 	type_id: typeid,
 }
 
+Component_Field :: struct
+{
+	name: string,
+	offset_in_component: uintptr,
+	type_id: typeid
+}
+
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
 	using prefab: objects.Dynamic_Prefab,
+	input_values: map[string]any,
 	components_history: [dynamic][]objects.Component_Model,
 	editor_type_callbacks: map[typeid]Editor_Type_Callback,
 	input_types: [dynamic]objects.Prefab_Input_Type,
 	z_down: bool,
+	instantiated_components: [dynamic]container.Raw_Handle
 }
 
 /*----------------------------------------------

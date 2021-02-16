@@ -142,6 +142,16 @@ handle_get :: proc(handle: $A/Handle($T)) -> ^T
 	return mem.ptr_offset(cast(^T)handle.table.data, cast(int)handle.id - 1);
 }
 
+handle_remove :: proc(handle: $A/Handle($T))
+{
+	bit_array_set(&handle.table.allocation, handle.id, 0);
+}
+
+raw_handle_remove :: proc(handle: Raw_Handle)
+{
+	bit_array_set(&handle.raw_table.allocation, uint(handle.id), false);
+}
+
 table_print :: proc(table: ^$A/Table($T))
 {
 	log.info("Table {");

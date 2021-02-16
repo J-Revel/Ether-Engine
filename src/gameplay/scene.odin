@@ -80,8 +80,6 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_input["scale"] = f32(0.5);
 
 	using animation;
-
-	test_transform, ok_test := table_add(&transforms, Transform{{}, {50, 1234}, 1.5, 0.3});
 	
 	//objects.prefab_instantiate(&db, &prefab_instance, test_input);
 
@@ -99,7 +97,7 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_animation_handle, animation_added := table_add(&animation_configs, test_animation);
 	log.info("Animation added", animation_added);
 	test_anim_param : Animation_Param = {name="test", type_id=typeid_of(f32)};
-	test_anim_param.offset = (reflect.struct_field_by_name(typeid_of(Transform), "scale").offset);
+	test_anim_param.offset = reflect.struct_field_by_name(typeid_of(Transform), "scale").offset;
 	for prefab_component in prefab_instance_components
 	{
 		log.info(prefab_component);
@@ -117,8 +115,6 @@ init_main_scene :: proc(using scene: ^Scene)
 		params = params_array,
 	};
 	table_add(&animation_players, animation_player);
-
-	log.info(handle_get(test_transform));
 }
 
 time : f32 = 0;

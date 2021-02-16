@@ -7,29 +7,36 @@ MAX_METADATA_COUNT :: 256;
 MAX_INPUT_COUNT :: 256;
 
 // Reference to another component of the prefab
-Component_Ref :: struct
+Ref_Metadata :: struct
 {
 	component_index: int,
 }
 
-Component_Input :: struct
+Input_Metadata :: struct
 {
 	input_index: int,
 }
 
 // Reference to the field on another component of the prefab
-Component_Field_Ref :: struct
+Anim_Param_Metadata :: struct
 {
+	// 0 = uninitialized, n -> component n-1
 	component_index: int,
 	offset_in_component: int,
+}
+
+Anim_Param_List_Metadata :: struct
+{
+	anim_params: []Anim_Param_Metadata,
+	count: int,
 }
 
 // Every data that a component field can have that must be computed during the prefab instantiation
 Component_Field_Metadata :: union
 {
-	Component_Ref,
-	Component_Input,
-	Component_Field_Ref,
+	Ref_Metadata,
+	Input_Metadata,
+	Anim_Param_List_Metadata,
 }
 
 Component_Model_Data :: struct
