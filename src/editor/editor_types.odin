@@ -111,11 +111,17 @@ Component_Field :: struct
 	type_id: typeid
 }
 
+Prefab_Editor_Input :: struct
+{
+	using data: objects.Prefab_Input,
+	display_value: rawptr,
+}
+
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
-	using prefab: objects.Dynamic_Prefab,
-	input_values: map[string]any,
+	components: [dynamic]objects.Component_Model,
+	inputs: [dynamic]Prefab_Editor_Input,
 	components_history: [dynamic][]objects.Component_Model,
 	editor_type_callbacks: map[typeid]Editor_Type_Callback,
 	input_types: [dynamic]objects.Prefab_Input_Type,

@@ -255,33 +255,46 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 	}
 	component_data := any{component.data.data, component_type_id};
 	
-	
-	callback, callback_found := editor_type_callbacks[component_type_id];
-
 	field_cursor := Prefab_Field{component.id, component_index, 0, component_type_id};
-
+	callback, callback_found := editor_type_callbacks[component_type_id];
 	if callback_found
 	{
 		callback(editor_state, field_cursor);
 		return;
 	}
-
 	type_info := type_info_of(component_data.id);
 	for
 	{
 		#partial switch variant in type_info.variant
 		{
 			case runtime.Type_Info_Struct:
-			structInfo, ok := type_info.variant.(runtime.Type_Info_Struct);
+			struct_info, ok := type_info.variant.(runtime.Type_Info_Struct);
 			imgui.columns(2);
 			imgui.set_column_width(0, 150);
-			for _, i in structInfo.names
+			for _, i in struct_info.names
 			{
-				
-				//field := rawptr(uintptr(component_data.data) + structInfo.offsets[i]);
-				field_cursor.offset_in_component = structInfo.offsets[i];
-				child_field := Prefab_Field{structInfo.names[i], component_index, structInfo.offsets[i], structInfo.types[i].id};
-				component_editor_child(editor_state, structInfo.names[i], child_field);
+				metadata_index := get_component_field_metadata_index(components[:], field_cursor);
+				field_cursor.offset_in_component = struct_info.offsets[i];
+				child_field := Prefab_Field{struct_info.names[i], component_index, struct_info.offsets[i], struct_info.types[i].id};
+				log.info(struct_info.names[i]);
+				if metadata_index >= 0
+				{
+					using components[child_field.component_index].data;
+					switch metadata_type in metadata[metadata_index]
+					{
+						case objects.Ref_Metadata:
+							imgui.text_unformatted("Ref");
+						case objects.Input_Metadata:
+							imgui.text_unformatted("Ref");
+						case objects.Anim_Param_List_Metadata:
+							imgui.text_unformatted("Anim Param List");
+					}
+				}
+				else
+				{			
+					//field := rawptr(uintptr(component_data.data) + structInfo.offsets[i]);
+					component_editor_child(editor_state, struct_info.names[i], child_field);
+				}
 			}
 			return;
 
@@ -303,137 +316,153 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 			imgui.next_column();
 	}
 	imgui.push_id(base_name);
-	callback, callback_found := editor_type_callbacks[field.type_id];
-	if callback_found
-	{
-		imgui.text_unformatted(base_name);
-		imgui.next_column();
-		callback(editor_state, field);
-		imgui.pop_id();
-		imgui.next_column();
-		return;
-	}
-	text_buffer := make([]u8, 200, context.temp_allocator);
 
 	metadata_index := get_component_field_metadata_index(components[:], field);
-	
-	#partial switch variant in type_info.variant
+	if metadata_index >= 0
 	{
-		case runtime.Type_Info_Struct:
-			if imgui.tree_node(base_name)
-			{
-				imgui.next_column();
-				imgui.next_column();
-				A, B: [2]f32;
-				imgui.get_cursor_screen_pos(&A);
-				offset_cursor: uintptr = 0;
-				for _, i in variant.names
+		using components[field.component_index].data;
+		switch metadata_type in metadata[metadata_index]
+		{
+			case objects.Ref_Metadata:
+				imgui.text_unformatted("Ref1");
+			case objects.Input_Metadata:
+				imgui.text_unformatted("Input1");
+			case objects.Anim_Param_List_Metadata:
+				imgui.text_unformatted("Anim Param List1");
+		}
+	}
+	else
+	{
+		callback, callback_found := editor_type_callbacks[field.type_id];
+		if callback_found
+		{
+			imgui.text_unformatted(base_name);
+			imgui.next_column();
+			callback(editor_state, field);
+			imgui.pop_id();
+			imgui.next_column();
+			return;
+		}
+		text_buffer := make([]u8, 200, context.temp_allocator);
+		#partial switch variant in type_info.variant
+		{
+			case runtime.Type_Info_Struct:
+				if imgui.tree_node(base_name)
 				{
-					width := imgui.calc_item_width();
-					imgui.push_id(variant.names[i]);
-					child_type := variant.types[i];
-					child_field: Prefab_Field = {variant.names[i], field.component_index, field.offset_in_component + variant.offsets[i], child_type.id};
-					component_editor_child(editor_state, variant.names[i], child_field);
-					imgui.pop_id();
+					imgui.next_column();
+					imgui.next_column();
+					A, B: [2]f32;
+					imgui.get_cursor_screen_pos(&A);
+					offset_cursor: uintptr = 0;
+					for _, i in variant.names
+					{
+						width := imgui.calc_item_width();
+						imgui.push_id(variant.names[i]);
+						child_type := variant.types[i];
+						child_field: Prefab_Field = {variant.names[i], field.component_index, field.offset_in_component + variant.offsets[i], child_type.id};
+						component_editor_child(editor_state, variant.names[i], child_field);
+						imgui.pop_id();
+					}
+					imgui.get_cursor_screen_pos(&B);
+					imgui.tree_pop();
 				}
-				imgui.get_cursor_screen_pos(&B);
-				imgui.tree_pop();
-			}
-		case runtime.Type_Info_Named:
-			child_field := field;
-			child_field.type_id = variant.base.id;
-			component_editor_child(editor_state, base_name, child_field);
-		case runtime.Type_Info_Integer:
-			if metadata_index >= 0
-			{
-				if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
-				imgui.same_line();
-				if imgui.button("remove input")
+			case runtime.Type_Info_Named:
+				child_field := field;
+				child_field.type_id = variant.base.id;
+				component_editor_child(editor_state, base_name, child_field);
+			case runtime.Type_Info_Integer:
+				if metadata_index >= 0
 				{
-					remove_component_field_metadata(components[:], field);
+					if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
+					imgui.same_line();
+					if imgui.button("remove input")
+					{
+						remove_component_field_metadata(components[:], field);
+					}
 				}
-			}
-			else
-			{
+				else
+				{
+					imgui.push_item_width(imgui.get_window_width() * 0.5);
+					if imgui.input_int("", cast(^i32) get_component_field_data(components[:], field))
+					{
+						record_history_step(editor_state);
+					}
+					imgui.same_line();
+					if imgui.button("input")
+					{
+						struct_field := reflect.Struct_Field
+						{
+							name = field.name, 
+							type = field.type_id, 
+							offset = field.offset_in_component
+						};
+						new_input := objects.Input_Metadata{-1};
+						set_component_field_metadata(components[:], field, new_input);
+						record_history_step(editor_state);
+					}
+					imgui.pop_item_width();
+				}
+			case runtime.Type_Info_Float:
 				imgui.push_item_width(imgui.get_window_width() * 0.5);
-				if imgui.input_int("", cast(^i32) get_component_field_data(components[:], field))
+				if imgui.input_float("", cast(^f32) get_component_field_data(components[:], field))
 				{
 					record_history_step(editor_state);
 				}
 				imgui.same_line();
 				if imgui.button("input")
 				{
-					struct_field := reflect.Struct_Field
-					{
-						name = field.name, 
-						type = field.type_id, 
-						offset = field.offset_in_component
-					};
 					new_input := objects.Input_Metadata{-1};
 					set_component_field_metadata(components[:], field, new_input);
 					record_history_step(editor_state);
 				}
 				imgui.pop_item_width();
-			}
-		case runtime.Type_Info_Float:
-			imgui.push_item_width(imgui.get_window_width() * 0.5);
-			if imgui.input_float("", cast(^f32) get_component_field_data(components[:], field))
-			{
-				record_history_step(editor_state);
-			}
-			imgui.same_line();
-			if imgui.button("input")
-			{
-				new_input := objects.Input_Metadata{-1};
-				set_component_field_metadata(components[:], field, new_input);
-				record_history_step(editor_state);
-			}
-			imgui.pop_item_width();
-		case runtime.Type_Info_String:
-			str := cast(^string)get_component_field_data(components[:], field);
-			if imgui.input_string("", str, 200)
-			{
-				record_history_step(editor_state);
-				str^ = strings.clone(str^, context.allocator);
-			}
-		case runtime.Type_Info_Array:
-			data_type: imgui.Data_Type = .Count;
-			format := "%d";
-			switch(variant.elem.id)
-			{
-				case typeid_of(i32):
-					data_type = .S32;
-				case typeid_of(u32):
-					data_type = .U32;
-				case typeid_of(i64):
-					data_type = .S64;
-				case typeid_of(u64):
-					data_type = .U64;
-				case typeid_of(int):
-					data_type = (size_of(typeid_of(int)) == 8) ? .S64:.S32;
-				case typeid_of(f32):
-					data_type = .Float;
-					format = "%.3f";
-				case typeid_of(f64):
-					data_type = .Double;
-					format = "%.6f";
-			}
-			if imgui.input_scalar_n("", data_type, rawptr(get_component_field_data(components[:], field)), i32(variant.count), nil, nil, format)
-			{
-				record_history_step(editor_state);
-			}
-
-			if data_type == .Count
-			{
-				for i in 0..<variant.count
+			case runtime.Type_Info_String:
+				str := cast(^string)get_component_field_data(components[:], field);
+				if imgui.input_string("", str, 200)
 				{
-					imgui.push_id(fmt.tprintf("element_%d", i));
-					char := 'x' + i;
-					txt := fmt.tprintf("%c", char);
-					component_editor_child(editor_state, txt, {"", field.component_index, field.offset_in_component + uintptr(variant.elem_size * i), variant.elem.id});
-					imgui.pop_id();
+					record_history_step(editor_state);
+					str^ = strings.clone(str^, context.allocator);
 				}
-			}
+			case runtime.Type_Info_Array:
+				data_type: imgui.Data_Type = .Count;
+				format := "%d";
+				switch(variant.elem.id)
+				{
+					case typeid_of(i32):
+						data_type = .S32;
+					case typeid_of(u32):
+						data_type = .U32;
+					case typeid_of(i64):
+						data_type = .S64;
+					case typeid_of(u64):
+						data_type = .U64;
+					case typeid_of(int):
+						data_type = (size_of(typeid_of(int)) == 8) ? .S64:.S32;
+					case typeid_of(f32):
+						data_type = .Float;
+						format = "%.3f";
+					case typeid_of(f64):
+						data_type = .Double;
+						format = "%.6f";
+				}
+				if imgui.input_scalar_n("", data_type, rawptr(get_component_field_data(components[:], field)), i32(variant.count), nil, nil, format)
+				{
+					record_history_step(editor_state);
+				}
+
+				if data_type == .Count
+				{
+					for i in 0..<variant.count
+					{
+						imgui.push_id(fmt.tprintf("element_%d", i));
+						char := 'x' + i;
+						txt := fmt.tprintf("%c", char);
+						component_editor_child(editor_state, txt, {"", field.component_index, field.offset_in_component + uintptr(variant.elem_size * i), variant.elem.id});
+						imgui.pop_id();
+					}
+				}
+		}
+
 	}
 	imgui.pop_id();
 	imgui.next_column();
@@ -470,7 +499,10 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 		clear(&inputs);
 		for input in loaded_prefab.inputs
 		{
-			append(&inputs, input);
+			input_data: Prefab_Editor_Input;
+			type_info := type_info_of(input.type_id);
+			input_data.display_value = mem.alloc(type_info.size, type_info.align);
+			append(&inputs, input_data);
 		}
 		//delete(loaded_prefab.components);
 	}
@@ -505,15 +537,18 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 					if imgui.selectable(input_type.name, input_type.type_id == input.type_id)
 					{
 						input.type_id = input_type.type_id;
+						mem.free(input.display_value);
+						input.display_value = mem.alloc(reflect.size_of_typeid(input.type_id));
 					}
 				}
 				imgui.end_combo();
 			}
+			struct_editor(input.display_value, input.type_id);
 			imgui.pop_id();
 			imgui.next_column();
 		}
 		imgui.columns(1);
-		if imgui.button("Add Input") do append(&inputs, objects.Prefab_Input{});
+		if imgui.button("Add Input") do append(&inputs, Prefab_Editor_Input{});
 		imgui.separator();
 	}
 	if imgui.collapsing_header("Components")
@@ -601,7 +636,15 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 			container.raw_handle_remove(instantiated_component);
 		}
 		clear(&instantiated_components);
-		components, success := objects.prefab_instantiate_dynamic(&scene.db, &prefab, input_values);
+		input_values: map[string]any;
+		input_data := make([]objects.Prefab_Input, len(inputs));
+		for input, index in inputs
+		{
+			input_data[index] = input;
+			input_values[input.data.name] = input.display_value;
+		}
+
+		components, success := objects.components_instantiate(&scene.db, components[:], input_data, input_values);
 		if success
 		{
 			for component in components

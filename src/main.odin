@@ -118,16 +118,26 @@ main :: proc() {
             gl.Clear(gl.COLOR_BUFFER_BIT);
             gameplay.update_and_render(&sceneInstance, 1.0/60, screen_size, &input_state);
 
-            if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed do show_editor = !show_editor;
+            if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed && !show_editor
+            {
+                show_editor = true;
+            }
+            if input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed
+            {
+                if show_editor do show_editor = false else do running = false;
+            }
+
+
+            if input_state.quit do running = false;
             
             if show_editor
             {
                 editor.update_editor(&editor_state, screen_size);
             }
             imgui.render();
+
             
             
-            if(input_state.quit || input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed) do running = false;
 
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
