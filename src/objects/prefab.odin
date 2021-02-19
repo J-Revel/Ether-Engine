@@ -34,6 +34,19 @@ get_input_types_list :: proc(db: ^container.Database, allocator := context.alloc
 	return result[:];	
 }
 
+is_input_type :: proc(db: ^container.Database, type_id: typeid) -> bool
+{
+	for input_type in default_input_types
+	{
+		if type_id == input_type.type_id do return true;
+	}
+	for component_type in db.component_types
+	{
+		if component_type.value == type_id do return true;
+	}
+	return false;
+}
+
 get_input_types_map :: proc(db: ^container.Database, allocator := context.allocator) -> map[string]typeid
 {
 	result := make(map[string]typeid, 100, allocator);
