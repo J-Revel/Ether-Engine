@@ -98,10 +98,8 @@ Editor_Type_Callback :: #type proc
 
 Prefab_Field :: struct
 {
-	name: string,
+	using component_field: Component_Field,
 	component_index: int,
-	offset_in_component: uintptr,
-	type_id: typeid,
 }
 
 Component_Field :: struct
@@ -126,7 +124,8 @@ Prefab_Editor_State :: struct
 	editor_type_callbacks: map[typeid]Editor_Type_Callback,
 	input_types: [dynamic]objects.Prefab_Input_Type,
 	z_down: bool,
-	instantiated_components: [dynamic]container.Raw_Handle
+	instantiated_components: [dynamic]container.Raw_Handle,
+	ref_input_popup_field: Prefab_Field,
 }
 
 /*----------------------------------------------

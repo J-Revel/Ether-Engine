@@ -22,44 +22,45 @@ import "../animation"
 
 handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
-	tables := container.db_get_tables_of_type(&scene.db, field.type_id);
-	field_data := get_component_field_data(components[:], field);
-	current_value := (cast(^container.Raw_Handle)field_data);
+	imgui.text("nil");
+	// tables := container.db_get_tables_of_type(&scene.db, field.type_id);
+	// field_data := get_component_field_data(components[:], field);
+	// current_value := (cast(^container.Raw_Handle)field_data);
 
-	metadata_index := get_component_field_metadata_index(components[:], field);
+	// metadata_index := get_component_field_metadata_index(components[:], field);
 
-	current_value_name := "";
-	selected_input_name : string;
+	// current_value_name := "";
+	// selected_input_name : string;
 
-	component := editor_state.components[field.component_index];
-	if metadata_index >= 0
-	{
-		switch metadata_content in component.data.metadata[metadata_index]
-		{
-			case objects.Ref_Metadata:
-				current_value_name = fmt.tprintf("(ref)%s", components[metadata_content.component_index].id);
+	// component := editor_state.components[field.component_index];
+	// if metadata_index >= 0
+	// {
+	// 	switch metadata_content in component.data.metadata[metadata_index]
+	// 	{
+	// 		case objects.Ref_Metadata:
+	// 			current_value_name = fmt.tprintf("(ref)%s", components[metadata_content.component_index].id);
 
-			case objects.Input_Metadata:
-				input_index := metadata_content.input_index;
-				selected_input_name = inputs[input_index].name;
-				current_value_name = fmt.tprintf("(input)%s", selected_input_name);
+	// 		case objects.Input_Metadata:
+	// 			input_index := metadata_content.input_index;
+	// 			selected_input_name = inputs[input_index].name;
+	// 			current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 
-			case objects.Anim_Param_List_Metadata:
+	// 		case objects.Anim_Param_List_Metadata:
 
-		}
-	}
+	// 	}
+	// }
 
-	display_value := current_value_name;
+	// display_value := current_value_name;
 
-	struct_field := reflect.Struct_Field
-	{
-		name = field.name, 
-		type = field.type_id, 
-		offset = field.offset_in_component
-	};
-	imgui.push_id("handles");
-	if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
-	imgui.pop_id();
+	// struct_field := reflect.Struct_Field
+	// {
+	// 	name = field.name, 
+	// 	type = field.type_id, 
+	// 	offset = field.offset_in_component
+	// };
+	// imgui.push_id("handles");
+	// if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
+	// imgui.pop_id();
 }
 
 animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
@@ -200,7 +201,7 @@ find_components_fields_of_type :: proc(db: ^container.Database, components: []ob
 				for field in fields
 				{
 					field_name := fmt.tprintf("%s/%s", component.id, field.name);
-					append(&result, Prefab_Field{field_name, component_index, field.offset, expected_type_id});
+					append(&result, Prefab_Field{{field_name, field.offset, expected_type_id}, component_index});
 				}
 
 			case runtime.Type_Info_Struct:
@@ -208,7 +209,7 @@ find_components_fields_of_type :: proc(db: ^container.Database, components: []ob
 				for field in fields
 				{
 					field_name := fmt.tprintf("%s/%s", component.id, field.name);
-					append(&result, Prefab_Field{field_name, component_index, field.offset, expected_type_id});
+					append(&result, Prefab_Field{{field_name, field.offset, expected_type_id}, component_index});
 				}
 		}
 	}

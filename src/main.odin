@@ -74,15 +74,13 @@ main :: proc() {
             log.debugf("Error during window creation: %s", sdl.get_error());
             return;
         }
-        gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, 
-                      proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
+        gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
+        
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
         input_state : input.State;
         input.setup_state(&input_state);
-        
-        //building.size = vec2{20, 20};
 
         show_demo_window := false;
         io := imgui.get_io();
@@ -113,8 +111,8 @@ main :: proc() {
                 info_overlay();
             }
 
-            gl.Viewport(0, 0, i32(io.display_size.x), i32(io.display_size.y));
-            gl.Scissor(0, 0, i32(io.display_size.x), i32(io.display_size.y));
+            gl.Viewport(0, 0, mx, my);
+            gl.Scissor(0, 0, mx, my);
             gl.Clear(gl.COLOR_BUFFER_BIT);
             gameplay.update_and_render(&sceneInstance, 1.0/60, screen_size, &input_state);
 
@@ -122,11 +120,11 @@ main :: proc() {
             {
                 show_editor = true;
             }
+
             if input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed
             {
                 if show_editor do show_editor = false else do running = false;
             }
-
 
             if input_state.quit do running = false;
             
@@ -135,9 +133,6 @@ main :: proc() {
                 editor.update_editor(&editor_state, screen_size);
             }
             imgui.render();
-
-            
-            
 
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
