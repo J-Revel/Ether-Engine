@@ -22,33 +22,35 @@ import "../animation"
 
 handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
-	imgui.text("nil");
+	metadata_index := get_component_field_metadata_index(components[:], field);
+	current_value_name := "nil";
+	component := editor_state.components[field.component_index];
+	if metadata_index >= 0
+	{
+		switch metadata_content in component.data.metadata[metadata_index]
+		{
+			case objects.Ref_Metadata:
+				current_value_name = fmt.tprintf("(ref)%s", components[metadata_content.component_index].id);
+
+			case objects.Input_Metadata:
+				input_index := metadata_content.input_index;
+				selected_input_name := inputs[input_index].name;
+				current_value_name = fmt.tprintf("(input)%s", selected_input_name);
+
+			case objects.Anim_Param_List_Metadata:
+
+		}
+	}
+	imgui.text(current_value_name);
 	// tables := container.db_get_tables_of_type(&scene.db, field.type_id);
 	// field_data := get_component_field_data(components[:], field);
 	// current_value := (cast(^container.Raw_Handle)field_data);
 
-	// metadata_index := get_component_field_metadata_index(components[:], field);
 
 	// current_value_name := "";
 	// selected_input_name : string;
 
 	// component := editor_state.components[field.component_index];
-	// if metadata_index >= 0
-	// {
-	// 	switch metadata_content in component.data.metadata[metadata_index]
-	// 	{
-	// 		case objects.Ref_Metadata:
-	// 			current_value_name = fmt.tprintf("(ref)%s", components[metadata_content.component_index].id);
-
-	// 		case objects.Input_Metadata:
-	// 			input_index := metadata_content.input_index;
-	// 			selected_input_name = inputs[input_index].name;
-	// 			current_value_name = fmt.tprintf("(input)%s", selected_input_name);
-
-	// 		case objects.Anim_Param_List_Metadata:
-
-	// 	}
-	// }
 
 	// display_value := current_value_name;
 

@@ -280,7 +280,6 @@ component_field_header :: proc(using editor_state: ^Prefab_Editor_State, base_na
 	#partial switch variant in type_info.variant
 	{
 		case runtime.Type_Info_Struct:
-			imgui.text_unformatted(fmt.tprint(field.type_id));
 			if imgui.tree_node(base_name)
 			{
 				imgui.next_column();
@@ -314,44 +313,52 @@ component_field_header :: proc(using editor_state: ^Prefab_Editor_State, base_na
 component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name: string, field: Prefab_Field)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
-	if imgui.button("*")
+	if input_ref_available(editor_state, field)
 	{
-		struct_field := Prefab_Field
+		if imgui.button("*")
 		{
+			struct_field := Prefab_Field
 			{
-				name = field.name, 
-				type_id = field.type_id,
-				offset_in_component = field.offset_in_component
-			},
-			field.component_index
-		};
-		ref_input_popup_field = struct_field;
+				{
+					name = field.name,
+					type_id = field.type_id,
+					offset_in_component = field.offset_in_component
+				},
+				field.component_index
+			};
+			ref_input_popup_field = struct_field;
+		}
+		if imgui.begin_popup_context_item("ref_input_popup", .MouseButtonLeft)
+		{
+			if metadata_index < 0
+			{
+				ref_input_popup_content(editor_state, ref_input_popup_field);
+			}
+			else
+			{
+				button_text: string;
+				#partial switch variant in components[field.component_index].data.metadata[metadata_index]
+				{
+					case objects.Ref_Metadata:
+						button_text = "Remove Ref";
+					case objects.Input_Metadata:
+						button_text = "Remove Input";
+				}
+				if imgui.button(button_text)
+				{
+					remove_component_field_metadata(components[:], ref_input_popup_field);
+					imgui.close_current_popup();
+				}
+			}
+			imgui.end_popup();
+		}
 	}
+	else 
+	{
+		imgui.dummy(17);
+	}
+
 	imgui.same_line();
-	if imgui.begin_popup_context_item("ref_input_popup", .MouseButtonLeft)
-	{
-		if metadata_index < 0
-		{
-			ref_input_popup_content(editor_state, ref_input_popup_field);
-		}
-		else
-		{
-			button_text: string;
-			#partial switch variant in components[field.component_index].data.metadata[metadata_index]
-			{
-				case objects.Ref_Metadata:
-					button_text = "Remove Ref";
-				case objects.Input_Metadata:
-					button_text = "Remove Input";
-			}
-			if imgui.button(button_text)
-			{
-				remove_component_field_metadata(components[:], ref_input_popup_field);
-				imgui.close_current_popup();
-			}
-		}
-		imgui.end_popup();
-	}
 	type_info := type_info_of(field.type_id);
 	callback, callback_found := editor_type_callbacks[field.type_id];
 	if callback_found
@@ -364,29 +371,25 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 	#partial switch variant in type_info.variant
 	{
 		case runtime.Type_Info_Struct:
-			if imgui.tree_node(base_name)
+			imgui.next_column();
+			A, B: [2]f32;
+			imgui.get_cursor_screen_pos(&A);
+			offset_cursor: uintptr = 0;
+			for _, i in variant.names
 			{
-				imgui.next_column();
-				imgui.next_column();
-				A, B: [2]f32;
-				imgui.get_cursor_screen_pos(&A);
-				offset_cursor: uintptr = 0;
-				for _, i in variant.names
-				{
-					width := imgui.calc_item_width();
-					imgui.push_id(variant.names[i]);
-					child_type := variant.types[i];
-					child_field: Prefab_Field = {
-						{
-							variant.names[i], field.offset_in_component + variant.offsets[i], child_type.id
-						}, 
-						field.component_index
-					};
-					component_editor_child(editor_state, variant.names[i], child_field);
-					imgui.pop_id();
-				}
-				imgui.get_cursor_screen_pos(&B);
+				width := imgui.calc_item_width();
+				imgui.push_id(variant.names[i]);
+				child_type := variant.types[i];
+				child_field: Prefab_Field = {
+					{
+						variant.names[i], field.offset_in_component + variant.offsets[i], child_type.id
+					}, 
+					field.component_index
+				};
+				component_editor_child(editor_state, variant.names[i], child_field);
+				imgui.pop_id();
 			}
+			imgui.get_cursor_screen_pos(&B);
 		case runtime.Type_Info_Named:
 			child_field := field;
 			child_field.type_id = variant.base.id;
@@ -491,44 +494,58 @@ component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_na
 	imgui.next_column();
 }
 
+input_ref_available :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field) -> bool
+{
+	for component, index in components
+	{
+		if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
+		{
+			return true;
+		}
+	}
+
+	for input, index in inputs
+	{
+		if input.type_id == field.type_id
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 ref_input_popup_content :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
 	for component, index in components
+	{
+		if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
 		{
-			if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
+			if imgui.button(component.id)
 			{
-				if imgui.button(component.id)
-				{
-					new_ref := objects.Ref_Metadata{index};
+				new_ref := objects.Ref_Metadata{index};
 
-					set_component_field_metadata(components[:], field, new_ref);
-					imgui.close_current_popup();
-				}
+				set_component_field_metadata(components[:], field, new_ref);
+				imgui.close_current_popup();
 			}
 		}
-		imgui.separator();
+	}
+	imgui.separator();
 
-		for input, index in inputs
+	for input, index in inputs
+	{
+		if input.type_id == field.type_id
 		{
-			if input.type_id == field.type_id
+			imgui.text_unformatted("Inputs :");
+			if imgui.button(input.name)
 			{
-				imgui.text_unformatted("Inputs :");
-				if imgui.button(input.name)
-				{
-					new_input := objects.Input_Metadata{index};
-					set_component_field_metadata(components[:], field, new_input);
-					imgui.close_current_popup();
-				}
+				new_input := objects.Input_Metadata{index};
+				set_component_field_metadata(components[:], field, new_input);
+				imgui.close_current_popup();
 			}
 		}
-		imgui.separator();
-		if imgui.button("Cancel") do imgui.close_current_popup();
-}
-
-
-begin_component_editor :: proc(component_id: string)
-{
-
+	}
+	imgui.separator();
+	if imgui.button("Cancel") do imgui.close_current_popup();
 }
 
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
