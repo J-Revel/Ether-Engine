@@ -41,8 +41,6 @@ void main()
 }
 `;
 
-
-
 INDEX_BUFFER_SIZE :: 50000;
 VERTEX_BUFFER_SIZE :: 20000;
 

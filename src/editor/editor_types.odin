@@ -20,6 +20,7 @@ Editor_State :: struct
 				Sprite Editor
 ------------------------------------------------*/
 
+// Same data as Sprite, except name is a []u8 to be usable in editor
 Editor_Sprite_Data :: struct
 {
 	name: []u8,

@@ -618,7 +618,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 				}
 				imgui.end_combo();
 			}
-			struct_editor(input.display_value, input.type_id);
+			struct_editor(&scene, input.display_value, input.type_id);
 			imgui.pop_id();
 			imgui.next_column();
 		}

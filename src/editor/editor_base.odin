@@ -618,7 +618,7 @@ draw_sprite_gizmos :: proc(using editor_state: ^Sprite_Editor_State, draw_list: 
 load_sprites_for_texture :: proc(using editor_state: ^Sprite_Editor_State, path: string)
 {
 	input_path, was_allocation := strings.replace(path, ".png", ".meta", -1, context.temp_allocator);
-	in_names, in_data, ok := render.load_sprites_from_file_editor(input_path, context.temp_allocator);
+	in_names, in_data, ok := render.load_sprites_data(input_path, context.temp_allocator);
 	if ok
 	{
 		clear(&sprites_data); // TODO : memory leak

@@ -206,6 +206,7 @@ save_sprites_to_file_editor :: proc(path: string, sprite_names: []string, sprite
     return 0;
 }
 
+// DEPRECATED : does not load the same version of sprite files as the editor version. Use load_sprites_data instead
 load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture), sprites: ^container.Table(Sprite)) -> bool
 {
     file, ok := os.read_entire_file(path, context.temp_allocator);
@@ -244,12 +245,12 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
     return false;
 }
 
-load_sprites_from_file_editor :: proc (path: string, allocator := context.temp_allocator) -> ([]string, []Sprite_Data, bool)
+load_sprites_data :: proc (path: string, allocator := context.temp_allocator) -> ([]string, []Sprite_Data, bool)
 {
     file, ok := os.read_entire_file(path, context.temp_allocator);
     if ok
     {
-        parsed, ok := json.parse(file);
+        parsed, ok := json.parse(file, .JSON, false, context.temp_allocator);
         parsed_object := parsed.value.(json.Object);
 
         sprite := Sprite_Data{};

@@ -14,7 +14,7 @@ is_file_selector_open :: proc(selector_id: string) -> bool
 	return selector_id in file_selectors;
 }
 
-update_display_data :: proc(using state: ^File_Selection_Data)
+update_file_selection_data :: proc(using state: ^File_Selection_Data)
 {
 	handle, errno1 := os.open(current_path);
 	state.current_path = current_path;
@@ -27,7 +27,7 @@ update_display_data :: proc(using state: ^File_Selection_Data)
 open_file_selector :: proc(selector_id: string, starting_folder: string)
 {
 	file_selector_data := File_Selection_Data{strings.clone(starting_folder), "", {}};
-	update_display_data(&file_selector_data);
+	update_file_selection_data(&file_selector_data);
 	file_selectors[selector_id] = file_selector_data;
 }
 
@@ -130,7 +130,7 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 			delete_key(&file_selectors, selector_id);
 			out_path = new_file_path;
 			log.info("Save as", new_file_path);
-			update_display_data(file_selector_data);
+			update_file_selection_data(file_selector_data);
 			return;
 		}
 	}
@@ -176,7 +176,7 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 			delete_key(&file_selectors, selector_id);
 		}
 		out_path = new_path;
-		update_display_data(file_selector_data);
+		update_file_selection_data(file_selector_data);
 	}
 	else
 	{
