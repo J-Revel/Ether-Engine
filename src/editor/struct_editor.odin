@@ -104,35 +104,12 @@ sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool
 	{
 		imgui.text("nil sprite");
 	}
-	imgui.text("Some sprite");
+	else
+	{
+		imgui.text("Some sprite");
+	}
 	imgui.same_line();
 
-	extensions := []string{".png"};
-	search_config := File_Search_Config{"resources/textures", .Show_With_Ext, extensions, false, false, false};
-
-	path, file_search_state := file_selector_popup("sprite_selector", "Select Sprite", search_config);
-
-	if file_search_state == .Found
-	{
-		it := container.table_iterator(&textures);
-		texture_loaded := false;
-		for texture in container.table_iterate(&it)
-		{
-			if texture.path == path
-			{
-				texture_loaded = true;
-			}
-		} 
-
-		/*if texture_id.id > 0
-		{
-			render.unload_texture(container.handle_get(texture_id));
-		}
-		searching_file = false;
-		path_copy := strings.clone(path, context.allocator);
-		texture := render.load_texture(path_copy);
-		texture_id, _ = container.table_add(&loaded_textures, texture);
-		load_sprites_for_texture(editor_state, texture.path);*/
-	}
+	sprite_selector(scene, "sprite_selector", "resources/textures");
 	return false;
 }
