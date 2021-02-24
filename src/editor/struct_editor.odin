@@ -107,8 +107,8 @@ sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool
 	imgui.text("Some sprite");
 	imgui.same_line();
 
-	extensions :: []string{".png"};
-	search_config :: File_Search_Config{"resources/textures", .Show_With_Ext, extensions, false, false, false};
+	extensions := []string{".png"};
+	search_config := File_Search_Config{"resources/textures", .Show_With_Ext, extensions, false, false, false};
 
 	path, file_search_state := file_selector_popup("sprite_selector", "Select Sprite", search_config);
 
