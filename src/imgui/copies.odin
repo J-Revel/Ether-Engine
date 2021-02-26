@@ -28,9 +28,9 @@ Input_Text_Callback :: #type proc "c" (data: ^Input_Text_Callback_Data) -> int;
 
 Size_Callback :: #type proc "c" (data: ^Size_Callback_Data);
 
-Draw_List_Shared_Data :: #opaque struct {};
+Draw_List_Shared_Data :: struct {};
 
-Context :: #opaque struct {};
+Context :: struct {};
 
 Im_Vector :: struct(T : typeid) {
     size:     i32, 

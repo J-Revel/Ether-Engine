@@ -24,6 +24,7 @@ Sprite_Selection_Data :: struct
 }
 
 sprite_selectors: map[string]Sprite_Selection_Data;
+available_sprite_extensions := [?]string{".meta"};
 
 sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folder: string) -> (out_sprite: render.Sprite_Handle, search_state: File_Search_State)
 {
@@ -38,7 +39,7 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 		search_config := File_Search_Config{
 			start_folder = start_folder,
 			filter_type = .Show_With_Ext,
-			extensions = {".meta"},
+			extensions = available_sprite_extensions[:],
 		};
 		found_path, search_state := file_selector_popup(selector_id, "Select Sprite", search_config);
 		switch search_state

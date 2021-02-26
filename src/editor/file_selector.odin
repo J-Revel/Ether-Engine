@@ -39,7 +39,7 @@ file_selector_popup :: proc(selector_id: string, button_text: string, search_con
 		open_file_selector(selector_id, search_config.start_folder);
 	}
 	center := [2]f32{imgui.get_io().display_size.x * 0.5, imgui.get_io().display_size.y * 0.5};
-	imgui.set_next_window_pos(center, .Appearing, [2]f32{0.5, 0.5});
+	// imgui.set_next_window_pos(center, .Appearing, [2]f32{0.5, 0.5});
 	//imgui.set_next_window_size_constraints({500, 500}, {});
 	if imgui.begin_popup_modal(selector_id, nil, .AlwaysAutoResize)
 	{

@@ -78,3 +78,15 @@ Sprite_Vertex_Data :: struct
 
 Sprite_Render_Buffer :: Render_Buffer(Sprite_Vertex_Data);
 Sprite_Render_System :: Render_System(Sprite_Vertex_Data);
+
+Sprite_Asset :: struct
+{
+    asset_path: string,
+    sprite_id: string,
+}
+
+Sprite_Database :: struct
+{
+    textures: container.Table(Texture),
+    sprites: container.Table(Sprite),
+}

@@ -764,7 +764,7 @@ json_write_member :: proc(file: os.Handle, name: string, using write_state: ^Jso
 	has_precedent = false;
 }
 
-json_write_value :: inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
+json_write_value :: #force_inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
 {
 	os.write_byte(file, '\"');
 	os.write_string(file, name);
@@ -772,14 +772,14 @@ json_write_value :: inline proc(file: os.Handle, name: string, using write_state
 	has_precedent = true;
 }
 
-typeid_to_string :: inline proc(type_id: typeid, allocator := context.temp_allocator) -> string
+typeid_to_string :: #force_inline proc(type_id: typeid, allocator := context.temp_allocator) -> string
 {
 	builder: strings.Builder = strings.make_builder_len_cap(0, 100, allocator);
 	reflect.write_typeid(&builder, type_id);
 	return strings.to_string(builder);
 }
 
-json_write_input :: inline proc(file: os.Handle, input_index: int, using write_state: ^Json_Write_State)
+json_write_input :: #force_inline proc(file: os.Handle, input_index: int, using write_state: ^Json_Write_State)
 {
 	os.write_string(file, "\"&");
 	os.write_string(file, fmt.tprint(input_index));
@@ -787,7 +787,7 @@ json_write_input :: inline proc(file: os.Handle, input_index: int, using write_s
 	has_precedent = true;
 }
 
-json_write_ref :: inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
+json_write_ref :: #force_inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
 {
 	os.write_string(file, "\"@");
 	os.write_string(file, name);
@@ -795,7 +795,7 @@ json_write_ref :: inline proc(file: os.Handle, name: string, using write_state: 
 	has_precedent = true;
 }
 
-json_write_tabs :: inline proc(handle: os.Handle, using write_state: ^Json_Write_State)
+json_write_tabs :: #force_inline proc(handle: os.Handle, using write_state: ^Json_Write_State)
 {
 	for i in 0..<tab_count do os.write_byte(handle, '\t');
 }

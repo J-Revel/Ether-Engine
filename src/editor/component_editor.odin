@@ -171,7 +171,7 @@ find_struct_fields_of_type :: proc(type_info: runtime.Type_Info_Struct, expected
 	{
 		if types[i].id == expected_type_id 
 		{
-			append(&result, reflect.Struct_Field{names[i], types[i].id, {}, offsets[i]});
+			append(&result, reflect.Struct_Field{names[i], types[i].id, {}, offsets[i], false});
 		}
 	}
 	return result[:];

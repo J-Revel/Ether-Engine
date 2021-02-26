@@ -495,7 +495,7 @@ swr_igInputScalarN :: proc(label: string, data_type: Data_Type, p_data: rawptr, 
 }
 
 // PREDEFINED FOR 'igInputText'
-wrapper_input_text :: inline proc(label: string, buf: []u8, flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool {
+wrapper_input_text :: #force_inline proc(label: string, buf: []u8, flags := Input_Text_Flags(0), callback : Input_Text_Callback = nil, user_data : rawptr = nil) -> bool {
     l := strings.clone_to_cstring(label, context.temp_allocator);
     return igInputText(l, cstring(&buf[0]), uint(len(buf)), flags, callback, user_data);
 }
@@ -703,7 +703,7 @@ swr_igSelectableBoolPtr :: proc(label: string, p_selected: ^bool, flags: Selecta
 }
 
 // PREDEFINED FOR 'igSetAllocatorFunctions'
-wrapper_set_allocator_functions :: inline proc(alloc_func: Alloc_Func, free_func: Free_Func) {
+wrapper_set_allocator_functions :: #force_inline proc(alloc_func: Alloc_Func, free_func: Free_Func) {
     igSetAllocatorFunctions(alloc_func, free_func);
 }
 

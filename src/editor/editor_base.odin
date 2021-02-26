@@ -101,8 +101,10 @@ init_editor :: proc(using editor_state: ^Editor_State)
 
 update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
 {
-	imgui.set_next_window_pos({screen_size.x / 2, 0}, .Always);
-    imgui.set_next_window_size({screen_size.x / 2, screen_size.y}, .Always);
+	imgui.text_unformatted(fmt.tprint(screen_size));
+	fmt.println(i32(imgui.Cond.None));
+	imgui.set_next_window_pos({screen_size.x / 2, 0}, .None);
+ //    imgui.set_next_window_size({screen_size.x / 2, screen_size.y}, .Once);
 
 	imgui.begin("editor main", nil, .NoMove | .NoResize | .NoTitleBar);
 
@@ -165,7 +167,6 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 	}
     if texture_id.id > 0
     {
-
 		imgui.slider_float("scale", &scale, 0.01, 2);
 		imgui.columns(4);
 		draw_list := imgui.get_window_draw_list();

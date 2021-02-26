@@ -31,10 +31,9 @@ Scene :: struct
     db: container.Database,
     color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
-    textures: container.Table(render.Texture),
-    sprites: container.Table(render.Sprite),
     transforms: Transform_Table,
     sprite_components: container.Table(Sprite_Component),
+    using sprite_database: render.Sprite_Database,
     using animation_database: animation.Animation_Database,
 }
 

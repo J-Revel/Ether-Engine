@@ -68,7 +68,7 @@ table_add :: proc(table: ^$A/Table($T), value: T) -> (Handle(T), bool)
 	return Handle(T){index + 1, table}, ok;
 }
 
-ptr_offset :: inline proc(ptr: uintptr, n: int, type_size: int) -> uintptr {
+ptr_offset :: #force_inline proc(ptr: uintptr, n: int, type_size: int) -> uintptr {
 	new := int(ptr) + type_size * n;
 	return uintptr(new);
 }
