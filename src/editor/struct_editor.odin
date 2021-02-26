@@ -97,19 +97,40 @@ struct_editor_rec :: proc(using scene: ^gameplay.Scene, data: rawptr, type_info:
 	return false;
 }
 
+sprite_widget :: proc(using scene: ^gameplay.Scene, sprite: render.Sprite_Handle)
+{
+	sprite_data := container.handle_get(sprite);
+		clip := sprite_data.clip;
+		imgui.text_unformatted(sprite_data.id);
+		imgui.text_unformatted(fmt.tprintf("(%f, %f), (%f, %f)", clip.pos.x, clip.pos.y, clip.size.x, clip.size.y));
+		texture_handle := sprite_data.texture;
+		texture_data := container.handle_get(texture_handle);
+		texture_size : [2]f32 = {f32(texture_data.size.x), f32(texture_data.size.y)};
+		max_size := max(clip.size.x, clip.size.y);
+		imgui.button("", {100, 100});
+		imgui.image(imgui.Texture_ID(uintptr(texture_data.texture_id)), {100 * clip.size.x / max_size, 100 * clip.size.y / max_size}, clip.pos, clip.pos + clip.size);
+}
+
 sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool
 {
-	sprite: render.Sprite_Handle;
+	sprite := cast(^render.Sprite_Handle)data;
 	if sprite.id == 0
 	{
 		imgui.text("nil sprite");
 	}
 	else
 	{
-		imgui.text("Some sprite");
+		sprite_widget(scene, sprite^);
 	}
 	imgui.same_line();
 
-	sprite_selector(scene, "sprite_selector", "resources/textures");
+	selected_sprite, search_state := sprite_selector(scene, "sprite_selector", "resources/textures");
+	#partial switch search_state
+	{
+		case .Found:
+		{
+			sprite^ = selected_sprite;
+		}
+	}
 	return false;
 }

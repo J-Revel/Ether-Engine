@@ -90,12 +90,12 @@ compute_float_curve_value :: proc(curve: ^Animation_Curve(f32), time_ratio: f32,
 	return last_keyframe.value;
 }
 
-update_animations :: proc(anim_players: ^container.Table(Animation_Player)) -> bool
+update_animations :: proc(anim_players: ^container.Table(Animation_Player), delta_time: f32) -> bool
 {
 	it := container.table_iterator(anim_players);
 	for anim_player in container.table_iterate(&it)
 	{
-		anim_player.time += 1/60.0;
+		anim_player.time += delta_time;
 		
 		animation := container.handle_get(anim_player.animation);
 		for anim_player.time > animation.duration do anim_player.time -= animation.duration;

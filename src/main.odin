@@ -153,6 +153,8 @@ main :: proc() {
 
             imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
             sdl.gl_swap_window(window);
+            frame_duration := time.tick_diff(current_tick, time.tick_now());
+            time.sleep(max(0, time.Millisecond * 16 - frame_duration));
         }
         log.info("Shutting down...");
         

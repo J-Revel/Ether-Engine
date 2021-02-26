@@ -118,14 +118,14 @@ init_main_scene :: proc(using scene: ^Scene)
 
 time : f32 = 0;
 
-update_and_render :: proc(using scene: ^Scene, deltaTime: f32, screen_size: [2]f32, input_state: ^input.State)
+update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]f32, input_state: ^input.State)
 {
 
 	color_renderer.screen_size = screen_size;
 	sprite_renderer.screen_size = screen_size;
 	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
 
-    animation.update_animations(&animation_players);
+    animation.update_animations(&animation_players, delta_time);
 
 	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
 	
