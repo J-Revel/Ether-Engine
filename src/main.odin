@@ -7,6 +7,8 @@ import "core:runtime";
 import "core:math";
 import "core:math/linalg";
 import "core:math/rand";
+import "core:fmt"
+import "core:time"
 
 import sdl "shared:odin-sdl2";
 import sdl_image "shared:odin-sdl2/image"
@@ -25,6 +27,7 @@ import "editor"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
+FRAME_SAMPLE_COUNT :: 10;
 
 
 running := true;
@@ -94,6 +97,11 @@ main :: proc() {
         show_editor := false;
         editor.init_editor(&editor_state);
 
+        last_frame_tick := time.tick_now();
+        sample_frame_times: [FRAME_SAMPLE_COUNT]f32;
+        frame_index := 0;
+
+
         for running {
             mx, my: i32;
             sdl.gl_get_drawable_size(window, &mx, &my);
@@ -114,7 +122,16 @@ main :: proc() {
             gl.Viewport(0, 0, mx, my);
             gl.Scissor(0, 0, mx, my);
             gl.Clear(gl.COLOR_BUFFER_BIT);
-            gameplay.update_and_render(&sceneInstance, 1.0/60, screen_size, &input_state);
+
+            current_tick := time.tick_now();
+            delta_time := f32(time.duration_seconds(time.tick_diff(last_frame_tick, current_tick)));
+            sample_frame_times[frame_index % FRAME_SAMPLE_COUNT] = delta_time;
+            sample_time_sum: f32 = 0;
+            for i in 0..<FRAME_SAMPLE_COUNT do sample_time_sum += sample_frame_times[i];
+            frame_index += 1;
+            last_frame_tick = current_tick;
+            imgui.text_unformatted(fmt.tprint(FRAME_SAMPLE_COUNT / sample_time_sum));
+            gameplay.update_and_render(&sceneInstance, delta_time, screen_size, &input_state);
 
             if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed && !show_editor
             {
