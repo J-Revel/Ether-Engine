@@ -97,18 +97,25 @@ struct_editor_rec :: proc(using scene: ^gameplay.Scene, data: rawptr, type_info:
 	return false;
 }
 
-sprite_widget :: proc(using scene: ^gameplay.Scene, sprite: render.Sprite_Handle)
+sprite_widget :: proc(using scene: ^gameplay.Scene, sprite: render.Sprite_Handle) -> bool
 {
 	sprite_data := container.handle_get(sprite);
-		clip := sprite_data.clip;
-		imgui.text_unformatted(sprite_data.id);
-		imgui.text_unformatted(fmt.tprintf("(%f, %f), (%f, %f)", clip.pos.x, clip.pos.y, clip.size.x, clip.size.y));
-		texture_handle := sprite_data.texture;
-		texture_data := container.handle_get(texture_handle);
-		texture_size : [2]f32 = {f32(texture_data.size.x), f32(texture_data.size.y)};
-		max_size := max(clip.size.x, clip.size.y);
-		imgui.button("", {100, 100});
-		imgui.image(imgui.Texture_ID(uintptr(texture_data.texture_id)), {100 * clip.size.x / max_size, 100 * clip.size.y / max_size}, clip.pos, clip.pos + clip.size);
+	clip := sprite_data.clip;
+	texture_handle := sprite_data.texture;
+	texture_data := container.handle_get(texture_handle);
+	texture_size : [2]f32 = {f32(texture_data.size.x), f32(texture_data.size.y)};
+	max_size := max(clip.size.x, clip.size.y);
+	imgui.begin_group();
+	img_size : [2]f32 = {100 * clip.size.x / max_size, 100 * clip.size.y / max_size};
+	imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 50 - img_size.x / 2);  
+	result := imgui.image_button(imgui.Texture_ID(uintptr(texture_data.texture_id)), img_size, clip.pos, clip.pos + clip.size);
+	text_size: [2]f32;
+	sprite_id := sprite_data.id;
+	imgui.calc_text_size(&text_size, sprite_id);
+	imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 50 - text_size.x / 2);
+	imgui.text_unformatted(sprite_id);
+	imgui.end_group();
+	return result;
 }
 
 sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool

@@ -70,7 +70,7 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 					for loaded_name, index in loaded_names
 					{
 						loaded_sprite := loaded_sprites[index];
-						sprite_name := fmt.tprintf("%s/%s", found_path, loaded_name);
+						sprite_name := fmt.tprintf("%s", loaded_name);
 						sprite_it := container.table_iterator(&scene.sprites);
 						for sprite, sprite_id in container.table_iterate(&sprite_it)
 						{
@@ -111,12 +111,16 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 		{
 			if sprite.texture == selection_data.texture
 			{
-				if imgui.button(sprite.id)
+				imgui.push_id(sprite.id);
+				if sprite_widget(scene, sprite_id)
 				{
 					delete_key(&sprite_selectors, selector_id);
+					imgui.pop_id();
 					imgui.end_popup();
 					return sprite_id, .Found;
 				}
+				imgui.same_line();
+				imgui.pop_id();
 			}
 		}
 		imgui.end_popup();
