@@ -5,7 +5,7 @@ import "core:log"
 import "../input"
 import "core:strconv"
 
-import imgui "../imgui"
+import imgui "../../libs/imgui"
 import "core:math/rand"
 import "core:math"
 

@@ -1,6 +1,6 @@
 package editor
 
-import imgui "../imgui";
+import imgui "../../libs/imgui";
 import "core:log"
 import "core:strings"
 import "core:mem"

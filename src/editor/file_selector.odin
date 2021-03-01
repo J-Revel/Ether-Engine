@@ -4,7 +4,7 @@ import win32 "core:sys/windows"
 import "core:os"
 import "core:log"
 import path "core:path/filepath"
-import "../imgui";
+import "../../libs/imgui";
 import "core:strings"
 
 file_selectors: map[string]File_Selection_Data;

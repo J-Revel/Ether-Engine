@@ -6,7 +6,7 @@ import "core:fmt"
 import "core:log";
 import "core:strings";
 
-import imgui "../imgui";
+import imgui "../../libs/imgui";
 
 imgui_editor :: proc(var : any)
 {

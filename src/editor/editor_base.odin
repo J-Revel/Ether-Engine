@@ -1,6 +1,6 @@
 package editor
 
-import "../imgui";
+import "../../libs/imgui";
 import "../render"
 import "core:log"
 import "core:strings"

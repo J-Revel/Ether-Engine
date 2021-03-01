@@ -14,9 +14,9 @@ import sdl "shared:odin-sdl2";
 import sdl_image "shared:odin-sdl2/image"
 import gl  "shared:odin-gl";
 
-import imgui "imgui";
-import imgl  "impl/opengl";
-import imsdl "impl/sdl";
+import imgui "../libs/imgui";
+import imgl  "../libs/impl/opengl";
+import imsdl "../libs/impl/sdl";
 
 import render "render";
 import "util";
