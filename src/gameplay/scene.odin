@@ -60,7 +60,7 @@ init_main_scene :: proc(using scene: ^Scene)
 
 	render.load_sprites_from_file("test.sprites", &textures, &sprites);
 
-	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
+	spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
 	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", &scene.db);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
@@ -127,7 +127,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 
     animation.update_animations(&animation_players, delta_time);
 
-	spaceship_sprite, sprite_found := render.get_sprite("spaceship", &sprites);
+	spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
 	
 
 	spaceship_sprite_data := container.handle_get(spaceship_sprite);

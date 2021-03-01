@@ -45,59 +45,14 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 		switch search_state
 		{
 			case .Found:
+
 				// TODO : load corresponding texture if not already in db (=> path = found_path - ".meta")
 				texture_path := fmt.tprintf("%s.png", found_path[0:len(found_path)-5]);
-				loaded_texture: render.Texture_Handle;
-				it := container.table_iterator(&scene.textures);
-				for texture, texture_handle in container.table_iterate(&it)
-				{
-					if texture.path == texture_path
-					{
-						loaded_texture = texture_handle;
-						break;
-					}
-				}
-				if loaded_texture.id <= 0
-				{
-					texture_data := render.load_texture(texture_path);
-					texture_load_ok := false;
-					loaded_texture, texture_load_ok = container.table_add(&scene.textures, texture_data);
-				}
-				loaded_names, loaded_sprites, success := render.load_sprites_data(found_path);
-				if success
-				{
-					target_sprite_id: render.Sprite_Handle;
-					for loaded_name, index in loaded_names
-					{
-						loaded_sprite := loaded_sprites[index];
-						sprite_name := fmt.tprintf("%s", loaded_name);
-						sprite_it := container.table_iterator(&scene.sprites);
-						for sprite, sprite_id in container.table_iterate(&sprite_it)
-						{
-							if sprite.id == sprite_name
-							{
-								target_sprite_id = sprite_id;
-								break;
-							}
-						}
-						if target_sprite_id.id > 0
-						{
-							sprite_data := container.handle_get(target_sprite_id);
-							sprite_data.data = loaded_sprite;
-						}
-						else
-						{
-							new_sprite: render.Sprite = {
-								texture = loaded_texture,
-								id = strings.clone(sprite_name, context.allocator),
-								data = loaded_sprite
-							};
-							container.table_add(&scene.sprites, new_sprite);
-						}
-					}
-					selection_data.texture = loaded_texture;
-					imgui.open_popup(sprite_selector_popup_id);
-				}
+				texture_found: bool;
+				selection_data.texture, texture_found = render.get_or_load_texture(&scene.sprite_database, texture_path);
+				assert(texture_found);
+				render.load_sprites_to_db(&scene.sprite_database, selection_data.texture, found_path);
+				imgui.open_popup(sprite_selector_popup_id);
 			case .Stopped:
 				return {}, .Stopped;
 			case .Searching:
@@ -114,6 +69,7 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 				imgui.push_id(sprite.id);
 				if sprite_widget(scene, sprite_id)
 				{
+					imgui.close_current_popup();
 					delete_key(&sprite_selectors, selector_id);
 					imgui.pop_id();
 					imgui.end_popup();
@@ -122,6 +78,13 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 				imgui.same_line();
 				imgui.pop_id();
 			}
+		}
+		if imgui.button("Back", {100, 100})
+		{
+			imgui.close_current_popup();
+			delete_key(&sprite_selectors, selector_id);
+			imgui.end_popup();
+			return {}, .Stopped;
 		}
 		imgui.end_popup();
 	}

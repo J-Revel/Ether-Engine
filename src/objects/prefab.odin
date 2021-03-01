@@ -149,7 +149,7 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 					}
 					else do log.info("Input not found ", prefab_input.name);
 					log.info(any{components_data[i], table.type_id});
-				case Anim_Param_List_Metadata:
+				case Type_Specific_Metadata:
 			}
 		}
 	}

@@ -37,7 +37,7 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 				selected_input_name := inputs[input_index].name;
 				current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 
-			case objects.Anim_Param_List_Metadata:
+			case objects.Type_Specific_Metadata:
 
 		}
 	}
@@ -74,20 +74,21 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 	if selected_metadata_index < 0
 	{
 		anim_param_list := objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
-		component_data.metadata[component_data.metadata_count] = anim_param_list;
+		new_metadata: objects.Type_Specific_Metadata = anim_param_list;
+		component_data.metadata[component_data.metadata_count] = new_metadata;
 		component_data.metadata_offsets[component_data.metadata_count] = field.offset_in_component;
 		component_data.metadata_types[component_data.metadata_count] = field.type_id;
 		selected_metadata_index = component_data.metadata_count;
 		component_data.metadata_count += 1;
 	}
 
-	metadata_info, ok := component_data.metadata[selected_metadata_index].(objects.Anim_Param_List_Metadata);
+	metadata_info, ok := component_data.metadata[selected_metadata_index].(objects.Type_Specific_Metadata).(objects.Anim_Param_List_Metadata);
 
 	if !ok
 	{
-		anim_param_list := objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
+		anim_param_list : objects.Type_Specific_Metadata = objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
 		component_data.metadata[component_data.metadata_count] = anim_param_list;
-		metadata_info = component_data.metadata[selected_metadata_index].(objects.Anim_Param_List_Metadata);
+		metadata_info = component_data.metadata[selected_metadata_index].(objects.Type_Specific_Metadata).(objects.Anim_Param_List_Metadata);
 	}
 
 	for param, index in params
@@ -216,4 +217,35 @@ find_components_fields_of_type :: proc(db: ^container.Database, components: []ob
 		}
 	}
 	return result[:];
+}
+
+sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+{
+	metadata_index := get_component_field_metadata_index(components[:], field);
+	current_value_name := "nil";
+	component := editor_state.components[field.component_index];
+	display_sprite: render.Sprite_Handle;
+	sprite_asset: render.Sprite_Asset;
+
+	if metadata_index >= 0
+	{
+		metadata, ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
+		if ok
+		{
+			sprite_metadata, ok := metadata.(objects.Sprite_Metadata);
+			assert(ok);
+			sprite, found := render.get_or_load_sprite(&scene.sprite_database, {sprite_metadata.texture_path, sprite_metadata.sprite_id});
+			assert(found);
+			
+		}
+		switch metadata_content in component.data.metadata[metadata_index]
+		{
+			case objects.Ref_Metadata:
+
+			case objects.Input_Metadata:
+
+			case objects.Type_Specific_Metadata:
+
+		}
+	}
 }

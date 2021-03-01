@@ -90,6 +90,11 @@ table_allocate_raw :: proc(table: ^Raw_Table) -> (Raw_Handle, bool)
 	return Raw_Handle{index + 1, table}, ok;
 }
 
+is_valid :: proc(handle: $H/Handle($T)) -> bool
+{
+	return handle.id > 0;
+}
+
 invalid_handle :: proc(table: ^$A/Table($T)) -> Handle(T)
 {
 	return Handle(T){0, table};

@@ -34,6 +34,7 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	}
 
 	editor_type_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
+	editor_type_callbacks[typeid_of([]render.Sprite_Handle)] = sprite_editor_callback;
 }
 
 get_component_field_data :: proc(components: []objects.Component_Model, using field: Prefab_Field) -> uintptr
@@ -117,18 +118,18 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 					{
 						metadata_info.component_index -= 1;
 					}
-				case objects.Anim_Param_List_Metadata:
-
-					for index in 0..metadata_info.count
+				case objects.Type_Specific_Metadata:
+					anim_param_list := metadata_info.(objects.Anim_Param_List_Metadata);
+					for index in 0..anim_param_list.count
 					{
-						anim_param := metadata_info.anim_params[index];
+						anim_param := anim_param_list.anim_params[index];
 						if anim_param.component_index == to_remove_index
 						{
-							metadata_info.anim_params[index].component_index = -1;
+							anim_param_list.anim_params[index].component_index = -1;
 						}
 						else if anim_param.component_index > to_remove_index
 						{
-							metadata_info.anim_params[index].component_index -= 1;
+							anim_param_list.anim_params[index].component_index -= 1;
 						}
 					}
 			}
@@ -169,7 +170,7 @@ input_ref_combo :: proc(id: string, field: Prefab_Field, using editor_state: ^Pr
 					current_value_name = fmt.tprintf("(input)%s", selected_input_name);
 				}
 
-			case objects.Anim_Param_List_Metadata:
+			case objects.Type_Specific_Metadata:
 		}
 		
 	}
@@ -819,7 +820,7 @@ json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab
 				
 				case objects.Input_Metadata:
 					json_write_input(file, metadata.input_index, write_state);
-				case objects.Anim_Param_List_Metadata:
+				case objects.Type_Specific_Metadata:
 			}
 			return;
 		}

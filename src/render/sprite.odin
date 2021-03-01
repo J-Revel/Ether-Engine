@@ -50,10 +50,14 @@ void main()
 }
 `;
 
-load_texture :: proc(path: string) -> Texture
+load_texture :: proc(path: string) -> (Texture, bool)
 {
 	cstring_path := strings.clone_to_cstring(path, context.temp_allocator);
 	surface := sdl_image.load(cstring_path);
+    if surface == nil
+    {
+        return {}, false;
+    }
 	defer sdl.free_surface(surface);
 	texture_id: u32;
 	gl.GenTextures(1, &texture_id);
@@ -67,7 +71,7 @@ load_texture :: proc(path: string) -> Texture
 	 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	return {path, texture_id, {int(surface.w), int(surface.h)}};
+	return {path, texture_id, {int(surface.w), int(surface.h)}}, true;
 }
 
 unload_texture :: proc(texture: ^Texture)
@@ -75,17 +79,110 @@ unload_texture :: proc(texture: ^Texture)
     gl.DeleteTextures(1, &texture.texture_id);
 }
 
-get_sprite :: proc(id: string, sprites: ^container.Table(Sprite)) -> (Sprite_Handle, bool)
+get_or_load_texture :: proc(using db: ^Sprite_Database, texture_path: string) -> (Texture_Handle, bool)
 {
-    it := container.table_iterator(sprites);
-    for h, sprite_handle in container.iterate(&it)
+    texture_it := container.table_iterator(&textures);
+    loaded_texture_handle: Texture_Handle;
+    for texture_data, texture_handle in container.table_iterate(&texture_it)
     {
-        if strings.compare(h.id, id) == 0
+        if texture_data.path == texture_path
+        {
+            return texture_handle, true;
+        }
+    }
+    loaded_texture_data, texture_load_ok := load_texture(texture_path);
+    if texture_load_ok
+    {
+        texture_handle, ok := container.table_add(&textures, loaded_texture_data);
+        assert(ok);
+        return texture_handle, true;
+    }
+    else
+    {
+        return {}, false;
+    }
+}
+
+get_sprite :: proc(using db: ^Sprite_Database, texture_handle: Texture_Handle, sprite_id: string) -> (Sprite_Handle, bool)
+{
+    sprite_it := container.table_iterator(&sprites);
+    for sprite, sprite_handle in container.table_iterate(&sprite_it)
+    {
+        if sprite.id == sprite_id && sprite.texture == texture_handle
         {
             return sprite_handle, true;
         }
     }
     return {}, false;
+}
+
+get_sprite_any_texture :: proc(using db: ^Sprite_Database, sprite_id: string) -> (Sprite_Handle, bool)
+{
+    sprite_it := container.table_iterator(&sprites);
+    for sprite, sprite_handle in container.table_iterate(&sprite_it)
+    {
+        if sprite.id == sprite_id
+        {
+            return sprite_handle, true;
+        }
+    }
+    return {}, false;
+
+}
+
+get_or_load_sprite :: proc(using db: ^Sprite_Database, asset: Sprite_Asset) -> (Sprite_Handle, bool)
+{
+    texture_handle, texture_loaded := get_or_load_texture(db, fmt.tprintf("%s.png", asset.path));
+
+    result, sprite_found := get_sprite(db, texture_handle, asset.sprite_id);
+
+    if sprite_found do return result, true;
+
+    sprite_file_path := fmt.tprintf("%s.meta", asset.path);
+    loaded_sprites_names, loaded_sprites_data, load_ok := load_sprites_data(asset.sprite_id);
+    if load_ok
+    {
+        result_found := false;
+        for loaded_sprite_name, index in loaded_sprites_names
+        {
+            loaded_sprite_data := loaded_sprites_data[index];
+
+            new_sprite := Sprite{texture_handle, loaded_sprite_name, loaded_sprite_data};
+            // TODO : maybe should check for existence in the table before adding it ?
+            new_sprite_handle, add_ok := container.table_add(&sprites, new_sprite);
+            assert(add_ok);
+
+            if loaded_sprite_name == asset.sprite_id
+            {
+                result = new_sprite_handle;
+                result_found = true;
+            }
+
+        }
+        return result, result_found;
+    }
+    return {}, false;
+}
+
+load_sprites_to_db :: proc(using db: ^Sprite_Database, texture_handle: Texture_Handle, sprites_path: string) -> bool
+{
+    loaded_sprites_names, loaded_sprites_data, load_ok := load_sprites_data(sprites_path);
+    if load_ok
+    {
+        for loaded_sprite_name, index in loaded_sprites_names
+        {
+            loaded_sprite_data := loaded_sprites_data[index];
+
+            new_sprite := Sprite{texture_handle, loaded_sprite_name, loaded_sprite_data};
+            _, sprite_present := get_sprite(db, texture_handle, loaded_sprite_name);
+            if !sprite_present
+            {
+                new_sprite_handle, add_ok := container.table_add(&sprites, new_sprite);
+                assert(add_ok);
+            }
+        }
+    }
+    return load_ok;
 }
 
 // Sprites are all stored in a file by 
@@ -217,7 +314,8 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
 
         for texture_path, sprite_list in parsed_object
         {
-            texture : Texture = load_texture(texture_path);
+            texture, ok := load_texture(texture_path);
+            assert(ok);
             texture_id, texture_add_ok := container.table_add(textures, texture);
             sprite := Sprite{texture = texture_id};
             for sprite_data in sprite_list.value.(json.Array)

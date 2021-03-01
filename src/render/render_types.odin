@@ -81,7 +81,8 @@ Sprite_Render_System :: Render_System(Sprite_Vertex_Data);
 
 Sprite_Asset :: struct
 {
-    asset_path: string,
+    // Path without the extension (.png = texture path, .meta = sprite list path)
+    path: string,
     sprite_id: string,
 }
 

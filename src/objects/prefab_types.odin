@@ -17,6 +17,12 @@ Input_Metadata :: struct
 	input_index: int,
 }
 
+Sprite_Metadata :: struct
+{
+	texture_path: string,
+	sprite_id: string,
+}
+
 // Reference to the field on another component of the prefab
 Anim_Param_Metadata :: struct
 {
@@ -31,12 +37,18 @@ Anim_Param_List_Metadata :: struct
 	count: int,
 }
 
+Type_Specific_Metadata :: union
+{
+	Anim_Param_List_Metadata,
+	Sprite_Metadata,
+}
+
 // Every data that a component field can have that must be computed during the prefab instantiation
 Component_Field_Metadata :: union
 {
 	Ref_Metadata,
 	Input_Metadata,
-	Anim_Param_List_Metadata,
+	Type_Specific_Metadata
 }
 
 Component_Model_Data :: struct

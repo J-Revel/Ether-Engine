@@ -102,9 +102,8 @@ init_editor :: proc(using editor_state: ^Editor_State)
 update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
 {
 	imgui.text_unformatted(fmt.tprint(screen_size));
-	fmt.println(i32(imgui.Cond.None));
 	imgui.set_next_window_pos({screen_size.x / 2, 0}, .None);
- //    imgui.set_next_window_size({screen_size.x / 2, screen_size.y}, .Once);
+    imgui.set_next_window_size({screen_size.x / 2, screen_size.y}, .Once);
 
 	imgui.begin("editor main", nil, .NoMove | .NoResize | .NoTitleBar);
 
@@ -161,7 +160,8 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 		}
 		searching_file = false;
 		path_copy := strings.clone(path, context.allocator);
-		texture := render.load_texture(path_copy);
+		texture, ok := render.load_texture(path_copy);
+		assert(ok);
 		texture_id, _ = container.table_add(&loaded_textures, texture);
 		load_sprites_for_texture(editor_state, texture.path);
 	}

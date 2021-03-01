@@ -97,7 +97,7 @@ struct_editor_rec :: proc(using scene: ^gameplay.Scene, data: rawptr, type_info:
 	return false;
 }
 
-sprite_widget :: proc(using scene: ^gameplay.Scene, sprite: render.Sprite_Handle) -> bool
+sprite_widget :: proc(using db: ^render.Sprite_Database, sprite: render.Sprite_Handle) -> bool
 {
 	sprite_data := container.handle_get(sprite);
 	clip := sprite_data.clip;
