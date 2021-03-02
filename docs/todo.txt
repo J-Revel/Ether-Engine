@@ -1,0 +1,71 @@
+{
+	"EtherEngine1614623671732": {
+		"name": "PREFAB SYSTEM",
+		"items": [
+			{
+				"id": "1361614623607649849274",
+				"name": "Add Sprite Editor for components",
+				"state": "submitted"
+			},
+			{
+				"id": "136161464660014558260",
+				"name": "Prefab spawn in editor",
+				"state": "priority"
+			},
+			{
+				"id": "1361614623628584329388",
+				"name": "asynchronous texture load ",
+				"state": ""
+			},
+			{
+				"id": "1361614630703535470508",
+				"name": "Use Sprite_Database instead of Scene where it s possible",
+				"state": ""
+			},
+			{
+				"id": "1361614630914167541843",
+				"name": "reorganise editor source files ",
+				"state": ""
+			},
+			{
+				"id": "1361614632894537540639",
+				"name": "Retake json load/save",
+				"state": ""
+			},
+			{
+				"id": "1361614634564324721435",
+				"name": "Default sprite importer for tiled sprites",
+				"state": ""
+			},
+			{
+				"id": "1361614646656942106964",
+				"name": "use the same menu for sprite selector popup for input  and component",
+				"state": ""
+			},
+			{
+				"id": "136161464670802267314",
+				"name": "add an \"Add Component\" of the right type in the ref selector",
+				"state": ""
+			}
+		],
+		"vis": "true",
+		"pin": "false"
+	},
+	"AnimationSystem1614623672807": {
+		"name": "Animation System",
+		"items": [
+			{
+				"id": "136161462380393676096",
+				"name": "Bezier Curve",
+				"state": ""
+			},
+			{
+				"id": "1361614623824935874879",
+				"name": "Handle multiple curve types (float, int, vec2, color)",
+				"state": ""
+			}
+		],
+		"vis": "true",
+		"pin": "false"
+	}
+}
