@@ -34,7 +34,7 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	}
 
 	editor_type_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
-	editor_type_callbacks[typeid_of([]render.Sprite_Handle)] = sprite_editor_callback;
+	editor_type_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
 }
 
 get_component_field_data :: proc(components: []objects.Component_Model, using field: Prefab_Field) -> uintptr
@@ -264,7 +264,6 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 			{
 				field_cursor.offset_in_component = struct_info.offsets[i];
 				child_field := Prefab_Field{{struct_info.names[i], struct_info.offsets[i], struct_info.types[i].id}, component_index};
-				log.info(struct_info.names[i]);
 				component_editor_child(editor_state, struct_info.names[i], child_field);
 			}
 			return;
@@ -562,7 +561,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 			can_create = false, 
 			confirm_dialog = false
 		};
-	path, file_search_state := file_selector_popup("prefab_load", "Load Prefab", search_config);
+	path, file_search_state := file_selector_popup_button("prefab_load", "Load Prefab", search_config);
 	
 	if file_search_state == .Found
 	{
@@ -698,7 +697,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 		can_create = true, 
 		confirm_dialog = true,
 	};
-	path, file_search_state = file_selector_popup("prefab_save", "Save Prefab", search_config);
+	path, file_search_state = file_selector_popup_button("prefab_save", "Save Prefab", search_config);
 
 	if file_search_state == .Found
 	{

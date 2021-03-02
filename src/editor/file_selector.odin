@@ -31,30 +31,43 @@ open_file_selector :: proc(selector_id: string, starting_folder: string)
 	file_selectors[selector_id] = file_selector_data;
 }
 
-file_selector_popup :: proc(selector_id: string, button_text: string, search_config: File_Search_Config) -> (out_path: string, search_state : File_Search_State)
+open_file_selector_popup :: proc(selector_id: string, search_config: File_Search_Config)
 {
-	if imgui.button(button_text)
+	imgui.open_popup(selector_id);
+	open_file_selector(selector_id, search_config.start_folder);
+}
+
+file_selector_popup_content :: proc(selector_id: string, search_config: File_Search_Config) -> (out_path: string, search_state : File_Search_State)
+{
+	out_path, search_state = file_selector(selector_id, search_config);
+	if search_state == .Found do imgui.close_current_popup();
+	if imgui.button("Close")
 	{
-		imgui.open_popup(selector_id);
-		open_file_selector(selector_id, search_config.start_folder);
-	}
-	center := [2]f32{imgui.get_io().display_size.x * 0.5, imgui.get_io().display_size.y * 0.5};
-	// imgui.set_next_window_pos(center, .Appearing, [2]f32{0.5, 0.5});
-	//imgui.set_next_window_size_constraints({500, 500}, {});
-	if imgui.begin_popup_modal(selector_id, nil, .AlwaysAutoResize)
-	{
-		out_path, search_state = file_selector(selector_id, search_config);
-		if search_state == .Found do imgui.close_current_popup();
-		if imgui.button("Close")
-		{
-			search_state = .Stopped;
-			imgui.close_current_popup();
-		}
-		imgui.end_popup();
+		search_state = .Stopped;
+		imgui.close_current_popup();
 	}
 
 	return;
 }
+
+file_selector_popup_button :: proc(selector_id: string, button_text: string, search_config: File_Search_Config) -> (out_path: string, search_state : File_Search_State)
+{
+	if imgui.button(selector_id)
+	{
+		open_file_selector_popup(selector_id, search_config);	
+	}
+	center := [2]f32{imgui.get_io().display_size.x * 0.5, imgui.get_io().display_size.y * 0.5};
+	imgui.set_next_window_pos(center, .Appearing, [2]f32{0.5, 0.5});
+	imgui.set_next_window_size_constraints({500, 500}, {});
+	if imgui.begin_popup_modal(selector_id, nil, .AlwaysAutoResize)
+	{
+		result, search_state := file_selector_popup_content(selector_id, search_config);
+		imgui.end_popup();
+		return result, search_state;
+	}
+	return {}, .Stopped;
+}
+
 
 is_file_visible :: proc (file: os.File_Info, using search_config: File_Search_Config) -> bool
 {
@@ -183,4 +196,12 @@ file_selector :: proc(selector_id: string, search_config: File_Search_Config) ->
 		out_path = current_path;
 	}
 	return;
+}
+
+file_selector_list :: proc(selector_id: string, search_config: File_Search_Config) -> []os.File_Info
+{
+	assert(selector_id in file_selectors);
+	using file_selector_data: ^File_Selection_Data = &file_selectors[selector_id];
+
+	return filter_files(display_data, search_config);
 }

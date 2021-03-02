@@ -19,7 +19,7 @@ Input_Metadata :: struct
 
 Sprite_Metadata :: struct
 {
-	texture_path: string,
+	path: string,
 	sprite_id: string,
 }
 

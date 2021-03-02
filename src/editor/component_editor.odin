@@ -234,18 +234,53 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 		{
 			sprite_metadata, ok := metadata.(objects.Sprite_Metadata);
 			assert(ok);
-			sprite, found := render.get_or_load_sprite(&scene.sprite_database, {sprite_metadata.texture_path, sprite_metadata.sprite_id});
+			sprite, found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)sprite_metadata);
+			fmt.println(sprite_metadata);
 			assert(found);
-			
 		}
-		switch metadata_content in component.data.metadata[metadata_index]
+		type_specific_metadata, cast1_ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
+		assert(cast1_ok);
+		sprite_metadata, cast2_ok := type_specific_metadata.(objects.Sprite_Metadata);
+		assert(cast2_ok);
+		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)sprite_metadata);
+		if sprite_found
 		{
-			case objects.Ref_Metadata:
-
-			case objects.Input_Metadata:
-
-			case objects.Type_Specific_Metadata:
-
+			if sprite_widget(&scene.sprite_database, sprite_handle)
+			{
+				open_sprite_selector("sprite_selector", "resources/textures");
+				imgui.open_popup("sprite_selector");
+			}
 		}
+		using scene.sprite_database;
 	}
+	else
+	{
+		search_config := File_Search_Config{
+			start_folder = "resources/textures",
+			filter_type = .Show_With_Ext,
+			extensions = available_sprite_extensions[:],
+		};
+		if imgui.button("nil", {100, 100})
+		{
+			open_sprite_selector("sprite_selector", "resources/textures");
+			imgui.open_popup("sprite_selector");
+		}
+		center := [2]f32{imgui.get_io().display_size.x * 0.5, imgui.get_io().display_size.y * 0.5};
+		imgui.set_next_window_pos(center, .Appearing, [2]f32{0.5, 0.5});
+		imgui.set_next_window_size_constraints({500, 500}, {});
+		
+	}
+	if imgui.begin_popup_modal("sprite_selector", nil, .AlwaysAutoResize)
+		{
+			result, search_state := sprite_selector_popup_content(&scene.sprite_database, "sprite_selector");
+			imgui.end_popup();
+			#partial switch search_state
+			{
+				case .Found:
+				{
+					type_specific_metadata : objects.Type_Specific_Metadata = transmute(objects.Sprite_Metadata)result;
+					set_component_field_metadata(components[:], field, type_specific_metadata);
+				}
+			}
+		}
 }
