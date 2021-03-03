@@ -5,6 +5,8 @@ import "core:log";
 import "core:strings";
 import "core:math";
 
+import "../container"
+
 import gl "shared:odin-gl";
 
 @(private="package")
@@ -142,6 +144,62 @@ render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camer
     gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, nil);
     gl.BindVertexArray(0);
     gl.UseProgram(0);
+}
+
+upload_buffer_data :: proc(render_buffer: ^Render_System($T))
+{
+    index_count := len(render_buffer.index);
+    vertex_count := len(render_buffer.vertex);
+    if(vertex_count == 0) do return;
+
+    gl.BindVertexArray(render_buffer.render_state.vao);
+    gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
+    
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(T), &render_buffer.vertex[0]);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int)index_count * size_of(u32), &render_buffer.index[0]);
+    gl.BindVertexArray(0);
+}
+
+render_buffer_content_part :: proc(render_buffer : ^Render_System($T), camera: ^Camera, start_index: int, index_count: int)
+{
+    gl.BindVertexArray(render_buffer.render_state.vao);
+    gl.UseProgram(render_buffer.render_state.shader);
+    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.pos.x, camera.pos.y, camera.zoom);
+    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, render_buffer.screen_size.x, render_buffer.screen_size.y);
+
+    gl.BindVertexArray(render_buffer.render_state.vao);
+    gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, rawptr(uintptr(size_of(u32) * start_index)));
+    gl.BindVertexArray(0);
+    gl.UseProgram(0);
+}
+
+render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera)
+{
+    upload_buffer_data(&render_system.render_system);
+    index_cursor := 0;
+    for pass in render_system.passes
+    {
+        log.info("TEXTURE", pass.texture.id, index_cursor, pass.index_count);
+        gl.BindTexture(gl.TEXTURE_2D, container.handle_get(pass.texture).texture_id);
+        render_buffer_content_part(&render_system.render_system, camera, index_cursor, pass.index_count);
+        index_cursor += pass.index_count;
+    }
+    if container.is_valid(render_system.current_texture)
+    {
+        log.info("TEXTURE", render_system.current_texture.id, index_cursor, len(render_system.render_system.index));
+        gl.BindTexture(gl.TEXTURE_2D, container.handle_get(render_system.current_texture).texture_id);
+        render_buffer_content_part(&render_system.render_system, camera, index_cursor, len(render_system.render_system.index) - index_cursor);
+    }
+    log.info("----");
+}
+
+clear_sprite_render_buffer :: proc(render_system: ^Sprite_Render_System)
+{
+    clear(&render_system.index);
+    clear(&render_system.vertex);
+    clear(&render_system.passes);
+    render_system.current_texture = {};
 }
 
 camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System(Color_Vertex_Data), pos: [2]i32) -> [2]f32

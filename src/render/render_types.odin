@@ -79,7 +79,7 @@ Sprite_Vertex_Data :: struct
 Sprite_Render_Pass :: struct
 {
     texture: Texture_Handle,
-    element_count: int,
+    index_count: int,
 }
 
 Sprite_Render_Buffer :: Render_Buffer(Sprite_Vertex_Data);
@@ -88,6 +88,7 @@ Sprite_Render_System :: struct
     using render_system: Render_System(Sprite_Vertex_Data),
     passes: [dynamic]Sprite_Render_Pass,
     current_texture: Texture_Handle,
+    current_pass_index: int,
 }
 
 Sprite_Asset :: struct

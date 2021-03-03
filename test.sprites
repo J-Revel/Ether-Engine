@@ -1,1 +1,2 @@
-{"resources/textures/spaceship.png": [{"id": "spaceship", "anchor": [0.50000000, 0.50000000], "clip": {"pos": [0.20000000, 0.20000000], "size": [0.60000002, 0.60000002]}},{"id": "spaceship_2", "anchor": [0.50000000, 0.50000000], "clip": {"pos": [0.20000000, 0.20000000], "size": [0.60000002, 0.60000002]}}]}
+{"resources/textures/spaceship.png": [{"id": "spaceship", "anchor": [0.50000000, 0.50000000], "clip": {"pos": [0.20000000, 0.20000000], "size": [0.60000002, 0.60000002]}}],
+"resources/textures/LD47_ennemy_02.png": [{"id": "spaceship_2", "anchor": [0.50000000, 0.50000000], "clip": {"pos": [0.20000000, 0.20000000], "size": [0.60000002, 0.60000002]}}]}

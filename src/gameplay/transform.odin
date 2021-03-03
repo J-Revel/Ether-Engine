@@ -41,7 +41,7 @@ Sprite_Component :: struct
 	sprite: render.Sprite_Handle,
 }
 
-render_sprite_components :: proc(render_buffer: ^render.Sprite_Render_Buffer, table: ^container.Table(Sprite_Component))
+render_sprite_components :: proc(render_buffer: ^render.Sprite_Render_System, table: ^container.Table(Sprite_Component))
 {
 	it := container.table_iterator(table);
     for sprite_component in container.table_iterate(&it)

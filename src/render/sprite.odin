@@ -448,11 +448,24 @@ init_sprite_renderer :: proc (result: ^Render_State) -> bool
     return true;
 }
 
-render_sprite :: proc(render_buffer: ^Sprite_Render_Buffer, using sprite: ^Sprite, pos: [2]f32, color: Color, scale: f32)
+render_sprite :: proc(render_buffer: ^Sprite_Render_System, using sprite: ^Sprite, pos: [2]f32, color: Color, scale: f32)
 {
     start_index := cast(u32) len(render_buffer.vertex);
 
     texture_size_i := container.handle_get(texture).size;
+    if texture != render_buffer.current_texture
+    {
+        index_count := len(render_buffer.render_system.index);
+        if container.is_valid(render_buffer.current_texture)
+        {
+            append(&render_buffer.passes, Sprite_Render_Pass {
+                    render_buffer.current_texture, 
+                    index_count - render_buffer.current_pass_index
+            });
+        }
+        render_buffer.current_pass_index = index_count;
+        render_buffer.current_texture = texture;
+    }
 
     texture_size: [2]f32 = {f32(texture_size_i.x), f32(texture_size_i.y)};
     clip_size := [2]f32{
