@@ -5,7 +5,22 @@
 			{
 				"id": "1361614623607649849274",
 				"name": "Add Sprite Editor for components",
-				"state": "submitted"
+				"state": "done"
+			},
+			{
+				"id": "1361614729537638263840",
+				"name": "Metadata Dispatcher system to handle metadata resolve step",
+				"state": "done"
+			},
+			{
+				"id": "1361614721338893121851",
+				"name": "Change type specific metadata system",
+				"state": "done"
+			},
+			{
+				"id": "1361614734308531898503",
+				"name": "Handle multi texture rendering",
+				"state": "priority"
 			},
 			{
 				"id": "136161464660014558260",
@@ -45,6 +60,11 @@
 			{
 				"id": "136161464670802267314",
 				"name": "add an \"Add Component\" of the right type in the ref selector",
+				"state": ""
+			},
+			{
+				"id": "1361614713291470934615",
+				"name": "Ceck alignment handling in components_instantiate",
 				"state": ""
 			}
 		],

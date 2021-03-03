@@ -67,7 +67,7 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_input["pos"] = [2]f32{10, 50};
 	test_input["scale"] = f32(0.1);
 
-	prefab_instance_components, _ := objects.prefab_instantiate(&db, &prefab_instance, test_input);
+	prefab_instance_components, _ := objects.prefab_instantiate(&db, &prefab_instance, test_input, {});
 	it := container.table_iterator(&transforms);
 	for transform in container.table_iterate(&it)
 	{
@@ -125,22 +125,22 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	sprite_renderer.screen_size = screen_size;
 	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
 
-    animation.update_animations(&animation_players, delta_time);
+	animation.update_animations(&animation_players, delta_time);
 
-	spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
+	// spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
 	
 
-	spaceship_sprite_data := container.handle_get(spaceship_sprite);
+	// spaceship_sprite_data := container.handle_get(spaceship_sprite);
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&scene.sprite_renderer.buffer, &sprite_components);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	render.render_buffer_content(&color_renderer, &camera);
-	texture_id := container.table_get(&textures, spaceship_sprite_data.texture).texture_id;
+	// texture_id := container.table_get(&textures, spaceship_sprite_data.texture).texture_id;
 	gl.Enable(gl.BLEND);
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	gl.BindTexture(gl.TEXTURE_2D, texture_id);
+	// gl.BindTexture(gl.TEXTURE_2D, texture_id);
 	render.render_buffer_content(&scene.sprite_renderer, &camera);
     render.clear_render_buffer(&color_renderer.buffer);
     render.clear_render_buffer(&scene.sprite_renderer.buffer);

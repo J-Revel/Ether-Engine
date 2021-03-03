@@ -17,12 +17,6 @@ Input_Metadata :: struct
 	input_index: int,
 }
 
-Sprite_Metadata :: struct
-{
-	path: string,
-	sprite_id: string,
-}
-
 // Reference to the field on another component of the prefab
 Anim_Param_Metadata :: struct
 {
@@ -37,11 +31,21 @@ Anim_Param_List_Metadata :: struct
 	count: int,
 }
 
-Type_Specific_Metadata :: union
+Type_Specific_Metadata :: struct
 {
-	Anim_Param_List_Metadata,
-	Sprite_Metadata,
+	field_type_id: typeid,
+	metadata_type_id: typeid,
+	data: rawptr,
 }
+
+Pending_Metadata :: struct
+{
+	metadata_type_id: typeid,
+	metadata: rawptr,
+	data: rawptr,
+}
+
+Pending_Metadata_Dispatcher :: map[typeid]container.Table(Pending_Metadata);
 
 // Every data that a component field can have that must be computed during the prefab instantiation
 Component_Field_Metadata :: union

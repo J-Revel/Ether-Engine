@@ -65,6 +65,29 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 	// imgui.pop_id();
 }
 
+to_type_specific_metadata :: proc(field_type_id: typeid, data: $T, allocator := context.allocator) -> (result: objects.Type_Specific_Metadata)
+{
+	metadata_type_info := type_info_of(T);
+	
+	result = objects.Type_Specific_Metadata {
+		field_type_id = field_type_id,
+		metadata_type_id = metadata_type_info.id,
+		data = mem.alloc(metadata_type_info.size, metadata_type_info.align, allocator),
+	};
+	data_copy := data;
+	mem.copy(result.data, rawptr(&data_copy), metadata_type_info.size);
+	return;
+}
+
+
+
+get_type_specific_metadata :: proc($T: typeid, metadata: ^objects.Type_Specific_Metadata) -> ^T
+{
+	assert(metadata.metadata_type_id == T);
+	return cast(^T)metadata.data;
+}
+
+
 animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
 	selected_metadata_index := get_component_field_metadata_index(components[:], field);
@@ -74,7 +97,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 	if selected_metadata_index < 0
 	{
 		anim_param_list := objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
-		new_metadata: objects.Type_Specific_Metadata = anim_param_list;
+		new_metadata: objects.Type_Specific_Metadata = to_type_specific_metadata(field.type_id, anim_param_list);
 		component_data.metadata[component_data.metadata_count] = new_metadata;
 		component_data.metadata_offsets[component_data.metadata_count] = field.offset_in_component;
 		component_data.metadata_types[component_data.metadata_count] = field.type_id;
@@ -82,14 +105,17 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 		component_data.metadata_count += 1;
 	}
 
-	metadata_info, ok := component_data.metadata[selected_metadata_index].(objects.Type_Specific_Metadata).(objects.Anim_Param_List_Metadata);
+	metadata_info, ok := component_data.metadata[selected_metadata_index].(objects.Type_Specific_Metadata);
 
-	if !ok
+	if !ok || metadata_info.field_type_id != typeid_of(objects.Anim_Param_List_Metadata)
 	{
-		anim_param_list : objects.Type_Specific_Metadata = objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
-		component_data.metadata[component_data.metadata_count] = anim_param_list;
-		metadata_info = component_data.metadata[selected_metadata_index].(objects.Type_Specific_Metadata).(objects.Anim_Param_List_Metadata);
+		anim_param_list := objects.Anim_Param_List_Metadata{make([]objects.Anim_Param_Metadata, 256), 0};
+		new_metadata: objects.Type_Specific_Metadata = to_type_specific_metadata(field.type_id, anim_param_list);
+		component_data.metadata[component_data.metadata_count] = new_metadata;
+		metadata_info = component_data.metadata[selected_metadata_index].(objects.Type_Specific_Metadata);
 	}
+
+	anim_metadata_info := get_type_specific_metadata(objects.Anim_Param_List_Metadata, &metadata_info);
 
 	for param, index in params
 	{
@@ -98,7 +124,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 		imgui.next_column();
 
 		selected_component_id: string = "nil";
-		anim_param_data := &metadata_info.anim_params[index];
+		anim_param_data := &anim_metadata_info.anim_params[index];
 
 		if anim_param_data.component_index > 0
 		{
@@ -232,17 +258,13 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 		metadata, ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
 		if ok
 		{
-			sprite_metadata, ok := metadata.(objects.Sprite_Metadata);
+			sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
 			assert(ok);
-			sprite, found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)sprite_metadata);
-			fmt.println(sprite_metadata);
+			_, found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
 			assert(found);
 		}
-		type_specific_metadata, cast1_ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
-		assert(cast1_ok);
-		sprite_metadata, cast2_ok := type_specific_metadata.(objects.Sprite_Metadata);
-		assert(cast2_ok);
-		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)sprite_metadata);
+		sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
+		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
 		if sprite_found
 		{
 			if sprite_widget(&scene.sprite_database, sprite_handle)
@@ -278,8 +300,8 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 			{
 				case .Found:
 				{
-					type_specific_metadata : objects.Type_Specific_Metadata = transmute(objects.Sprite_Metadata)result;
-					set_component_field_metadata(components[:], field, type_specific_metadata);
+					sprite_metadata := render.Sprite_Asset{strings.clone(result.path), strings.clone(result.sprite_id)};
+					set_component_field_metadata(components[:], field, to_type_specific_metadata(field.type_id, sprite_metadata));
 				}
 			}
 		}

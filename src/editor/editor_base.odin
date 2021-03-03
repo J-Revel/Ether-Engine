@@ -111,7 +111,7 @@ update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
 
 	update_sprite_editor(&editor_state.sprite_editor, screen_size);
     imgui.separator();
-	update_prefab_editor(&prefab_editor);
+	update_prefab_editor(&prefab_editor, screen_size);
 	keyframe : animation.Keyframe(f32);
 	// curve_editor(&anim_editor.curve_editor_state, &anim_editor.anim_curve);
     if editor_state.show_demo_window

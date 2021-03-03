@@ -80,17 +80,17 @@ table_database_add_init :: proc(db: ^container.Database, name: string, table: ^c
 	log.info("Create database", name);
 }
 
-prefab_instantiate_dynamic :: proc(db: ^container.Database, prefab: ^Dynamic_Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate_dynamic :: proc(db: ^container.Database, prefab: ^Dynamic_Prefab, input_data: map[string]any, metadata_dispatcher: ^Pending_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
 {
-	return components_instantiate(db, prefab.components[:], prefab.inputs[:], input_data);
+	return components_instantiate(db, prefab.components[:], prefab.inputs[:], input_data, metadata_dispatcher);
 }
 
-prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any, metadata_dispatcher: ^Pending_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
 {
-	return components_instantiate(db, prefab.components, prefab.inputs, input_data);
+	return components_instantiate(db, prefab.components, prefab.inputs, input_data, metadata_dispatcher);
 }
 
-components_instantiate :: proc(db: ^container.Database, components: []Component_Model, inputs: []Prefab_Input, input_data: map[string]any) -> (out_components: []Named_Raw_Handle, success: bool)
+components_instantiate :: proc(db: ^container.Database, components: []Component_Model, inputs: []Prefab_Input, input_data: map[string]any, metadata_dispatcher: ^Pending_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(components), context.temp_allocator);
@@ -103,6 +103,7 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 	{
 		table := db.tables[component.table_index].table;
 		component_sizes[i] = reflect.size_of_typeid(table.type_id);
+		// TODO : check alignment
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
 
 		log.info("START DATA", components_data[i]);
@@ -117,32 +118,35 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 		ok : bool;
 		component_handles[i], ok = container.table_allocate_raw(table);
 		out_components[i].value = component_handles[i];
-
+	}
+	for component, i in components
+	{
+		table := &db.tables[component.table_index].table;
 		using component.data;
 		for metadata_index in 0..<metadata_count
 		{
 			offset := metadata_offsets[metadata_index];
 			field_type := metadata_types[metadata_index];
 			field_size := reflect.size_of_typeid(field_type);
+			field_ptr := rawptr(uintptr(components_data[i]) + offset);
 			switch metadata_info in metadata[metadata_index]
 			{
 				case Ref_Metadata:
 					ref_ptr := rawptr(uintptr(components_data[i]) + offset);
 					component_data := cast(^u8)components_data[i];
 
+					log.info(component_handles[metadata_info.component_index]);
 					mem.copy(ref_ptr, &component_handles[metadata_info.component_index], field_size);
 					log.info(any{components_data[i], typeid_of(container.Raw_Handle)});
 					handle: ^container.Raw_Handle = &component_handles[metadata_info.component_index];
 					table_data: ^container.Table_Data = handle.raw_table.table;
 					generic_handle := container.Generic_Handle{handle.id, table_data};
 					
-					field_ptr := rawptr(uintptr(components_data[i]) + offset);
 					mem.copy(field_ptr, &generic_handle, field_size);
-				case Input_Metadata:
+				case Input_Metadata: 
 					prefab_input := inputs[metadata_info.input_index];
 					if input_value, ok := input_data[prefab_input.name]; ok {
 						if input_value.id == field_type {
-							field_ptr := rawptr(uintptr(components_data[i]) + offset);
 							mem.copy(field_ptr, input_value.data, field_size);
 						}
 						else do log.info("Wrong input type : ", input_value.id);
@@ -150,6 +154,16 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 					else do log.info("Input not found ", prefab_input.name);
 					log.info(any{components_data[i], table.type_id});
 				case Type_Specific_Metadata:
+					pending_metadata := Pending_Metadata{
+						metadata_type_id = metadata_info.metadata_type_id,
+						metadata = metadata_info.data,
+						data = field_ptr,
+					};
+					log.info("DISPATCH METADATA", metadata_info);
+					if metadata_info.field_type_id in metadata_dispatcher^
+					{
+						container.table_add(&metadata_dispatcher[metadata_info.field_type_id], pending_metadata);
+					}
 			}
 		}
 	}

@@ -19,6 +19,7 @@ import "../render"
 import "../container"
 import "../objects"
 import "../animation"
+import "../input"
 
 init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 {
@@ -119,7 +120,7 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 						metadata_info.component_index -= 1;
 					}
 				case objects.Type_Specific_Metadata:
-					anim_param_list := metadata_info.(objects.Anim_Param_List_Metadata);
+					anim_param_list := get_type_specific_metadata(objects.Anim_Param_List_Metadata, &metadata_info);
 					for index in 0..anim_param_list.count
 					{
 						anim_param := anim_param_list.anim_params[index];
@@ -548,7 +549,7 @@ ref_input_popup_content :: proc(using editor_state: ^Prefab_Editor_State, field:
 	if imgui.button("Cancel") do imgui.close_current_popup();
 }
 
-update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
+update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_size: [2]f32)
 {
 	io := imgui.get_io();
 	
@@ -719,7 +720,23 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 			input_values[input.data.name] = input.display_value;
 		}
 
-		components, success := objects.components_instantiate(&scene.db, components[:], input_data, input_values);
+		metadata_dispatcher: objects.Pending_Metadata_Dispatcher;
+		metadata_dispatcher[typeid_of(render.Sprite_Handle)] = {};
+		sprite_metadata_dispatch_table := &metadata_dispatcher[typeid_of(render.Sprite_Handle)];
+		
+		container.table_init(sprite_metadata_dispatch_table);
+		components, success := objects.components_instantiate(&scene.db, components[:], input_data, input_values, &metadata_dispatcher);
+		it := container.table_iterator(sprite_metadata_dispatch_table);
+		for sprite_metadata in container.table_iterate(&it)
+		{
+			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
+			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
+			target_sprite_handle := cast(^render.Sprite_Handle)sprite_metadata.data;
+			ok: bool;
+			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
+			assert(ok);
+		}
+		assert(success);
 		if success
 		{
 			for component in components
@@ -728,6 +745,8 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 			}
 		}
 	}
+	input_state: input.State;
+	gameplay.update_and_render(&scene, 0, screen_size, &input_state);
 }
 
 json_write_open_body :: proc(file: os.Handle, using write_state: ^Json_Write_State, character := "{")
