@@ -705,10 +705,11 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		save_prefab(editor_state, path);
 	}
 
-	if imgui.button("Update Display")
+	//if imgui.button("Update Display")
 	{
 		for instantiated_component in instantiated_components
 		{
+			log.info("Remove component", instantiated_component);
 			container.raw_handle_remove(instantiated_component);
 		}
 		clear(&instantiated_components);
@@ -731,12 +732,17 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		{
 			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
 			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
-			target_sprite_handle := cast(^render.Sprite_Handle)sprite_metadata.data;
+			component_data := container.handle_get_raw(components[sprite_metadata.component_index].value);
+			target_sprite_handle := cast(^render.Sprite_Handle)(uintptr(component_data) + sprite_metadata.offset_in_component);
 			ok: bool;
 			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
 			assert(ok);
 		}
 		assert(success);
+		for named_component in components
+		{
+			log.info(named_component.name, any{container.handle_get_raw(named_component.value), named_component.value.raw_table.type_id});
+		}
 		if success
 		{
 			for component in components

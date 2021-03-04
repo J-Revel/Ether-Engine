@@ -451,8 +451,8 @@ init_sprite_renderer :: proc (result: ^Render_State) -> bool
 render_sprite :: proc(render_buffer: ^Sprite_Render_System, using sprite: ^Sprite, pos: [2]f32, color: Color, scale: f32)
 {
     start_index := cast(u32) len(render_buffer.vertex);
-
-    texture_size_i := container.handle_get(texture).size;
+    texture_data := container.handle_get(texture);
+    texture_size_i := texture_data.size;
     if texture != render_buffer.current_texture
     {
         index_count := len(render_buffer.render_system.index);

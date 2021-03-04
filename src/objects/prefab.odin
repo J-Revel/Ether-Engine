@@ -118,6 +118,7 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 		ok : bool;
 		component_handles[i], ok = container.table_allocate_raw(table);
 		out_components[i].value = component_handles[i];
+
 	}
 	for component, i in components
 	{
@@ -132,17 +133,18 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 			switch metadata_info in metadata[metadata_index]
 			{
 				case Ref_Metadata:
-					ref_ptr := rawptr(uintptr(components_data[i]) + offset);
-					component_data := cast(^u8)components_data[i];
+					// component_data := cast(^u8)components_data[i];
 
-					log.info(component_handles[metadata_info.component_index]);
-					mem.copy(ref_ptr, &component_handles[metadata_info.component_index], field_size);
-					log.info(any{components_data[i], typeid_of(container.Raw_Handle)});
+					// log.info(component_handles[metadata_info.component_index]);
+					// mem.copy(field_ptr, &component_handles[metadata_info.component_index], field_size);
+					// log.info(any{components_data[i], typeid_of(container.Raw_Handle)});
 					handle: ^container.Raw_Handle = &component_handles[metadata_info.component_index];
 					table_data: ^container.Table_Data = handle.raw_table.table;
 					generic_handle := container.Generic_Handle{handle.id, table_data};
 					
-					mem.copy(field_ptr, &generic_handle, field_size);
+					target_handle := cast(^container.Generic_Handle)field_ptr;
+					target_handle^ = generic_handle;
+					//log.info(target_handle);
 				case Input_Metadata: 
 					prefab_input := inputs[metadata_info.input_index];
 					if input_value, ok := input_data[prefab_input.name]; ok {
@@ -157,7 +159,8 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 					pending_metadata := Pending_Metadata{
 						metadata_type_id = metadata_info.metadata_type_id,
 						metadata = metadata_info.data,
-						data = field_ptr,
+						component_index = i,
+						offset_in_component = offset
 					};
 					log.info("DISPATCH METADATA", metadata_info);
 					if metadata_info.field_type_id in metadata_dispatcher^

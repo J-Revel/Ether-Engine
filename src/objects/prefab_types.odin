@@ -42,7 +42,8 @@ Pending_Metadata :: struct
 {
 	metadata_type_id: typeid,
 	metadata: rawptr,
-	data: rawptr,
+	component_index: int,
+	offset_in_component: uintptr,
 }
 
 Pending_Metadata_Dispatcher :: map[typeid]container.Table(Pending_Metadata);

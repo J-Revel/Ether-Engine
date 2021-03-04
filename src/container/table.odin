@@ -154,7 +154,7 @@ handle_remove :: proc(handle: $A/Handle($T))
 
 raw_handle_remove :: proc(handle: Raw_Handle)
 {
-	bit_array_set(&handle.raw_table.allocation, uint(handle.id), false);
+	bit_array_set(&handle.raw_table.allocation, uint(handle.id - 1), false);
 }
 
 table_print :: proc(table: ^$A/Table($T))

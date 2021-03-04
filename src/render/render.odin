@@ -180,18 +180,15 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
     index_cursor := 0;
     for pass in render_system.passes
     {
-        log.info("TEXTURE", pass.texture.id, index_cursor, pass.index_count);
         gl.BindTexture(gl.TEXTURE_2D, container.handle_get(pass.texture).texture_id);
         render_buffer_content_part(&render_system.render_system, camera, index_cursor, pass.index_count);
         index_cursor += pass.index_count;
     }
     if container.is_valid(render_system.current_texture)
     {
-        log.info("TEXTURE", render_system.current_texture.id, index_cursor, len(render_system.render_system.index));
         gl.BindTexture(gl.TEXTURE_2D, container.handle_get(render_system.current_texture).texture_id);
         render_buffer_content_part(&render_system.render_system, camera, index_cursor, len(render_system.render_system.index) - index_cursor);
     }
-    log.info("----");
 }
 
 clear_sprite_render_buffer :: proc(render_system: ^Sprite_Render_System)

@@ -48,6 +48,8 @@ init_empty_scene :: proc(using scene: ^Scene)
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
 	render.init_color_renderer(&color_renderer.render_state);
+	
+	camera.zoom = 1;
 }
 
 test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32){0, 0}, animation.Keyframe(f32){0.5, 1}, animation.Keyframe(f32){0.75, 0.5}, animation.Keyframe(f32){1, 1} };
@@ -56,7 +58,6 @@ init_main_scene :: proc(using scene: ^Scene)
 	using container;
 	init_empty_scene(scene);
 
-	camera.zoom = 1;
 
 	render.load_sprites_from_file("test.sprites", &textures, &sprites);
 
