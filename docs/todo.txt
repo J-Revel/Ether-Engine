@@ -20,11 +20,16 @@
 			{
 				"id": "1361614734308531898503",
 				"name": "Handle multi texture rendering",
-				"state": "priority"
+				"state": "done"
 			},
 			{
 				"id": "136161464660014558260",
 				"name": "Prefab spawn in editor",
+				"state": "done"
+			},
+			{
+				"id": "1361614821969413759722",
+				"name": "Bug fix : sprites become randomly unavailable",
 				"state": "priority"
 			},
 			{
@@ -65,6 +70,21 @@
 			{
 				"id": "1361614713291470934615",
 				"name": "Ceck alignment handling in components_instantiate",
+				"state": ""
+			},
+			{
+				"id": "1361614808226537108837",
+				"name": "Check if RenderSystem/RenderBuffer system still ok with the SpriteRenderBuffer",
+				"state": ""
+			},
+			{
+				"id": "136161481836093111545",
+				"name": "handle sprite rotation",
+				"state": ""
+			},
+			{
+				"id": "1361614822041996860624",
+				"name": "move Sprite_Component from transform.odin",
 				"state": ""
 			}
 		],
