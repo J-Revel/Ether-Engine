@@ -202,7 +202,7 @@ db_get_table :: proc(db: ^Database, name: string) -> (Raw_Table, int, bool)
 
 db_get_tables_of_type :: proc(db: ^Database, type_id: typeid, allocator := context.temp_allocator) -> []Database_Named_Table
 {
-	result := make([]Database_Named_Table, len(db.tables));
+	result := make([]Database_Named_Table, len(db.tables), allocator);
 	result_count := 0;
 	for named_table in &db.tables
 	{

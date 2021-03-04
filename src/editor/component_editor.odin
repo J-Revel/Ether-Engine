@@ -261,7 +261,7 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 			sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
 			assert(ok);
 			_, found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
-			assert(found);
+			// assert(found);
 		}
 		sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
 		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));

@@ -71,7 +71,7 @@ load_texture :: proc(path: string) -> (Texture, bool)
 	 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	return {path, texture_id, {int(surface.w), int(surface.h)}}, true;
+	return {strings.clone(path), texture_id, {int(surface.w), int(surface.h)}}, true;
 }
 
 unload_texture :: proc(texture: ^Texture)
@@ -147,7 +147,7 @@ get_or_load_sprite :: proc(using db: ^Sprite_Database, asset: Sprite_Asset) -> (
         {
             loaded_sprite_data := loaded_sprites_data[index];
 
-            new_sprite := Sprite{texture_handle, loaded_sprite_name, loaded_sprite_data};
+            new_sprite := Sprite{texture_handle, strings.clone(loaded_sprite_name, context.allocator), loaded_sprite_data};
             // TODO : maybe should check for existence in the table before adding it ?
             new_sprite_handle, add_ok := container.table_add(&sprites, new_sprite);
             assert(add_ok);
@@ -173,7 +173,7 @@ load_sprites_to_db :: proc(using db: ^Sprite_Database, texture_handle: Texture_H
         {
             loaded_sprite_data := loaded_sprites_data[index];
 
-            new_sprite := Sprite{texture_handle, loaded_sprite_name, loaded_sprite_data};
+            new_sprite := Sprite{texture_handle, strings.clone(loaded_sprite_name), loaded_sprite_data};
             _, sprite_present := get_sprite(db, texture_handle, loaded_sprite_name);
             if !sprite_present
             {
@@ -326,7 +326,7 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
                 clip_pos_data := clip_data["pos"].value.(json.Array);
                 clip_size_data := clip_data["size"].value.(json.Array);
 
-                sprite.id = sprite_data_root["id"].value.(json.String);
+                sprite.id = strings.clone(sprite_data_root["id"].value.(json.String));
                 sprite.anchor.x = f32(anchor_data[0].value.(json.Float));
                 sprite.anchor.y = f32(anchor_data[1].value.(json.Float));
                 sprite.clip.pos.x = f32(clip_pos_data[0].value.(json.Float));

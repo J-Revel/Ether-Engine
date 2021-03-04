@@ -367,7 +367,6 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 		callback(editor_state, field);
 		return;
 	}
-	text_buffer := make([]u8, 200, context.temp_allocator);
 
 	#partial switch variant in type_info.variant
 	{
@@ -736,7 +735,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			target_sprite_handle := cast(^render.Sprite_Handle)(uintptr(component_data) + sprite_metadata.offset_in_component);
 			ok: bool;
 			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
-			assert(ok);
+			// assert(ok);
 		}
 		assert(success);
 		for named_component in components
@@ -753,6 +752,11 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 	}
 	input_state: input.State;
 	gameplay.update_and_render(&scene, 0, screen_size, &input_state);
+	sprite_it := container.table_iterator(&scene.sprite_database.sprites);
+	for sprite, sprite_handle in container.table_iterate(&sprite_it)
+	{
+		imgui.text_unformatted(fmt.tprint(sprite));
+	}
 }
 
 json_write_open_body :: proc(file: os.Handle, using write_state: ^Json_Write_State, character := "{")
