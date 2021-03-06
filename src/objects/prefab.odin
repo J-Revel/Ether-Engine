@@ -201,10 +201,10 @@ parse_json_float :: proc(json_data: json.Value) -> f32
 }
 
 // same as reflect.struct_field_by_name, but goes inside params with using
-find_struct_field :: proc(T: typeid, name: string) -> (field: reflect.Struct_Field, field_found: bool)
+find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field: reflect.Struct_Field, field_found: bool)
 {
 	field_found = false;
-	ti := runtime.type_info_base(type_info_of(T));
+	ti := runtime.type_info_base(type_info);
 	if s, ok := ti.variant.(runtime.Type_Info_Struct); ok {
 		for fname, i in s.names {
 			if fname == name {
@@ -216,7 +216,7 @@ find_struct_field :: proc(T: typeid, name: string) -> (field: reflect.Struct_Fie
 				return;
 			}
 			else if s.usings[i] {
-				if child_field, ok := find_struct_field(s.types[i].id, name); ok {
+				if child_field, ok := find_struct_field(s.types[i], name); ok {
 					field = child_field;
 					field.offset += s.offsets[i];
 					field_found = true;
@@ -228,16 +228,14 @@ find_struct_field :: proc(T: typeid, name: string) -> (field: reflect.Struct_Fie
 	return;
 }
 
-build_component_model_from_json :: proc(json_data: json.Object, type: typeid, allocator: mem.Allocator, available_component_index: map[string]Registered_Component_Data) -> (result: Component_Model_Data)
+build_component_model_from_json :: proc(json_data: json.Object, ti: ^runtime.Type_Info, available_component_index: map[string]Registered_Component_Data, result: ^Component_Model_Data)
 {
-	ti := type_info_of(type);
 	base_ti := runtime.type_info_base(ti);
-	result.data = mem.alloc(ti.size, ti.align, allocator);
 	
 	for name, value in json_data
 	{
 		if name == "type" do continue;
-		field, field_found := find_struct_field(type, name);
+		field, field_found := find_struct_field(base_ti, name); // maybe replace with ti ?
 		#partial switch t in value.value
 		{
 			case json.Object:
@@ -300,12 +298,9 @@ build_component_model_from_json :: proc(json_data: json.Object, type: typeid, al
 			}
 		}
 	}
-
-	//log.info(result);
-	return result;
 }
 
-load_prefab :: proc(path: string, db: ^container.Database, allocator := context.allocator) -> (Prefab, bool)
+load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: Pending_Metadata_Dispatcher, allocator := context.allocator) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path, context.temp_allocator);
 	if ok
@@ -340,12 +335,15 @@ load_prefab :: proc(path: string, db: ^container.Database, allocator := context.
 		for name, value in json_object["components"].value.(json.Object)
 		{
 			value_obj := value.value.(json.Object);
-			log.info(value_obj["type"]);
 			table_name := value_obj["type"].value.(json.String);
 			if table, table_index, ok := container.db_get_table(db, table_name); ok
 			{
 				prefab.components[component_cursor].table_index = table_index;
-				prefab.components[component_cursor].data = build_component_model_from_json(value_obj, table.type_id, allocator, registered_components);
+				ti := type_info_of(table.type_id);
+				data := mem.alloc(ti.size, ti.align, allocator);
+				prefab.components[component_cursor].data.data = data;
+
+				build_component_model_from_json(value_obj, ti, registered_components, &prefab.components[component_cursor].data);
 				prefab.components[component_cursor].id = name;
 				registered_components[name] = {component_cursor, table_index};				
 			}
@@ -397,7 +395,11 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^containe
 			{
 				new_component: Component_Model;
 				new_component.table_index = table_index;
-				new_component.data = build_component_model_from_json(value_obj, table.type_id, allocator, registered_components);
+
+				ti := type_info_of(table.type_id);
+				data := mem.alloc(ti.size, ti.align, allocator);
+				new_component.data.data = data;
+				build_component_model_from_json(value_obj, ti, registered_components, &new_component.data);
 				new_component.id = name;
 				append(&prefab.components, new_component);
 				registered_components[name] = {component_cursor, table_index};				
