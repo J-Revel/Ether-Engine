@@ -268,7 +268,11 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 		assert(ok);
 		sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
 		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
-		assert(sprite_found);
+		if !sprite_found
+		{
+			log.info("Could not load sprite", transmute(render.Sprite_Asset)(sprite_metadata^));
+			assert(false);
+		}
 		if sprite_found
 		{
 			if sprite_widget(&scene.sprite_database, sprite_handle)

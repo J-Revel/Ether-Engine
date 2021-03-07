@@ -592,7 +592,12 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			prefab_field.type_id = typeid_of(render.Sprite_Handle);
 			using comp_model_data := &components[load_metadata.component_index].data;
 
-			new_metadata := to_type_specific_metadata_raw(prefab_field.type_id, load_metadata.data, type_info_of(render.Sprite_Asset));
+			new_temp_metadata := cast(^render.Sprite_Asset)load_metadata.data;
+			metadata_copy := render.Sprite_Asset{
+				strings.clone(new_temp_metadata.path),
+				strings.clone(new_temp_metadata.sprite_id),
+			};
+			new_metadata := to_type_specific_metadata_raw(prefab_field.type_id, &metadata_copy, type_info_of(render.Sprite_Asset));
 			log.info(new_metadata);
 			log.info(prefab_field);
 			set_component_field_metadata(components[:], prefab_field, new_metadata);
@@ -746,7 +751,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		it := container.table_iterator(sprite_metadata_dispatch_table);
 		for sprite_metadata in container.table_iterate(&it)
 		{
-			log.info(sprite_metadata);
 			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
 			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
 			component_data := container.handle_get_raw(components[sprite_metadata.component_index].value);
@@ -813,7 +817,8 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 		write_state: serialization.Json_Write_State;
 		serialization.json_write_open_body(file, &write_state);
 		serialization.json_write_member(file, "inputs", &write_state);
-			serialization.json_write_open_body(file, &write_state, "[");
+		serialization.json_write_open_body(file, &write_state, "[");
+		{
 			for input in inputs
 			{
 				serialization.json_write_open_body(file, &write_state);
@@ -831,10 +836,12 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 
 				serialization.json_write_close_body(file, &write_state);
 			}
-			serialization.json_write_close_body(file, &write_state, "]");
-			write_state.has_precedent = true;
+		}
+		serialization.json_write_close_body(file, &write_state, "]");
+		write_state.has_precedent = true;
 		serialization.json_write_member(file, "components", &write_state);
-			serialization.json_write_open_body(file, &write_state);
+		serialization.json_write_open_body(file, &write_state);
+		{
 			for component in components
 			{
 				serialization.json_write_member(file, component.id, &write_state);
@@ -867,7 +874,8 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 				serialization.json_write_close_body(file, &write_state);
 				
 			}
-			serialization.json_write_close_body(file, &write_state);
+		}
+		serialization.json_write_close_body(file, &write_state);
 		serialization.json_write_close_body(file, &write_state);
 		os.close(file);
 	}

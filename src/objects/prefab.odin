@@ -244,6 +244,7 @@ build_component_model_from_json :: proc(
 			metadata.data_type_id = dispatcher_entry.type_id;
 			metadata.offset_in_component = field.offset;
 			metadata_type_info := type_info_of(dispatcher_entry.type_id);
+			// TODO : check memory leak (context.allocator would make the strings temp)
 			metadata.data = serialization.json_read_struct(value.value.(json.Object), metadata_type_info, context.temp_allocator);
 			metadata.component_index = component_index;
 
@@ -287,7 +288,6 @@ build_component_model_from_json :: proc(
 				{
 					if(t[0] == '&')
 					{
-						//log.info("INPUT");
 						input_index, parse_success := strconv.parse_int(t[1:]);
 						result.metadata[result.metadata_count] = Input_Metadata{input_index};
 						result.metadata_offsets[result.metadata_count] = field.offset;
@@ -328,11 +328,10 @@ load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: 
 		json_object: json.Object = parsed_json.value.(json.Object);
 		component_count := len(json_object["components"].value.(json.Object));
 		
-		component_cursor := 0;
 
 		prefab.components = make([]Component_Model, component_count, allocator);
 
-		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
+		registered_components: map[string]Registered_Component_Data;
 
 		input_objects := json_object["inputs"].value.(json.Array);
 		prefab.inputs = make([]Prefab_Input, len(input_objects), allocator);
@@ -348,6 +347,20 @@ load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: 
 			}
 		}
 
+
+		component_cursor := 0;
+		for name, value in json_object["components"].value.(json.Object)
+		{
+			value_obj := value.value.(json.Object);
+			table_name := value_obj["type"].value.(json.String);
+			if table, table_index, ok := container.db_get_table(db, table_name); ok
+			{
+				registered_components[name] = {component_cursor, table_index};				
+				component_cursor += 1;
+			}
+		}
+
+		component_cursor = 0;
 		for name, value in json_object["components"].value.(json.Object)
 		{
 			value_obj := value.value.(json.Object);
@@ -359,15 +372,12 @@ load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: 
 				data := mem.alloc(ti.size, ti.align, allocator);
 				prefab.components[component_cursor].data.data = data;
 
-
 				build_component_model_from_json(value_obj, ti, registered_components, metadata_dispatcher, &prefab.components[component_cursor].data, component_cursor);
 				
 				prefab.components[component_cursor].id = name;
-				registered_components[name] = {component_cursor, table_index};				
 			}
 			component_cursor += 1;
 		}
-		delete(registered_components);
 		return prefab, true;
 	}
 	return {}, false;

@@ -139,14 +139,13 @@ get_or_load_sprite :: proc(using db: ^Sprite_Database, asset: Sprite_Asset) -> (
     if sprite_found do return result, true;
 
     sprites_path := fmt.tprintf("%s.meta", asset.path);
-    loaded_sprites_names, loaded_sprites_data, load_ok := load_sprites_data(sprites_path);
+    loaded_sprites_names, loaded_sprites_data, load_ok := load_sprites_data(sprites_path, context.temp_allocator);
     if load_ok
     {
         result_found := false;
         for loaded_sprite_name, index in loaded_sprites_names
         {
             loaded_sprite_data := loaded_sprites_data[index];
-
             new_sprite := Sprite{texture_handle, strings.clone(loaded_sprite_name, context.allocator), loaded_sprite_data};
             // TODO : maybe should check for existence in the table before adding it ?
             new_sprite_handle, add_ok := container.table_add(&sprites, new_sprite);
