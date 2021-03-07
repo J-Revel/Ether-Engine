@@ -39,8 +39,8 @@ Scene :: struct
 
 init_empty_scene :: proc(using scene: ^Scene)
 {
-	objects.table_database_add_init(&db, "texture", &textures, 100);
-	objects.table_database_add_init(&db, "sprite", &sprites, 200);
+	container.table_init(&textures, 100);
+	container.table_init(&sprites, 200);
 	objects.table_database_add_init(&db, "transform", &transforms, 10000);
 	objects.table_database_add_init(&db, "sprite_component", &sprite_components, 500);
 	
