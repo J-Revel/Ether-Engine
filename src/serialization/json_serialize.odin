@@ -6,8 +6,8 @@ import "core:runtime"
 import "core:mem"
 import "core:fmt"
 import "core:strings"
-
-import "../objects"
+import "core:encoding/json"
+import "core:log"
 
 Json_Write_State :: struct
 {
@@ -55,6 +55,100 @@ json_write_struct :: proc(file: os.Handle, data: rawptr, type_info: ^runtime.Typ
 	}
 }
 
+// same as reflect.struct_field_by_name, but goes inside params with using
+find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field: reflect.Struct_Field, field_found: bool)
+{
+	field_found = false;
+	ti := runtime.type_info_base(type_info);
+	if s, ok := ti.variant.(runtime.Type_Info_Struct); ok {
+		for fname, i in s.names {
+			if fname == name {
+				field.name   = s.names[i];
+				field.type   = s.types[i].id;
+				field.tag    = reflect.Struct_Tag(s.tags[i]);
+				field.offset = s.offsets[i];
+				field_found = true;
+				return;
+			}
+			else if s.usings[i] {
+				if child_field, ok := find_struct_field(s.types[i], name); ok {
+					field = child_field;
+					field.offset += s.offsets[i];
+					field_found = true;
+					return;
+				}
+			}
+		}
+	}
+	return;
+}
+
+parse_json_float :: proc(json_data: json.Value) -> f32
+{
+	#partial switch v in json_data.value
+	{
+		case json.Integer:
+			return f32(v);
+		case json.Float:
+			return f32(v);
+	}
+	return 0;
+}
+
+json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocator := context.allocator) -> rawptr
+{
+	base_ti := runtime.type_info_base(ti);
+	result := mem.alloc(ti.size, ti.align);
+	log.info(json_data);
+	
+	for name, value in json_data
+	{
+		field, field_found := find_struct_field(base_ti, name);
+		#partial switch t in value.value
+		{
+			case json.Object:
+			{
+				//log.info("OBJECT");
+			}
+			case json.Array:
+			{
+				if(type_info_of(field.type).size == size_of(f32) * len(t))
+				{
+					for i := 0; i < len(t); i += 1
+					{
+						x := parse_json_float(t[i]);
+						{
+							fieldPtr := uintptr(result) + field.offset;
+							mem.copy(rawptr(fieldPtr + uintptr(size_of(f32) * i)), &x, size_of(f32));
+						}
+					}
+
+				}
+			}
+			case json.Integer:
+			case json.Float:
+			{
+				// TODO : maybe handle f64 ?
+				if field.type == typeid_of(f32)
+				{
+					field_ptr := cast(^f32)(uintptr(result) + field.offset);
+					field_ptr^ = f32(t);
+				}
+			}
+			case json.String:
+			{
+				if field.type == typeid_of(string)
+				{
+					str_copy := strings.clone(t, allocator);
+					field_ptr := cast(^string)(uintptr(result) + field.offset);
+					field_ptr^ = str_copy; 
+				}
+			}
+		}
+	}
+	return result;
+}
+
 
 json_write_open_body :: proc(file: os.Handle, using write_state: ^Json_Write_State, character := "{")
 {
@@ -93,7 +187,8 @@ json_write_member :: proc(file: os.Handle, name: string, using write_state: ^Jso
 json_write_value :: #force_inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
 {
 	os.write_byte(file, '\"');
-	os.write_string(file, name);
+	output_value, was_allocation := strings.replace_all(name, "\\", "/", context.temp_allocator);
+	os.write_string(file, output_value);
 	os.write_byte(file, '\"');
 	has_precedent = true;
 }

@@ -138,8 +138,8 @@ get_or_load_sprite :: proc(using db: ^Sprite_Database, asset: Sprite_Asset) -> (
 
     if sprite_found do return result, true;
 
-    sprite_file_path := fmt.tprintf("%s.meta", asset.path);
-    loaded_sprites_names, loaded_sprites_data, load_ok := load_sprites_data(asset.sprite_id);
+    sprites_path := fmt.tprintf("%s.meta", asset.path);
+    loaded_sprites_names, loaded_sprites_data, load_ok := load_sprites_data(sprites_path);
     if load_ok
     {
         result_found := false;
@@ -159,6 +159,7 @@ get_or_load_sprite :: proc(using db: ^Sprite_Database, asset: Sprite_Asset) -> (
             }
 
         }
+        log.info(result, result_found);
         return result, result_found;
     }
     return {}, false;
@@ -349,6 +350,7 @@ load_sprites_data :: proc (path: string, allocator := context.temp_allocator) ->
     if ok
     {
         parsed, ok := json.parse(file, .JSON, false, context.temp_allocator);
+        log.info(path);
         parsed_object := parsed.value.(json.Object);
 
         sprite := Sprite_Data{};

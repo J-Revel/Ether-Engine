@@ -6,7 +6,7 @@
 			"type":"sprite_component",
 			"transform":"@component 1",
 			"sprite":{
-				"path":"D:\Documents\Projects\Odin\Ether-Engine\resources\textures\spaceship",
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/LD47_ennemy_03",
 				"sprite_id":"Ship Body"
 			}
 		},

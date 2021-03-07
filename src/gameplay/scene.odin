@@ -63,7 +63,9 @@ init_main_scene :: proc(using scene: ^Scene)
 
 	spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(&sprite_database, "spaceship_2");
-	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", &scene.db);
+	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;
+
+	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", &db, &load_metadata_dispatcher);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{10, 50};

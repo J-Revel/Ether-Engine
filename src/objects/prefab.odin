@@ -6,9 +6,11 @@ import "core:mem"
 import "core:os"
 import "core:encoding/json"
 import "core:runtime"
-import "../container"
 import "core:strconv"
 import "core:strings"
+
+import "../container"
+import "../serialization"
 
 default_input_types := [?]Prefab_Input_Type{
 	{"int", typeid_of(int)}, 
@@ -80,17 +82,17 @@ table_database_add_init :: proc(db: ^container.Database, name: string, table: ^c
 	log.info("Create database", name);
 }
 
-prefab_instantiate_dynamic :: proc(db: ^container.Database, prefab: ^Dynamic_Prefab, input_data: map[string]any, metadata_dispatcher: ^Pending_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate_dynamic :: proc(db: ^container.Database, prefab: ^Dynamic_Prefab, input_data: map[string]any, metadata_dispatcher: ^Instantiate_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	return components_instantiate(db, prefab.components[:], prefab.inputs[:], input_data, metadata_dispatcher);
 }
 
-prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any, metadata_dispatcher: ^Pending_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate :: proc(db: ^container.Database, prefab: ^Prefab, input_data: map[string]any, metadata_dispatcher: ^Instantiate_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	return components_instantiate(db, prefab.components, prefab.inputs, input_data, metadata_dispatcher);
 }
 
-components_instantiate :: proc(db: ^container.Database, components: []Component_Model, inputs: []Prefab_Input, input_data: map[string]any, metadata_dispatcher: ^Pending_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
+components_instantiate :: proc(db: ^container.Database, components: []Component_Model, inputs: []Prefab_Input, input_data: map[string]any, metadata_dispatcher: ^Instantiate_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(components), context.temp_allocator);
@@ -106,8 +108,6 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 		// TODO : check alignment
 		components_data[i] = mem.alloc(component_sizes[i], align_of(uintptr), context.temp_allocator);
 
-		log.info("START DATA", components_data[i]);
-		log.info(any{components_data[i], table.type_id});
 		mem.copy(components_data[i], component.data.data, component_sizes[i]);
 		out_components[i].name = component.id;
 	}
@@ -151,18 +151,14 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 						if input_value.id == field_type {
 							mem.copy(field_ptr, input_value.data, field_size);
 						}
-						else do log.info("Wrong input type : ", input_value.id);
 					}
-					else do log.info("Input not found ", prefab_input.name);
-					log.info(any{components_data[i], table.type_id});
 				case Type_Specific_Metadata:
-					pending_metadata := Pending_Metadata{
+					pending_metadata := Instantiate_Metadata{
 						metadata_type_id = metadata_info.metadata_type_id,
 						metadata = metadata_info.data,
 						component_index = i,
 						offset_in_component = offset
 					};
-					log.info("DISPATCH METADATA", metadata_info);
 					if metadata_info.field_type_id in metadata_dispatcher^
 					{
 						container.table_add(&metadata_dispatcher[metadata_info.field_type_id], pending_metadata);
@@ -175,13 +171,9 @@ components_instantiate :: proc(db: ^container.Database, components: []Component_
 	{
 		table := &db.tables[component.table_index].table;
 		data_ptr := components_data[i];
-		log.info(table.type_id, component_sizes[i]);
-		log.info("FINAL DATA 1", any{data_ptr, table.type_id});
 		component_data := container.handle_get_raw(component_handles[i]);
 		mem.copy(component_data, components_data[i], component_sizes[i]);
-		log.info("FINAL DATA 2", any{components_data[i], table.type_id});
 	}
-	log.info("FINISHED");
 
 	success = true;
 
@@ -228,79 +220,103 @@ find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field
 	return;
 }
 
-build_component_model_from_json :: proc(json_data: json.Object, ti: ^runtime.Type_Info, available_component_index: map[string]Registered_Component_Data, result: ^Component_Model_Data)
+
+// TODO : simplify function signature
+build_component_model_from_json :: proc(
+		json_data: json.Object, 
+		ti: ^runtime.Type_Info, 
+		available_component_index: map[string]Registered_Component_Data,
+		metadata_dispatcher: ^Load_Metadata_Dispatcher,
+		result: ^Component_Model_Data,
+		component_index: int)
 {
 	base_ti := runtime.type_info_base(ti);
 	
 	for name, value in json_data
 	{
 		if name == "type" do continue;
-		field, field_found := find_struct_field(base_ti, name); // maybe replace with ti ?
-		#partial switch t in value.value
+		field, field_found := find_struct_field(base_ti, name);
+		if field.type in metadata_dispatcher^
 		{
-			case json.Object:
+			metadata: Load_Metadata;
+			dispatcher_entry := &(metadata_dispatcher^)[field.type];
+
+			metadata.data_type_id = dispatcher_entry.type_id;
+			metadata.offset_in_component = field.offset;
+			metadata_type_info := type_info_of(dispatcher_entry.type_id);
+			metadata.data = serialization.json_read_struct(value.value.(json.Object), metadata_type_info, context.temp_allocator);
+			metadata.component_index = component_index;
+
+			container.table_add(&dispatcher_entry.table, metadata);
+		}
+		else
+		{
+			#partial switch t in value.value
 			{
-				//log.info("OBJECT");
-			}
-			case json.Array:
-			{
-				if(type_info_of(field.type).size == size_of(f32) * len(t))
+				case json.Object:
 				{
-					for i := 0; i < len(t); i += 1
+					//log.info("OBJECT");
+				}
+				case json.Array:
+				{
+					if(type_info_of(field.type).size == size_of(f32) * len(t))
 					{
-						x := parse_json_float(t[i]);
+						for i := 0; i < len(t); i += 1
 						{
-							fieldPtr := uintptr(result.data) + field.offset;
-							mem.copy(rawptr(fieldPtr + uintptr(size_of(f32) * i)), &x, size_of(f32));
+							x := parse_json_float(t[i]);
+							{
+								fieldPtr := uintptr(result.data) + field.offset;
+								mem.copy(rawptr(fieldPtr + uintptr(size_of(f32) * i)), &x, size_of(f32));
+							}
 						}
+
 					}
-
 				}
-			}
-			case json.Integer:
-			case json.Float:
-			{
-				// TODO : maybe handle f64 ?
-				if(field.type == typeid_of(f32))
+				case json.Integer:
+				case json.Float:
 				{
-					value: f32 = f32(t);
-					fieldPtr := rawptr(uintptr(result.data) + field.offset);
-					mem.copy(fieldPtr, &value, size_of(f32));
+					// TODO : maybe handle f64 ?
+					if(field.type == typeid_of(f32))
+					{
+						value: f32 = f32(t);
+						fieldPtr := rawptr(uintptr(result.data) + field.offset);
+						mem.copy(fieldPtr, &value, size_of(f32));
+					}
 				}
-			}
-			case json.String:
-			{
-				if(t[0] == '&')
+				case json.String:
 				{
-					//log.info("INPUT");
-					input_index, parse_success := strconv.parse_int(t[1:]);
-					result.metadata[result.metadata_count] = Input_Metadata{input_index};
-					result.metadata_offsets[result.metadata_count] = field.offset;
-					result.metadata_types[result.metadata_count] = field.type;
-					result.metadata_count += 1;
-				}
-				if(t[0] == '@')
-				{
-					//log.info("REF");
-					ref_name := t[1:];
-					log.info("@", ref_name);
-
-					if component_data, ok := available_component_index[ref_name]; ok {
-						log.info(component_data);
-						result.metadata[result.metadata_count] = Ref_Metadata{component_data.component_index};
+					if(t[0] == '&')
+					{
+						//log.info("INPUT");
+						input_index, parse_success := strconv.parse_int(t[1:]);
+						result.metadata[result.metadata_count] = Input_Metadata{input_index};
 						result.metadata_offsets[result.metadata_count] = field.offset;
 						result.metadata_types[result.metadata_count] = field.type;
 						result.metadata_count += 1;
-						log.info("REF ADDED ", ref_name, result.metadata[:result.metadata_count]);
 					}
-					else do log.info("Missing component", ref_name);
+					if(t[0] == '@')
+					{
+						//log.info("REF");
+						ref_name := t[1:];
+						log.info("@", ref_name);
+
+						if component_data, ok := available_component_index[ref_name]; ok {
+							log.info(component_data);
+							result.metadata[result.metadata_count] = Ref_Metadata{component_data.component_index};
+							result.metadata_offsets[result.metadata_count] = field.offset;
+							result.metadata_types[result.metadata_count] = field.type;
+							result.metadata_count += 1;
+							log.info("REF ADDED ", ref_name, result.metadata[:result.metadata_count]);
+						}
+						else do log.info("Missing component", ref_name);
+					}
 				}
 			}
 		}
 	}
 }
 
-load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: Pending_Metadata_Dispatcher, allocator := context.allocator) -> (Prefab, bool)
+load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: ^Load_Metadata_Dispatcher, allocator := context.allocator) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path, context.temp_allocator);
 	if ok
@@ -343,7 +359,9 @@ load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: 
 				data := mem.alloc(ti.size, ti.align, allocator);
 				prefab.components[component_cursor].data.data = data;
 
-				build_component_model_from_json(value_obj, ti, registered_components, &prefab.components[component_cursor].data);
+
+				build_component_model_from_json(value_obj, ti, registered_components, metadata_dispatcher, &prefab.components[component_cursor].data, component_cursor);
+				
 				prefab.components[component_cursor].id = name;
 				registered_components[name] = {component_cursor, table_index};				
 			}
@@ -355,7 +373,7 @@ load_prefab :: proc(path: string, db: ^container.Database, metadata_dispatcher: 
 	return {}, false;
 }
 
-load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^container.Database, allocator := context.allocator) -> bool
+load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^container.Database, metadata_dispatcher: ^Load_Metadata_Dispatcher, allocator := context.allocator) -> bool
 {
 	file, ok := os.read_entire_file(path, context.temp_allocator);
 	if ok
@@ -399,7 +417,7 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^containe
 				ti := type_info_of(table.type_id);
 				data := mem.alloc(ti.size, ti.align, allocator);
 				new_component.data.data = data;
-				build_component_model_from_json(value_obj, ti, registered_components, &new_component.data);
+				build_component_model_from_json(value_obj, ti, registered_components, metadata_dispatcher, &new_component.data, component_cursor);
 				new_component.id = name;
 				append(&prefab.components, new_component);
 				registered_components[name] = {component_cursor, table_index};				
@@ -410,4 +428,20 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, db: ^containe
 		return true;
 	}
 	return false;
+}
+
+init_instantiate_metadata_dispatch_type :: #force_inline proc(metadata_dispatcher: ^Instantiate_Metadata_Dispatcher, $T: typeid) -> ^container.Table(Instantiate_Metadata)
+{
+	metadata_dispatcher[typeid_of(T)] = {};
+	dispatch_table := &metadata_dispatcher[typeid_of(T)];
+	container.table_init(dispatch_table);
+	return dispatch_table;
+}
+
+init_load_metadata_dispatch_type :: #force_inline proc(metadata_dispatcher: ^Load_Metadata_Dispatcher, $T: typeid, $U: typeid) -> ^container.Table(Load_Metadata)
+{
+	metadata_dispatcher[typeid_of(T)] = {type_id=U};
+	dispatch_table := &metadata_dispatcher[typeid_of(T)];
+	container.table_init(&dispatch_table.table);
+	return &dispatch_table.table;
 }

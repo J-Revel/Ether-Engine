@@ -79,9 +79,19 @@ to_type_specific_metadata :: proc(field_type_id: typeid, data: $T, allocator := 
 	return;
 }
 
+to_type_specific_metadata_raw :: proc(field_type_id: typeid, data: rawptr, data_type: ^runtime.Type_Info, allocator := context.allocator) -> (result: objects.Type_Specific_Metadata)
+{
+	result = objects.Type_Specific_Metadata {
+		field_type_id = field_type_id,
+		metadata_type_id = data_type.id,
+		data = mem.alloc(data_type.size, data_type.align, allocator),
+	};
+	mem.copy(result.data, data, data_type.size);
+	return;
+}
 
 
-get_type_specific_metadata :: proc($T: typeid, metadata: ^objects.Type_Specific_Metadata) -> ^T
+get_type_specific_metadata :: #force_inline proc($T: typeid, metadata: ^objects.Type_Specific_Metadata) -> ^T
 {
 	assert(metadata.metadata_type_id == T);
 	return cast(^T)metadata.data;
@@ -248,7 +258,6 @@ find_components_fields_of_type :: proc(db: ^container.Database, components: []ob
 sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
-	current_value_name := "nil";
 	component := editor_state.components[field.component_index];
 	display_sprite: render.Sprite_Handle;
 	sprite_asset: render.Sprite_Asset;
@@ -256,15 +265,10 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 	if metadata_index >= 0
 	{
 		metadata, ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
-		if ok
-		{
-			sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
-			assert(ok);
-			_, found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
-			// assert(found);
-		}
+		assert(ok);
 		sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
 		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
+		assert(sprite_found);
 		if sprite_found
 		{
 			if sprite_widget(&scene.sprite_database, sprite_handle)
@@ -293,16 +297,16 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 		
 	}
 	if imgui.begin_popup_modal("sprite_selector", nil, .AlwaysAutoResize)
+	{
+		result, search_state := sprite_selector_popup_content(&scene.sprite_database, "sprite_selector");
+		imgui.end_popup();
+		#partial switch search_state
 		{
-			result, search_state := sprite_selector_popup_content(&scene.sprite_database, "sprite_selector");
-			imgui.end_popup();
-			#partial switch search_state
+			case .Found:
 			{
-				case .Found:
-				{
-					sprite_metadata := render.Sprite_Asset{strings.clone(result.path), strings.clone(result.sprite_id)};
-					set_component_field_metadata(components[:], field, to_type_specific_metadata(field.type_id, sprite_metadata));
-				}
+				sprite_metadata := render.Sprite_Asset{strings.clone(result.path), strings.clone(result.sprite_id)};
+				set_component_field_metadata(components[:], field, to_type_specific_metadata(field.type_id, sprite_metadata));
 			}
 		}
+	}
 }

@@ -121,6 +121,7 @@ sprite_widget :: proc(using db: ^render.Sprite_Database, sprite: render.Sprite_H
 sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool
 {
 	sprite := cast(^render.Sprite_Handle)data;
+	log.info(sprite);
 	if sprite.id == 0
 	{
 		imgui.text("nil sprite");

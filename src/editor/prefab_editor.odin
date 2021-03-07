@@ -566,7 +566,9 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 	
 	if file_search_state == .Found
 	{
-		loaded_prefab, success := objects.load_prefab(path, &scene.db, context.allocator);
+		metadata_dispatcher: objects.Load_Metadata_Dispatcher;
+		sprite_metadata_dispatch_table := objects.init_load_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle, render.Sprite_Asset);
+		loaded_prefab, success := objects.load_prefab(path, &scene.db, &metadata_dispatcher, context.allocator);
 		clear(&components);
 		for component in loaded_prefab.components
 		{
@@ -579,6 +581,23 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			type_info := type_info_of(input.type_id);
 			input_data.display_value = mem.alloc(type_info.size, type_info.align);
 			append(&inputs, input_data);
+		}
+		it := container.table_iterator(sprite_metadata_dispatch_table);
+		for load_metadata in container.table_iterate(&it)
+		{
+			//sprite_handle, _ := render.get_or_load_sprite(cast(^render.Sprite_Asset)load_metadata.data);
+			prefab_field: Prefab_Field;
+			prefab_field.component_index = load_metadata.component_index;
+			prefab_field.offset_in_component = load_metadata.offset_in_component;
+			prefab_field.type_id = typeid_of(render.Sprite_Handle);
+			using comp_model_data := &components[load_metadata.component_index].data;
+
+			new_metadata := to_type_specific_metadata_raw(prefab_field.type_id, load_metadata.data, type_info_of(render.Sprite_Asset));
+			log.info(new_metadata);
+			log.info(prefab_field);
+			set_component_field_metadata(components[:], prefab_field, new_metadata);
+			log.info(cast(^render.Sprite_Asset)load_metadata.data);
+			// log.info(get_component_field_metadata(components[:], prefab_field));
 		}
 		//delete(loaded_prefab.components);
 	}
@@ -705,11 +724,10 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		save_prefab_to_json(editor_state, path);
 	}
 
-	//if imgui.button("Update Display")
+	// if imgui.button("Update Display")
 	{
 		for instantiated_component in instantiated_components
 		{
-			log.info("Remove component", instantiated_component);
 			container.raw_handle_remove(instantiated_component);
 		}
 		clear(&instantiated_components);
@@ -721,15 +739,14 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			input_values[input.data.name] = input.display_value;
 		}
 
-		metadata_dispatcher: objects.Pending_Metadata_Dispatcher;
-		metadata_dispatcher[typeid_of(render.Sprite_Handle)] = {};
-		sprite_metadata_dispatch_table := &metadata_dispatcher[typeid_of(render.Sprite_Handle)];
-		
-		container.table_init(sprite_metadata_dispatch_table);
+		metadata_dispatcher: objects.Instantiate_Metadata_Dispatcher;
+		sprite_metadata_dispatch_table := objects.init_instantiate_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle);
+
 		components, success := objects.components_instantiate(&scene.db, components[:], input_data, input_values, &metadata_dispatcher);
 		it := container.table_iterator(sprite_metadata_dispatch_table);
 		for sprite_metadata in container.table_iterate(&it)
 		{
+			log.info(sprite_metadata);
 			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
 			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
 			component_data := container.handle_get_raw(components[sprite_metadata.component_index].value);
@@ -739,10 +756,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			// assert(ok);
 		}
 		assert(success);
-		for named_component in components
-		{
-			log.info(named_component.name, any{container.handle_get_raw(named_component.value), named_component.value.raw_table.type_id});
-		}
 		if success
 		{
 			for component in components
@@ -759,8 +772,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		imgui.text_unformatted(fmt.tprint(sprite));
 	}
 }
-
-
 
 record_history_step :: proc(using editor_state: ^Prefab_Editor_State)
 {
