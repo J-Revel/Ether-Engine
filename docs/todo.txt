@@ -30,7 +30,32 @@
 			{
 				"id": "1361614821969413759722",
 				"name": "Bug fix : sprites become randomly unavailable",
-				"state": "priority"
+				"state": "done"
+			},
+			{
+				"id": "1361614632894537540639",
+				"name": "Retake json load/save",
+				"state": "done"
+			},
+			{
+				"id": "1361615078637862970621",
+				"name": "fix refs loading in prefabs",
+				"state": "done"
+			},
+			{
+				"id": "1361615079364542597246",
+				"name": "handle inputs in prefab editor display",
+				"state": ""
+			},
+			{
+				"id": "136161481836093111545",
+				"name": "handle transform/sprite rotation",
+				"state": ""
+			},
+			{
+				"id": "1361615078874109364193",
+				"name": "transform gizmos",
+				"state": ""
 			},
 			{
 				"id": "1361614623628584329388",
@@ -45,11 +70,6 @@
 			{
 				"id": "1361614630914167541843",
 				"name": "reorganise editor source files ",
-				"state": ""
-			},
-			{
-				"id": "1361614632894537540639",
-				"name": "Retake json load/save",
 				"state": ""
 			},
 			{
@@ -69,7 +89,7 @@
 			},
 			{
 				"id": "1361614713291470934615",
-				"name": "Ceck alignment handling in components_instantiate",
+				"name": "Check alignment handling in components_instantiate",
 				"state": ""
 			},
 			{
@@ -78,13 +98,33 @@
 				"state": ""
 			},
 			{
-				"id": "136161481836093111545",
-				"name": "handle sprite rotation",
+				"id": "1361614822041996860624",
+				"name": "move Sprite_Component from transform.odin",
 				"state": ""
 			},
 			{
-				"id": "1361614822041996860624",
-				"name": "move Sprite_Component from transform.odin",
+				"id": "1361615025625993305544",
+				"name": "Check data allocations on prefab load/ instantiate",
+				"state": ""
+			},
+			{
+				"id": "1361615078866029628199",
+				"name": "Better Transform editor (tree display)",
+				"state": ""
+			},
+			{
+				"id": "1361615153055108631398",
+				"name": "Hide sprite and texture components to prefab editor",
+				"state": "done"
+			},
+			{
+				"id": "1361615163394396410594",
+				"name": "Fix history record system",
+				"state": ""
+			},
+			{
+				"id": "1361615167150920945399",
+				"name": "Fix infinite loop when transform is parent of itself",
 				"state": ""
 			}
 		],
