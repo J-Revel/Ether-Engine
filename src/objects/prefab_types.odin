@@ -128,3 +128,9 @@ Registered_Component_Data :: struct
 	component_index: int,
 	table_index: int,
 }
+
+Named_Table :: struct { name: string, table: container.Raw_Table };
+Named_Table_List :: struct {
+	tables: [dynamic]Named_Table,
+	component_types: [dynamic]container.Named_Element(typeid),
+}

@@ -147,7 +147,7 @@ animation_player_editor_callback :: proc(using prefab: Editor_Prefab, field: Pre
 			{
 				if imgui.tree_node(component.id)
 				{
-					component_type := db.tables[component.table_index].table.type_id;
+					component_type := prefab_tables.tables[component.table_index].table.type_id;
 					for field in find_component_fields_of_type(component_type, typeid_of(f32))
 					{
 						is_selected_component := index == anim_param_data.component_index - 1;
@@ -173,7 +173,7 @@ animation_player_editor_callback :: proc(using prefab: Editor_Prefab, field: Pre
 			selected_field_name := "nil";
 			selectable_fields: [dynamic]Prefab_Field;
 			selected_component_index := anim_param_data.component_index-1;
-			selected_component_type := db.tables[selected_component_index].table.type_id;
+			selected_component_type := prefab_tables.tables[selected_component_index].table.type_id;
 
 
 			for component_field in find_component_fields_of_type(selected_component_type, typeid_of(f32))
@@ -227,12 +227,12 @@ find_component_fields_of_type :: proc(struct_type_id: typeid, expected_type_id: 
 	return make([]reflect.Struct_Field, 0);
 }
 
-find_components_fields_of_type :: proc(db: ^container.Database, components: []objects.Component_Model, expected_type_id: typeid) -> []Prefab_Field
+find_components_fields_of_type :: proc(prefab_tables: ^objects.Named_Table_List, components: []objects.Component_Model, expected_type_id: typeid) -> []Prefab_Field
 {
 	result := make([dynamic]Prefab_Field, context.temp_allocator);
 	for component, component_index in components
 	{
-		component_type_id := db.tables[component.table_index].table.type_id;
+		component_type_id := prefab_tables.tables[component.table_index].table.type_id;
 		#partial switch variant in type_info_of(component_type_id).variant
 		{
 			case runtime.Type_Info_Named:

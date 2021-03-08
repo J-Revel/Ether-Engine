@@ -112,7 +112,7 @@ Prefab_Editor_Input :: struct
 
 Editor_Prefab :: struct
 {
-	db: ^container.Database,
+	prefab_tables: ^objects.Named_Table_List,
 	components: []objects.Component_Model,
 	inputs: []Prefab_Editor_Input,
 }

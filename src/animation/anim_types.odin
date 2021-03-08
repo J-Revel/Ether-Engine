@@ -61,11 +61,11 @@ Animation_Database :: struct
 	animation_configs: container.Table(Animation_Config)
 }
 
-init_animation_database :: proc(db: ^container.Database, using database: ^Animation_Database)
+init_animation_database :: proc(prefab_tables: ^objects.Named_Table_List, using database: ^Animation_Database)
 {
-	objects.table_database_add_init(db, "animation_curve", &animation_curves, 5000);
-	objects.table_database_add_init(db, "animation_player", &animation_players, 1000);
-	objects.table_database_add_init(db, "animation_config", &animation_configs, 1000);
+	objects.table_database_add_init(prefab_tables, "animation_curve", &animation_curves, 5000);
+	objects.table_database_add_init(prefab_tables, "animation_player", &animation_players, 1000);
+	objects.table_database_add_init(prefab_tables, "animation_config", &animation_configs, 1000);
 }
 
 compute_float_curve_value :: proc(curve: ^Animation_Curve(f32), time_ratio: f32, default_value: f32) -> f32

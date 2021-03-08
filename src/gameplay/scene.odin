@@ -28,7 +28,7 @@ import "core:reflect"
 Scene :: struct
 {
 	camera: render.Camera,
-    db: container.Database,
+	prefab_tables: objects.Named_Table_List,
     color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
     transforms: Transform_Table,
@@ -41,10 +41,10 @@ init_empty_scene :: proc(using scene: ^Scene)
 {
 	container.table_init(&textures, 100);
 	container.table_init(&sprites, 200);
-	objects.table_database_add_init(&db, "transform", &transforms, 10000);
-	objects.table_database_add_init(&db, "sprite_component", &sprite_components, 500);
+	objects.table_database_add_init(&prefab_tables, "transform", &transforms, 10000);
+	objects.table_database_add_init(&prefab_tables, "sprite_component", &sprite_components, 500);
 	
-	animation.init_animation_database(&db, &animation_database);
+	animation.init_animation_database(&prefab_tables, &animation_database);
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
 	render.init_color_renderer(&color_renderer.render_state);
@@ -65,13 +65,13 @@ init_main_scene :: proc(using scene: ^Scene)
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(&sprite_database, "spaceship_2");
 	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;
 
-	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", &db, &load_metadata_dispatcher);
+	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", &prefab_tables, &load_metadata_dispatcher);
 	test_input: map[string]any;
 	test_input["sprite"] = spaceship_sprite;
 	test_input["pos"] = [2]f32{10, 50};
 	test_input["scale"] = f32(0.1);
 
-	prefab_instance_components, _ := objects.prefab_instantiate(&db, &prefab_instance, test_input, {});
+	prefab_instance_components, _ := objects.prefab_instantiate(&prefab_tables, &prefab_instance, test_input, {});
 	it := container.table_iterator(&transforms);
 	for transform in container.table_iterate(&it)
 	{
@@ -82,7 +82,7 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
 
-	objects.prefab_instantiate(&db, &prefab_instance, test_input, {});
+	objects.prefab_instantiate(&prefab_tables, &prefab_instance, test_input, {});
 
 	using animation;
 

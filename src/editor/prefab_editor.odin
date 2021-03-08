@@ -29,7 +29,7 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	{
 		append(&input_types, type);
 	}
-	for component_type_id in &scene.db.component_types
+	for component_type_id in &scene.prefab_tables.component_types
 	{
 		editor_type_callbacks[component_type_id.value] = handle_editor_callback;
 		append(&input_types, objects.Prefab_Input_Type{component_type_id.name, component_type_id.value});
@@ -58,7 +58,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 	{
 		metadata_dispatcher: objects.Load_Metadata_Dispatcher;
 		sprite_metadata_dispatch_table := objects.init_load_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle, render.Sprite_Asset);
-		loaded_prefab, success := objects.load_prefab(path, &scene.db, &metadata_dispatcher, context.allocator);
+		loaded_prefab, success := objects.load_prefab(path, &scene.prefab_tables, &metadata_dispatcher, context.allocator);
 		clear(&components);
 		for component in loaded_prefab.components
 		{
@@ -151,7 +151,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		{
 			imgui.push_id(fmt.tprintf("Component_%d", index));
 			flags : imgui.Tree_Node_Flags = .SpanFullWidth | .DefaultOpen;
-			table_name := scene.db.tables[component.table_index].name;
+			table_name := scene.prefab_tables.tables[component.table_index].name;
 			imgui.align_text_to_frame_padding();
 			component_show := imgui.tree_node_ex("", imgui.Tree_Node_Flags.AllowItemOverlap);
 			imgui.same_line();
@@ -161,10 +161,10 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			imgui.input_string("Name", &component.id);
 			imgui.same_line();
 			imgui.set_next_item_width(available_size.x / 4);
-			component_table := scene.db.tables[component.table_index];
+			component_table := scene.prefab_tables.tables[component.table_index];
 			if imgui.begin_combo("Type", component_table.name, .PopupAlignLeft)
 			{
-				for named_table, index in scene.db.tables
+				for named_table, index in scene.prefab_tables.tables
 				{
 					if imgui.selectable(named_table.name, index == component.table_index)
 					{
@@ -181,7 +181,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			imgui.columns(1);
 			if component_show
 			{
-				component_editor_root({&scene.db, components[:], inputs[:]}, index, editor_type_callbacks, &scene);
+				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, editor_type_callbacks, &scene);
 				imgui.columns(1);
 				if imgui.button("Remove Component")
 				{
@@ -202,7 +202,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		{
 			component: objects.Component_Model;
 			component.id = fmt.aprint("component", len(components));
-			type_info := type_info_of(scene.db.tables[0].table.type_id);
+			type_info := type_info_of(scene.prefab_tables.tables[0].table.type_id);
 			component.data.data = mem.alloc(type_info.size, type_info.align);
 			append(&components, component);
 			record_history_step(editor_state);
@@ -243,7 +243,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		metadata_dispatcher: objects.Instantiate_Metadata_Dispatcher;
 		sprite_metadata_dispatch_table := objects.init_instantiate_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle);
 
-		components, success := objects.components_instantiate(&scene.db, components[:], input_data, input_values, &metadata_dispatcher);
+		components, success := objects.components_instantiate(&scene.prefab_tables, components[:], input_data, input_values, &metadata_dispatcher);
 		it := container.table_iterator(sprite_metadata_dispatch_table);
 		for sprite_metadata in container.table_iterate(&it)
 		{
@@ -419,7 +419,7 @@ input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_F
 
 		for component, index in components
 		{
-			if db.tables[component.table_index].table.handle_type_id == field.type_id 
+			if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
 			{
 				if !reference_found do imgui.text_unformatted("References :");
 				reference_found = true;
@@ -466,7 +466,7 @@ input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_F
 component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, editor_type_callbacks: map[typeid]Editor_Type_Callback, scene: ^gameplay.Scene)
 {
 	component := &components[component_index];
-	component_table := scene.db.tables[component.table_index];
+	component_table := scene.prefab_tables.tables[component.table_index];
 	component_type_id := runtime.typeid_base(component_table.table.type_id);
 	if component.data.data == nil
 	{
@@ -732,7 +732,7 @@ input_ref_available :: proc(using prefab: Editor_Prefab, field: Prefab_Field) ->
 {
 	for component, index in components
 	{
-		if db.tables[component.table_index].table.handle_type_id == field.type_id 
+		if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
 		{
 			return true;
 		}
@@ -752,7 +752,7 @@ ref_input_popup_content :: proc(using prefab: Editor_Prefab, field: Prefab_Field
 {
 	for component, index in components
 	{
-		if db.tables[component.table_index].table.handle_type_id == field.type_id 
+		if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
 		{
 			if imgui.button(component.id)
 			{
@@ -789,7 +789,7 @@ record_history_step :: proc(using editor_state: ^Prefab_Editor_State)
 	copy(components_copy, components[:]);
 	for component, index in &components_copy
 	{
-		component_table := scene.db.tables[component.table_index];
+		component_table := scene.prefab_tables.tables[component.table_index];
 		component_type_id := runtime.typeid_base(component_table.table.type_id);
 		component_type := type_info_of(component_type_id);
 		component.data.data = mem.alloc(component_type.size, component_type.align);
@@ -806,7 +806,7 @@ undo_history :: proc(using editor_state: ^Prefab_Editor_State)
 	clear(&components);
 	for component in backup_components
 	{
-		component_table := scene.db.tables[component.table_index];
+		component_table := scene.prefab_tables.tables[component.table_index];
 		component_type_id := runtime.typeid_base(component_table.table.type_id);
 		component_type := type_info_of(component_type_id);
 		log.info(any{component.data.data, component_type_id});
@@ -833,7 +833,7 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 				serialization.json_write_value(file, input.name, &write_state);
 				serialization.json_write_member(file, "type", &write_state);
 
-				input_types := objects.get_input_types_list(&scene.db);
+				input_types := objects.get_input_types_list(&scene.prefab_tables);
 				for input_type in input_types
 				{
 					// TODO : if type_id is nil, empty type
@@ -853,7 +853,7 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 				serialization.json_write_member(file, component.id, &write_state);
 				serialization.json_write_open_body(file, &write_state);
 				serialization.json_write_member(file, "type", &write_state);
-				component_table := scene.db.tables[component.table_index];
+				component_table := scene.prefab_tables.tables[component.table_index];
 				serialization.json_write_value(file, component_table.name, &write_state);
 				component_type_id := runtime.typeid_base(component_table.table.type_id);
 				type_info := type_info_of(component_type_id);
@@ -918,7 +918,7 @@ json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab
 		}
 	}
 
-	for component_type in scene.db.component_types
+	for component_type in scene.prefab_tables.component_types
 	{
 		if component_type.value == type_info.id
 		{
