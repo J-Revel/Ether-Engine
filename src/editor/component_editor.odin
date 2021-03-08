@@ -20,11 +20,11 @@ import "../container"
 import "../objects"
 import "../animation"
 
-handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+handle_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene: ^gameplay.Scene)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	current_value_name := "nil";
-	component := editor_state.components[field.component_index];
+	component := components[field.component_index];
 	if metadata_index >= 0
 	{
 		switch metadata_content in component.data.metadata[metadata_index]
@@ -98,7 +98,7 @@ get_type_specific_metadata :: #force_inline proc($T: typeid, metadata: ^objects.
 }
 
 
-animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+animation_player_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene: ^gameplay.Scene)
 {
 	selected_metadata_index := get_component_field_metadata_index(components[:], field);
 	component_data := &components[field.component_index].data;
@@ -147,7 +147,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 			{
 				if imgui.tree_node(component.id)
 				{
-					component_type := scene.db.tables[component.table_index].table.type_id;
+					component_type := db.tables[component.table_index].table.type_id;
 					for field in find_component_fields_of_type(component_type, typeid_of(f32))
 					{
 						is_selected_component := index == anim_param_data.component_index - 1;
@@ -173,7 +173,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 			selected_field_name := "nil";
 			selectable_fields: [dynamic]Prefab_Field;
 			selected_component_index := anim_param_data.component_index-1;
-			selected_component_type := scene.db.tables[selected_component_index].table.type_id;
+			selected_component_type := db.tables[selected_component_index].table.type_id;
 
 
 			for component_field in find_component_fields_of_type(selected_component_type, typeid_of(f32))
@@ -255,10 +255,10 @@ find_components_fields_of_type :: proc(db: ^container.Database, components: []ob
 	return result[:];
 }
 
-sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene: ^gameplay.Scene)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
-	component := editor_state.components[field.component_index];
+	component := components[field.component_index];
 	display_sprite: render.Sprite_Handle;
 	sprite_asset: render.Sprite_Asset;
 
@@ -281,7 +281,6 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 				imgui.open_popup("sprite_selector");
 			}
 		}
-		using scene.sprite_database;
 	}
 	else
 	{
