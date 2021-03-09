@@ -164,20 +164,25 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			field := Component_Field {
 				offset_in_component = 0,
 			};
+
+			must_change_column := false;
 			switch input_type in input.type
 			{
 				case objects.Primitive_Type:
 					field.type_id = input_type;
 				case objects.Component_Type:
-					field.type_id = input_type.type_id;
+					type_info := type_info_of(input_type.type_id);
+					named_type_info, is_named_type := type_info.variant.(runtime.Type_Info_Named);
+					if is_named_type do field.type_id = named_type_info.base.id;
+					else do field.type_id = input_type.type_id;
+					must_change_column = true;
 			}
-			imgui.next_column();
 			if component_field_body(prefab, fmt.tprintf("input%i", index), {field, 0}, component_editor_callbacks, &scene.scene_database)
 			{
 				record_history_step(editor_state);
 			}
 			imgui.pop_id();
-			imgui.next_column();
+			if !must_change_column do imgui.next_column();
 		}
 		imgui.columns(1);
 		if imgui.button("Add Input") do append(&inputs, Prefab_Editor_Input{});

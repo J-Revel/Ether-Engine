@@ -32,6 +32,6 @@ Draw_List :: [dynamic]Draw_Command;
 
 Draw_Ctx :: struct
 {
-	state_storage: map[UIID]int;
-	mouse_pos: [2]f32;
+	state_storage: map[UIID]int,
+	mouse_pos: [2]f32,
 }

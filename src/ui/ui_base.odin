@@ -16,9 +16,9 @@ button :: proc(id: UIID, draw_list: ^Draw_List, pos: [2]f32, size: [2]f32) -> bo
 	{
 		state := current_ctx.state_storage[id];
 		hovered := state & 1;
-		if hovered do render_color.y = 1;
+		// if hovered do render_color.y = 1;
 	}
-	
+	return false;
 }
 
 use_ctx :: proc(ctx: ^Draw_Ctx)

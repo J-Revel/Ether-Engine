@@ -147,8 +147,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	render_sprite_components(&scene.sprite_renderer, &sprite_components);
 
 	draw_list: ui.Draw_List;
-	ui_ctx: ui.UI_Context;
-	ui.use_ctx(ui_ctx);
+	// ui_ctx: ui.Draw_Ctx;
+	// ui.use_ctx(ui_ctx);
 
 	ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 	ui.rect(&draw_list, {500, 200}, {200, 200}, {1, 1, 1, 1});
