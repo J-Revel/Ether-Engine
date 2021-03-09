@@ -25,6 +25,8 @@ import "../objects"
 
 import "core:reflect"
 
+import "../ui"
+
 Scene :: struct
 {
 	camera: render.Camera,
@@ -125,7 +127,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 
 	color_renderer.screen_size = screen_size;
 	sprite_renderer.screen_size = screen_size;
-	worldMousePos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
+	world_mouse_pos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
+	log.info(world_mouse_pos);
 
 	animation.update_animations(&animation_players, delta_time);
 
@@ -136,17 +139,26 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&scene.sprite_renderer, &sprite_components);
 
+	draw_list: ui.Draw_List;
+	ui_ctx: ui.UI_Context;
+	ui.use_ctx(ui_ctx);
+
+	ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
+	ui.rect(&draw_list, {500, 200}, {200, 200}, {1, 1, 1, 1});
+
+	ui.render_draw_list(&draw_list, &scene.color_renderer);
+
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	// render.render_buffer_content(&color_renderer, &camera);
 	// texture_id := container.table_get(&textures, spaceship_sprite_data.texture).texture_id;
 	gl.Enable(gl.BLEND);
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	// gl.BindTexture(gl.TEXTURE_2D, texture_id);
-	using scene.sprite_renderer;
-
 	
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera);
+
+	ui_camera := render.Camera{screen_size / 2, 1};
+    render.render_buffer_content(&scene.color_renderer, &ui_camera);
     render.clear_render_buffer(&color_renderer.buffer);
     render.clear_sprite_render_buffer(&scene.sprite_renderer);
 }

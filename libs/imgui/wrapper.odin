@@ -746,13 +746,13 @@ swr_igSetWindowFocusStr :: proc(name: string) {
 // AUTO_GENERATED for 'igSetWindowPosStr'
 swr_igSetWindowPosStr :: proc(name: string, pos: Vec2, cond: Cond) {
 	str0 := strings.clone_to_cstring(name, context.temp_allocator);
-	igSetWindowPosStr(str0, pos, cond);
+	// igSetWindowPosStr(str0, pos, cond);
 }
 
 // AUTO_GENERATED for 'igSetWindowSizeStr'
 swr_igSetWindowSizeStr :: proc(name: string, size: Vec2, cond: Cond) {
 	str0 := strings.clone_to_cstring(name, context.temp_allocator);
-	igSetWindowSizeStr(str0, size, cond);
+	// igSetWindowSizeStr(str0, size, cond);
 }
 
 // AUTO_GENERATED for 'igShowFontSelector'

@@ -43,6 +43,28 @@ void main()
 }
 `;
 
+@(private="package")
+ui_vertex_shader_src :: `
+#version 450
+layout (location = 0) in vec2 pos;
+layout (location = 1) in vec4 color;
+out vec4 frag_color;
+out vec2 frag_pos;
+
+uniform vec2 screenSize;
+uniform vec3 camPosZoom;
+
+void main()
+{
+    frag_color = color;
+    frag_pos = pos;
+    float zoom = camPosZoom.z;
+    vec2 camPos = camPosZoom.xy;
+    vec2 screenPos = (pos.xy - camPos) * 2 / screenSize * camPosZoom.z;
+    gl_Position = vec4(screenPos.x, -screenPos.y,0,1);
+}
+`;
+
 INDEX_BUFFER_SIZE :: 50000;
 VERTEX_BUFFER_SIZE :: 20000;
 
@@ -50,7 +72,7 @@ init_color_renderer :: proc (result: ^Render_State) -> bool
 {
     vertexShader := gl.CreateShader(gl.VERTEX_SHADER);
     fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER);
-    vertexShaderText := cast(^u8)strings.clone_to_cstring(color_vertex_shader_src, context.temp_allocator);
+    vertexShaderText := cast(^u8)strings.clone_to_cstring(ui_vertex_shader_src, context.temp_allocator);
     fragmentShaderText := cast(^u8)strings.clone_to_cstring(color_fragment_shader_src, context.temp_allocator);
     gl.ShaderSource(vertexShader, 1, &vertexShaderText, nil);
     gl.ShaderSource(fragmentShader, 1, &fragmentShaderText, nil);
