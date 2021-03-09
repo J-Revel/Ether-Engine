@@ -35,3 +35,8 @@ Draw_Ctx :: struct
 	state_storage: map[UIID]int,
 	mouse_pos: [2]f32,
 }
+
+Button_Cache :: struct
+{
+	hovered: bool
+}

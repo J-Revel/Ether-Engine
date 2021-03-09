@@ -128,6 +128,7 @@ init_main_scene :: proc(using scene: ^Scene)
 }
 
 time : f32 = 0;
+ui_ctx: ui.Draw_Ctx;
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]f32, input_state: ^input.State)
 {
@@ -147,11 +148,14 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	render_sprite_components(&scene.sprite_renderer, &sprite_components);
 
 	draw_list: ui.Draw_List;
-	// ui_ctx: ui.Draw_Ctx;
-	// ui.use_ctx(ui_ctx);
+	ui_ctx.mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
+	ui.use_ctx(&ui_ctx);
 
 	ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
-	ui.rect(&draw_list, {500, 200}, {200, 200}, {1, 1, 1, 1});
+	if ui.button("test", &draw_list, {500, 200}, {200, 200})
+	{
+		ui.button("test2", &draw_list, {350, 200}, {200, 200});
+	}
 
 	ui.render_draw_list(&draw_list, &scene.color_renderer);
 

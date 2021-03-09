@@ -16,8 +16,37 @@ button :: proc(id: UIID, draw_list: ^Draw_List, pos: [2]f32, size: [2]f32) -> bo
 	{
 		state := current_ctx.state_storage[id];
 		hovered := state & 1;
-		// if hovered do render_color.y = 1;
+		if hovered > 0 do render_color.y = 1;
+
 	}
+	rect(draw_list, pos, size, render_color);
+	hovered := current_ctx.mouse_pos.x > pos.x 
+		&& current_ctx.mouse_pos.y > pos.y
+		&& current_ctx.mouse_pos.x < pos.x + size.x
+		&& current_ctx.mouse_pos.y < pos.y + size.y;
+	current_ctx.state_storage[id] = hovered ? 1 : 0;
+	return false;
+}
+
+hover_button :: proc(cache: ^Button_Cache, pos: [2]f32, size: [2]f32, mouse_pos: [2]f32) -> (hovered: bool)
+{
+	cache.hovered = mouse_pos.x > pos.x 
+		&& mouse_pos.y > pos.y
+		&& mouse_pos.x < pos.x + size.x
+		&& mouse_pos.y < pos.y + size.y;
+	return cache.hovered;
+}
+
+default_button :: proc(draw_list: ^Draw_List, cache: ^Button_Cache, pos, size, mouse_pos: [2]f32) -> (clicked: bool)
+{
+	render_color: render.Color= {1, 0, 0, 1};
+
+	if hover_button(cache, pos, size, mouse_pos)
+	{
+		render_color.y = 1;
+	}
+	
+	rect(draw_list, pos, size, render_color);
 	return false;
 }
 

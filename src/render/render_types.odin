@@ -30,7 +30,6 @@ Camera :: struct
     zoom: f32,
 }
 
-
 Render_Buffer :: struct(T: typeid)
 {
     vertex: [dynamic]T,
