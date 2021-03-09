@@ -128,7 +128,7 @@ init_main_scene :: proc(using scene: ^Scene)
 }
 
 time : f32 = 0;
-ui_ctx: ui.Draw_Ctx;
+ui_ctx: ui.UI_Context;
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]f32, input_state: ^input.State)
 {
@@ -136,8 +136,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	color_renderer.screen_size = screen_size;
 	sprite_renderer.screen_size = screen_size;
 	world_mouse_pos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
-	log.info(world_mouse_pos);
-
+	
 	animation.update_animations(&animation_players, delta_time);
 
 	// spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
@@ -147,17 +146,37 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&scene.sprite_renderer, &sprite_components);
 
-	draw_list: ui.Draw_List;
-	ui_ctx.mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
-	ui.use_ctx(&ui_ctx);
+	ui.reset_ctx(&ui_ctx, input_state, screen_size);
+	
+	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
-	ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
-	if ui.button("test", &draw_list, {500, 200}, {200, 200})
+	
+	if ui.layout_button("test", {100, 100}, &ui_ctx)
 	{
-		ui.button("test2", &draw_list, {350, 200}, {200, 200});
+		log.info("BUTTON1");
 	}
 
-	ui.render_draw_list(&draw_list, &scene.color_renderer);
+	ui.vsplit_layout(0.3, &ui_ctx);
+
+		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		{
+			log.info("BUTTON2");
+		}
+	ui.next_layout(&ui_ctx);
+		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		{
+			log.info("BUTTON3");
+		}
+		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		{
+			log.info("BUTTON2");
+		}
+		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		{
+			log.info("BUTTON3");
+		}
+
+	ui.render_draw_list(&ui_ctx.draw_list, &scene.color_renderer);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	

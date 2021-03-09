@@ -1,58 +1,117 @@
 package ui
 
 import "../render"
+import "core:log"
+import "core:hash"
+import "core:runtime"
+import "../input"
 
-current_ctx: ^Draw_Ctx;
+reset_ctx :: proc(ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
+{
+	ui_ctx.mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
+	ui_ctx.hovered_element = ui_ctx.next_hovered_element;
+	ui_ctx.next_hovered_element = 0;
+	ui_ctx.mouse_click = input.get_mouse_state(input_state, 0) == input.Key_State.Pressed;
+	ui_ctx.current_layout = Layout{
+		pos = {0, 0}, size = screen_size,
+		direction = .Vertical,
+		cursor = {0, 0}
+	};
+}
 
 rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 {
 	append(draw_list, Rect_Draw_Command{pos, size, color});
 }
 
-button :: proc(id: UIID, draw_list: ^Draw_List, pos: [2]f32, size: [2]f32) -> bool
-{
-	render_color: render.Color= {1, 0, 0, 1};
-	if id in current_ctx.state_storage
+/*
+	usage code
+	if gui.clickable_element(pos, size)
 	{
-		state := current_ctx.state_storage[id];
-		hovered := state & 1;
-		if hovered > 0 do render_color.y = 1;
-
+		gui.element_draw_rect(anchor, padding, color);
 	}
-	rect(draw_list, pos, size, render_color);
-	hovered := current_ctx.mouse_pos.x > pos.x 
-		&& current_ctx.mouse_pos.y > pos.y
-		&& current_ctx.mouse_pos.x < pos.x + size.x
-		&& current_ctx.mouse_pos.y < pos.y + size.y;
-	current_ctx.state_storage[id] = hovered ? 1 : 0;
+*/
+
+ui_element :: proc(pos: [2]f32, size: [2]f32, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
+{
+	state = .Normal;
+	element_hash := runtime.source_code_location_hash(location);
+	ctx.current_element = element_hash;
+	ctx.current_element_pos = pos;
+	ctx.current_element_size = size;
+	mouse_over :=  ctx.mouse_pos.x > pos.x 
+			&& ctx.mouse_pos.y > pos.y
+			&& ctx.mouse_pos.x < pos.x + size.x
+			&& ctx.mouse_pos.y < pos.y + size.y;
+
+	if ctx.hovered_element == element_hash
+	{
+		state = .Hovered;
+		if !mouse_over do ctx.hovered_element = 0;
+	}
+	if mouse_over
+	{
+		ctx.next_hovered_element = element_hash;
+	}
+	return;
+}
+
+element_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
+{
+	pos := ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top};
+	size := ctx.current_element_size * (anchor.max - anchor.min) - [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	append(&ctx.draw_list, Rect_Draw_Command{pos, size, color});
+}
+
+button :: proc(label: string, pos: [2]f32, size: [2]f32, ui_ctx: ^UI_Context, location := #caller_location) -> bool
+{
+	#partial switch ui_element(pos, size, ui_ctx, location)
+	{
+		case .Hovered:
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{1, 0, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+			return ui_ctx.mouse_click;
+
+		case .Normal:
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{0, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+	}
 	return false;
 }
 
-hover_button :: proc(cache: ^Button_Cache, pos: [2]f32, size: [2]f32, mouse_pos: [2]f32) -> (hovered: bool)
+layout_button :: proc(label: string, size: [2]f32, ui_ctx: ^UI_Context, location := #caller_location) -> (clicked: bool)
 {
-	cache.hovered = mouse_pos.x > pos.x 
-		&& mouse_pos.y > pos.y
-		&& mouse_pos.x < pos.x + size.x
-		&& mouse_pos.y < pos.y + size.y;
-	return cache.hovered;
-}
-
-default_button :: proc(draw_list: ^Draw_List, cache: ^Button_Cache, pos, size, mouse_pos: [2]f32) -> (clicked: bool)
-{
-	render_color: render.Color= {1, 0, 0, 1};
-
-	if hover_button(cache, pos, size, mouse_pos)
+	layout := &ui_ctx.current_layout;
+	clicked = false;
+	#partial switch ui_element(layout.pos, size, ui_ctx, location)
 	{
-		render_color.y = 1;
+		case .Hovered:
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{1, 0, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+			clicked = ui_ctx.mouse_click;
+
+		case .Normal:
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{0, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
-	
-	rect(draw_list, pos, size, render_color);
-	return false;
+	layout.pos.y += size.y;
+	return;
 }
 
-use_ctx :: proc(ctx: ^Draw_Ctx)
+vsplit_layout :: proc(split_ratio: f32, using ui_ctx: ^UI_Context)
 {
-	current_ctx = ctx;
+	new_layout := current_layout;
+	left_split_width := new_layout.size.x * split_ratio;
+	new_layout.pos.x += left_split_width;
+	new_layout.size.x -= left_split_width;
+	current_layout.size.x = left_split_width;
+	append(&layouts, new_layout);
+}
+
+next_layout :: proc(using ui_ctx: ^UI_Context)
+{
+	assert(len(layouts) > 0);
+	current_layout = layouts[len(layouts)-1];
 }
 
 render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Render_Buffer)
@@ -80,5 +139,6 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Ren
 				}
 		}
 	}
+	clear(draw_list);
 	render.push_mesh_data(render_buffer, vertices[:], indices[:]);
 }

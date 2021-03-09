@@ -11,6 +11,12 @@ UI_Element :: struct
 	size: [2]f32
 }
 
+UI_Anchor :: struct
+{
+	min, max: [2]f32,
+	left, top, right, bottom: f32,
+}
+
 Padding :: struct
 {
 	left, top, right, bottom: f32
@@ -30,13 +36,35 @@ Draw_Command :: union
 
 Draw_List :: [dynamic]Draw_Command;
 
-Draw_Ctx :: struct
+Element_State :: enum
 {
-	state_storage: map[UIID]int,
-	mouse_pos: [2]f32,
+	Normal, Hovered, Clicked
 }
 
-Button_Cache :: struct
+Layout_Direction :: enum
 {
-	hovered: bool
+	Horizontal,
+	Vertical,
+}
+
+Layout :: struct
+{
+	pos, size: [2]f32,
+	direction: Layout_Direction,
+	cursor: [2]f32,
+}
+
+UI_Context :: struct
+{
+	draw_list: Draw_List,
+	state_storage: map[UIID]int,
+	mouse_pos: [2]f32,
+	mouse_click: bool,
+	hovered_element: uintptr,
+	next_hovered_element: uintptr,
+	current_element: uintptr,
+	current_element_pos: [2]f32,
+	current_element_size: [2]f32,
+	current_layout: Layout,
+	layouts: [dynamic]Layout,
 }
