@@ -20,6 +20,7 @@ import "../container"
 import "../objects"
 import "../animation"
 import "../input"
+import "../serialization"
 
 init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 {
@@ -28,14 +29,287 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	{
 		append(&input_types, type);
 	}
-	for component_type_id in &scene.db.component_types
+	for component_type in &scene.prefab_tables.component_types
 	{
-		editor_type_callbacks[component_type_id.value] = handle_editor_callback;
-		append(&input_types, objects.Prefab_Input_Type{component_type_id.name, component_type_id.value});
+		component_editor_callbacks[component_type.handle_type_id] = handle_component_editor_callback;
+		append(&input_types, objects.Prefab_Input{component_type.name, component_type});
 	}
 
-	editor_type_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
-	editor_type_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
+	component_editor_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
+	component_editor_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
+}
+
+update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_size: [2]f32)
+{
+	io := imgui.get_io();
+	
+	extensions := []string{".prefab"};
+	search_config := File_Search_Config{
+			start_folder = "config/prefabs", 
+			filter_type = .Show_With_Ext, 
+			extensions = extensions, 
+			hide_folders = false, 
+			can_create = false, 
+			confirm_dialog = false
+		};
+	path, file_search_state := file_selector_popup_button("prefab_load", "Load Prefab", search_config);
+	
+	if file_search_state == .Found
+	{
+		metadata_dispatcher: objects.Load_Metadata_Dispatcher;
+		sprite_metadata_dispatch_table := objects.init_load_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle, render.Sprite_Asset);
+		loaded_prefab, success := objects.load_prefab(path, &scene.prefab_tables, &metadata_dispatcher, context.allocator);
+		clear(&components);
+		for component in loaded_prefab.components
+		{
+			append(&components, component);
+		}
+		clear(&inputs);
+		for input in loaded_prefab.inputs
+		{
+			input_data: Prefab_Editor_Input;
+			data_type_info: runtime.Type_Info;
+			switch input_type in input.type
+			{
+				case objects.Primitive_Type:
+					data_type_info := type_info_of(input_type);
+				case objects.Component_Type:
+					data_type_info := type_info_of(input_type.type_id);
+			}
+			input_data.display_value = mem.alloc(data_type_info.size, data_type_info.align);
+			append(&inputs, input_data);
+		}
+		it := container.table_iterator(sprite_metadata_dispatch_table);
+		for load_metadata in container.table_iterate(&it)
+		{
+			//sprite_handle, _ := render.get_or_load_sprite(cast(^render.Sprite_Asset)load_metadata.data);
+			prefab_field: Prefab_Field;
+			prefab_field.component_index = load_metadata.component_index;
+			prefab_field.offset_in_component = load_metadata.offset_in_component;
+			prefab_field.type_id = typeid_of(render.Sprite_Handle);
+			using comp_model_data := &components[load_metadata.component_index].data;
+
+			new_temp_metadata := cast(^render.Sprite_Asset)load_metadata.data;
+			metadata_copy := render.Sprite_Asset{
+				strings.clone(new_temp_metadata.path),
+				strings.clone(new_temp_metadata.sprite_id),
+			};
+			new_metadata := to_type_specific_metadata_raw(prefab_field.type_id, &metadata_copy, type_info_of(render.Sprite_Asset));
+			log.info(new_metadata);
+			log.info(prefab_field);
+			set_component_field_metadata(components[:], prefab_field, new_metadata);
+			log.info(cast(^render.Sprite_Asset)load_metadata.data);
+			// log.info(get_component_field_metadata(components[:], prefab_field));
+		}
+		//delete(loaded_prefab.components);
+	}
+
+	if io.key_ctrl && io.keys_down[sdl.Scancode.W] && !z_down
+	{
+		undo_history(editor_state);
+	}
+	z_down = io.keys_down[sdl.Scancode.W];
+	if imgui.collapsing_header("Inputs")
+	{
+		imgui.columns(2);
+		imgui.set_column_width(0, 150);
+		for input, index in &inputs
+		{
+			imgui.push_id(fmt.tprintf("input_%d", index));
+			imgui.input_string("name", &input.name);
+			imgui.next_column();
+
+			selected_input_type := 0;
+			for input_type, index in input_types
+			{
+				if objects.is_same_input_type(input_type.type, input.type)
+				{
+					selected_input_type = index;
+				}
+			}
+			if imgui.begin_combo("type", input_types[selected_input_type].name, .PopupAlignLeft)
+			{
+				for input_type, index in input_types
+				{
+					if imgui.selectable(input_type.name, objects.is_same_input_type(input_type.type, input.type))
+					{
+						log.info(input_type);
+						input.type = input_type.type;
+						mem.free(input.display_value);
+						switch input_type in input.type
+						{
+							case objects.Primitive_Type:
+								input.display_value = mem.alloc(reflect.size_of_typeid(input_type));
+							case objects.Component_Type:
+								input.display_value = mem.alloc(reflect.size_of_typeid(input_type.type_id));
+						}
+
+					}
+				}
+				imgui.end_combo();
+			}
+
+			input_component_data: objects.Component_Model_Data = {
+				data = input.display_value
+			};
+			// not in default_input_types == component type
+			input_component_model: objects.Component_Model = {
+				data = input_component_data,
+			};
+			prefab := Editor_Prefab{
+				prefab_tables = &scene.prefab_tables,
+				components = []objects.Component_Model{input_component_model}
+			};
+
+			field := Component_Field {
+				offset_in_component = 0,
+			};
+			switch input_type in input.type
+			{
+				case objects.Primitive_Type:
+					field.type_id = input_type;
+				case objects.Component_Type:
+					field.type_id = input_type.type_id;
+			}
+			imgui.next_column();
+			if component_field_body(prefab, fmt.tprintf("input%i", index), {field, 0}, component_editor_callbacks, &scene.scene_database)
+			{
+				record_history_step(editor_state);
+			}
+			imgui.pop_id();
+			imgui.next_column();
+		}
+		imgui.columns(1);
+		if imgui.button("Add Input") do append(&inputs, Prefab_Editor_Input{});
+		imgui.separator();
+	}
+	if imgui.collapsing_header("Components")
+	{
+		to_remove: int;
+		for component, index in &components
+		{
+			imgui.push_id(fmt.tprintf("Component_%d", index));
+			flags : imgui.Tree_Node_Flags = .SpanFullWidth | .DefaultOpen;
+			table_name := scene.prefab_tables.tables[component.table_index].name;
+			imgui.align_text_to_frame_padding();
+			component_show := imgui.tree_node_ex("", imgui.Tree_Node_Flags.AllowItemOverlap);
+			imgui.same_line();
+			available_size: [2]f32;
+			imgui.get_content_region_avail(&available_size);
+			imgui.set_next_item_width(available_size.x / 2);
+			imgui.input_string("Name", &component.id);
+			imgui.same_line();
+			imgui.set_next_item_width(available_size.x / 4);
+			component_table := scene.prefab_tables.tables[component.table_index];
+			if imgui.begin_combo("Type", component_table.name, .PopupAlignLeft)
+			{
+				for named_table, index in scene.prefab_tables.tables
+				{
+					if imgui.selectable(named_table.name, index == component.table_index)
+					{
+						component.table_index = index;
+						mem.free(component.data.data);
+						type_info := type_info_of(named_table.table.type_id);
+						component.data.data = mem.alloc(type_info.size, type_info.align);
+					}
+				}
+				imgui.end_combo();
+			}
+			imgui.next_column();
+			
+			imgui.columns(1);
+			if component_show
+			{
+				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &scene.scene_database);
+				imgui.columns(1);
+				if imgui.button("Remove Component")
+				{
+					to_remove = index + 1;
+					record_history_step(editor_state);
+				}
+				imgui.tree_pop();
+				imgui.separator();
+			}
+			imgui.pop_id();
+		}
+		if to_remove > 0
+		{
+			record_history_step(editor_state);
+			remove_component(editor_state, to_remove - 1);
+		}
+		if(imgui.button("+"))
+		{
+			component: objects.Component_Model;
+			component.id = fmt.aprint("component", len(components));
+			type_info := type_info_of(scene.prefab_tables.tables[0].table.type_id);
+			component.data.data = mem.alloc(type_info.size, type_info.align);
+			append(&components, component);
+			record_history_step(editor_state);
+		}
+		imgui.separator();
+	}
+
+	search_config = File_Search_Config{
+		start_folder = "config/prefabs", 
+		filter_type = .Show_With_Ext, 
+		extensions = extensions, 
+		hide_folders = false, 
+		can_create = true, 
+		confirm_dialog = true,
+	};
+	path, file_search_state = file_selector_popup_button("prefab_save", "Save Prefab", search_config);
+
+	if file_search_state == .Found
+	{
+		save_prefab_to_json(editor_state, path);
+	}
+
+	// if imgui.button("Update Display")
+	{
+		for instantiated_component in instantiated_components
+		{
+			container.raw_handle_remove(instantiated_component);
+		}
+		clear(&instantiated_components);
+		input_values: map[string]any;
+		input_data := make([]objects.Prefab_Input, len(inputs));
+		for input, index in inputs
+		{
+			input_data[index] = input;
+			input_values[input.data.name] = input.display_value;
+		}
+
+		metadata_dispatcher: objects.Instantiate_Metadata_Dispatcher;
+		sprite_metadata_dispatch_table := objects.init_instantiate_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle);
+
+		components, success := objects.components_instantiate(&scene.prefab_tables, components[:], input_data, input_values, &metadata_dispatcher);
+		it := container.table_iterator(sprite_metadata_dispatch_table);
+		for sprite_metadata in container.table_iterate(&it)
+		{
+			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
+			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
+			component_data := container.handle_get_raw(components[sprite_metadata.component_index].value);
+			target_sprite_handle := cast(^render.Sprite_Handle)(uintptr(component_data) + sprite_metadata.offset_in_component);
+			ok: bool;
+			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
+			// assert(ok);
+		}
+		assert(success);
+		if success
+		{
+			for component in components
+			{
+				append(&instantiated_components, component.value);
+			}
+		}
+	}
+	input_state: input.State;
+	gameplay.update_and_render(&scene, 0, screen_size, &input_state);
+	sprite_it := container.table_iterator(&scene.sprite_database.sprites);
+	for sprite, sprite_handle in container.table_iterate(&sprite_it)
+	{
+		imgui.text_unformatted(fmt.tprint(sprite));
+	}
 }
 
 get_component_field_data :: proc(components: []objects.Component_Model, using field: Prefab_Field) -> uintptr
@@ -100,7 +374,6 @@ slice_remove_at :: proc(array: []$T, to_remove: []int) -> (new_len: int)
 
 remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_index: int)
 {
-	record_history_step(editor_state);
 	log.info("Remove component", to_remove_index);
 	for component in &components
 	{
@@ -141,7 +414,7 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 	ordered_remove(&components, to_remove_index);
 }
 
-input_ref_combo :: proc(id: string, field: Prefab_Field, using editor_state: ^Prefab_Editor_State) -> bool
+input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_Field) -> bool
 {
 	modified := false;
 	metadata_index := get_component_field_metadata_index(components[:], field);
@@ -185,7 +458,7 @@ input_ref_combo :: proc(id: string, field: Prefab_Field, using editor_state: ^Pr
 
 		for component, index in components
 		{
-			if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
+			if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
 			{
 				if !reference_found do imgui.text_unformatted("References :");
 				reference_found = true;
@@ -204,7 +477,7 @@ input_ref_combo :: proc(id: string, field: Prefab_Field, using editor_state: ^Pr
 		for input, index in inputs
 		{
 			ref_input_index = index;
-			if input.type_id == field.type_id
+			if objects.can_use_input_type(field.type_id, input.type)
 			{
 				if !input_found do imgui.text_unformatted("Inputs :");
 				input_found = true;
@@ -228,15 +501,11 @@ input_ref_combo :: proc(id: string, field: Prefab_Field, using editor_state: ^Pr
 	return modified;
 }
 
-component_editor :: proc
+//component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: map[typeid]Editor_Type_Callback)
+component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: map[typeid]Editor_Type_Callback, scene_database: ^container.Database)
 {
-	component_editor_root,
-	component_editor_child
-};
-
-component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, component: ^objects.Component_Model, component_index: int)
-{
-	component_table := scene.db.tables[component.table_index];
+	component := &components[component_index];
+	component_table := prefab_tables.tables[component.table_index];
 	component_type_id := runtime.typeid_base(component_table.table.type_id);
 	if component.data.data == nil
 	{
@@ -246,10 +515,10 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 	component_data := any{component.data.data, component_type_id};
 	
 	field_cursor := Prefab_Field{{component.id, 0, component_type_id}, component_index};
-	callback, callback_found := editor_type_callbacks[component_type_id];
+	callback, callback_found := component_editor_callbacks[component_type_id];
 	if callback_found
 	{
-		callback(editor_state, field_cursor);
+		callback(prefab, field_cursor, scene_database);
 		return;
 	}
 	type_info := type_info_of(component_data.id);
@@ -265,7 +534,7 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 			{
 				field_cursor.offset_in_component = struct_info.offsets[i];
 				child_field := Prefab_Field{{struct_info.names[i], struct_info.offsets[i], struct_info.types[i].id}, component_index};
-				component_editor_child(editor_state, struct_info.names[i], child_field);
+				component_editor_child(prefab, struct_info.names[i], child_field, component_editor_callbacks, scene_database);
 			}
 			return;
 
@@ -275,7 +544,7 @@ component_editor_root :: proc(using editor_state: ^Prefab_Editor_State, componen
 	}
 }
 
-component_field_header :: proc(using editor_state: ^Prefab_Editor_State, base_name: string, field: Prefab_Field)
+component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	type_info := type_info_of(field.type_id);
 	#partial switch variant in type_info.variant
@@ -284,39 +553,42 @@ component_field_header :: proc(using editor_state: ^Prefab_Editor_State, base_na
 			if imgui.tree_node(base_name)
 			{
 				imgui.next_column();
-				component_field_body(editor_state, base_name, field);
+				modified |= component_field_body(prefab, base_name, field, component_editor_callbacks, scene_database);
 				imgui.next_column();
 				imgui.tree_pop();
 			}
 		case runtime.Type_Info_Named:
-			if field.type_id in editor_type_callbacks
+			if field.type_id in component_editor_callbacks
 			{
 				imgui.text_unformatted(base_name);
 				imgui.next_column();
-				component_field_body(editor_state, base_name, field);
+				modified |= component_field_body(prefab, base_name, field, component_editor_callbacks, scene_database);
 				imgui.next_column();
 			}
 			else
 			{
 				child_field := field;
 				child_field.type_id = variant.base.id;
-				component_field_header(editor_state, base_name, child_field);
+				modified |= component_field_header(prefab, base_name, child_field, component_editor_callbacks, scene_database);
 			}
 			return;
 		case:
 			imgui.text_unformatted(base_name);
 			imgui.next_column();
-			component_field_body(editor_state, base_name, field);
+			modified |= component_field_body(prefab, base_name, field, component_editor_callbacks, scene_database);
 			imgui.next_column();
 	}
+	return;
 }
 
-component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name: string, field: Prefab_Field)
+component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
-	if input_ref_available(editor_state, field)
+
+	if input_ref_available(prefab, field)
 	{
-		if imgui.button("*")
+		imgui.button("*");
+		if imgui.begin_popup_context_item("ref_input_popup", .MouseButtonLeft)
 		{
 			struct_field := Prefab_Field
 			{
@@ -327,13 +599,9 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 				},
 				field.component_index
 			};
-			ref_input_popup_field = struct_field;
-		}
-		if imgui.begin_popup_context_item("ref_input_popup", .MouseButtonLeft)
-		{
 			if metadata_index < 0
 			{
-				ref_input_popup_content(editor_state, ref_input_popup_field);
+				ref_input_popup_content(prefab, struct_field);
 			}
 			else
 			{
@@ -347,7 +615,7 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 				}
 				if imgui.button(button_text)
 				{
-					remove_component_field_metadata(components[:], ref_input_popup_field);
+					remove_component_field_metadata(components[:], struct_field);
 					imgui.close_current_popup();
 				}
 			}
@@ -361,10 +629,10 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 
 	imgui.same_line();
 	type_info := type_info_of(field.type_id);
-	callback, callback_found := editor_type_callbacks[field.type_id];
+	callback, callback_found := component_editor_callbacks[field.type_id];
 	if callback_found
 	{
-		callback(editor_state, field);
+		callback(prefab, field, scene_database);
 		return;
 	}
 
@@ -386,19 +654,19 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 					}, 
 					field.component_index
 				};
-				component_editor_child(editor_state, variant.names[i], child_field);
+				component_editor_child(prefab, variant.names[i], child_field, component_editor_callbacks, scene_database);
 				imgui.pop_id();
 			}
 			imgui.get_cursor_screen_pos(&B);
 		case runtime.Type_Info_Named:
 			child_field := field;
 			child_field.type_id = variant.base.id;
-			component_editor_child(editor_state, base_name, child_field);
+			component_editor_child(prefab, base_name, child_field, component_editor_callbacks, scene_database);
 		case runtime.Type_Info_Integer:
 			metadata_index := get_component_field_metadata_index(components[:], field);
 			if metadata_index >= 0
 			{
-				if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
+				if input_ref_combo(prefab, "", field) do modified = true;
 				imgui.same_line();
 				if imgui.button("remove input")
 				{
@@ -410,7 +678,7 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 				imgui.push_item_width(imgui.get_window_width() * 0.5);
 				if imgui.input_int("", cast(^i32) get_component_field_data(components[:], field))
 				{
-					record_history_step(editor_state);
+					modified = true;
 				}
 				imgui.pop_item_width();
 			}
@@ -418,21 +686,21 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 			imgui.push_item_width(imgui.get_window_width() * 0.5);
 			if imgui.input_float("", cast(^f32) get_component_field_data(components[:], field))
 			{
-				record_history_step(editor_state);
+				modified = true;
 			}
 			imgui.same_line();
 			if imgui.button("input")
 			{
 				new_input := objects.Input_Metadata{-1};
 				set_component_field_metadata(components[:], field, new_input);
-				record_history_step(editor_state);
+				modified = true;
 			}
 			imgui.pop_item_width();
 		case runtime.Type_Info_String:
 			str := cast(^string)get_component_field_data(components[:], field);
 			if imgui.input_string("", str, 200)
 			{
-				record_history_step(editor_state);
+				modified = true;
 				str^ = strings.clone(str^, context.allocator);
 			}
 		case runtime.Type_Info_Array:
@@ -459,7 +727,7 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 			}
 			if imgui.input_scalar_n("", data_type, rawptr(get_component_field_data(components[:], field)), i32(variant.count), nil, nil, format)
 			{
-				record_history_step(editor_state);
+				modified = true;
 			}
 
 			if data_type == .Count
@@ -475,30 +743,34 @@ component_field_body :: proc(using editor_state: ^Prefab_Editor_State, base_name
 					char := 'x' + i;
 					txt := fmt.tprintf("%c", char);
 
-					component_editor_child(editor_state, txt, prefab_field);
+					if component_editor_child(prefab, txt, prefab_field, component_editor_callbacks, scene_database) do modified = true;
 					imgui.pop_id();
 				}
 			}
 	}
+	return modified;
 
 }
 
-component_editor_child :: proc(using editor_state: ^Prefab_Editor_State, base_name: string, field: Prefab_Field)
+component_editor_child :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	imgui.push_id(base_name);
-	component_field_header(editor_state, base_name, field);
+	modified = component_field_header(prefab, base_name, field, component_editor_callbacks, scene_database);
 	imgui.next_column();
 
 	imgui.pop_id();
 	imgui.next_column();
+	return;
 }
 
-input_ref_available :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field) -> bool
+input_ref_available :: proc(using prefab: Editor_Prefab, field: Prefab_Field) -> bool
 {
+	if prefab_tables == nil do return false;
+
 	for component, index in components
 	{
-		if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
+		if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
 		{
 			return true;
 		}
@@ -506,7 +778,7 @@ input_ref_available :: proc(using editor_state: ^Prefab_Editor_State, field: Pre
 
 	for input, index in inputs
 	{
-		if input.type_id == field.type_id
+		if objects.can_use_input_type(field.type_id, input.type)
 		{
 			return true;
 		}
@@ -514,11 +786,11 @@ input_ref_available :: proc(using editor_state: ^Prefab_Editor_State, field: Pre
 	return false;
 }
 
-ref_input_popup_content :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+ref_input_popup_content :: proc(using prefab: Editor_Prefab, field: Prefab_Field)
 {
 	for component, index in components
 	{
-		if scene.db.tables[component.table_index].table.handle_type_id == field.type_id 
+		if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
 		{
 			if imgui.button(component.id)
 			{
@@ -533,7 +805,7 @@ ref_input_popup_content :: proc(using editor_state: ^Prefab_Editor_State, field:
 
 	for input, index in inputs
 	{
-		if input.type_id == field.type_id
+		if objects.can_use_input_type(field.type_id, input.type)
 		{
 			imgui.text_unformatted("Inputs :");
 			if imgui.button(input.name)
@@ -548,431 +820,6 @@ ref_input_popup_content :: proc(using editor_state: ^Prefab_Editor_State, field:
 	if imgui.button("Cancel") do imgui.close_current_popup();
 }
 
-update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_size: [2]f32)
-{
-	io := imgui.get_io();
-	
-	extensions := []string{".prefab"};
-	search_config := File_Search_Config{
-			start_folder = "config/prefabs", 
-			filter_type = .Show_With_Ext, 
-			extensions = extensions, 
-			hide_folders = false, 
-			can_create = false, 
-			confirm_dialog = false
-		};
-	path, file_search_state := file_selector_popup_button("prefab_load", "Load Prefab", search_config);
-	
-	if file_search_state == .Found
-	{
-		loaded_prefab, success := objects.load_prefab(path, &scene.db, context.allocator);
-		clear(&components);
-		for component in loaded_prefab.components
-		{
-			append(&components, component);
-		}
-		clear(&inputs);
-		for input in loaded_prefab.inputs
-		{
-			input_data: Prefab_Editor_Input;
-			type_info := type_info_of(input.type_id);
-			input_data.display_value = mem.alloc(type_info.size, type_info.align);
-			append(&inputs, input_data);
-		}
-		//delete(loaded_prefab.components);
-	}
-
-	if io.key_ctrl && io.keys_down[sdl.Scancode.W] && !z_down
-	{
-		undo_history(editor_state);
-	}
-	z_down = io.keys_down[sdl.Scancode.W];
-	if imgui.collapsing_header("Inputs")
-	{
-		imgui.columns(2);
-		imgui.set_column_width(0, 150);
-		for input, index in &inputs
-		{
-			imgui.push_id(fmt.tprintf("input_%d", index));
-			imgui.input_string("name", &input.name);
-			imgui.next_column();
-
-			selected_input_type := 0;
-			for input_type, index in input_types
-			{
-				if input_type.type_id == input.type_id
-				{
-					selected_input_type = index;
-				}
-			}
-			if imgui.begin_combo("type", input_types[selected_input_type].name, .PopupAlignLeft)
-			{
-				for input_type, index in input_types
-				{
-					if imgui.selectable(input_type.name, input_type.type_id == input.type_id)
-					{
-						input.type_id = input_type.type_id;
-						mem.free(input.display_value);
-						input.display_value = mem.alloc(reflect.size_of_typeid(input.type_id));
-					}
-				}
-				imgui.end_combo();
-			}
-			struct_editor(&scene, input.display_value, input.type_id);
-			imgui.pop_id();
-			imgui.next_column();
-		}
-		imgui.columns(1);
-		if imgui.button("Add Input") do append(&inputs, Prefab_Editor_Input{});
-		imgui.separator();
-	}
-	if imgui.collapsing_header("Components")
-	{
-		to_remove: int;
-		for component, index in &components
-		{
-			imgui.push_id(fmt.tprintf("Component_%d", index));
-			flags : imgui.Tree_Node_Flags = .SpanFullWidth | .DefaultOpen;
-			table_name := scene.db.tables[component.table_index].name;
-			imgui.align_text_to_frame_padding();
-			component_show := imgui.tree_node_ex("", imgui.Tree_Node_Flags.AllowItemOverlap);
-			imgui.same_line();
-			available_size: [2]f32;
-			imgui.get_content_region_avail(&available_size);
-			imgui.set_next_item_width(available_size.x / 2);
-			imgui.input_string("Name", &component.id);
-			imgui.same_line();
-			imgui.set_next_item_width(available_size.x / 4);
-			component_table := scene.db.tables[component.table_index];
-			if imgui.begin_combo("Type", component_table.name, .PopupAlignLeft)
-			{
-				for named_table, index in scene.db.tables
-				{
-					if imgui.selectable(named_table.name, index == component.table_index)
-					{
-						component.table_index = index;
-						mem.free(component.data.data);
-						type_info := type_info_of(named_table.table.type_id);
-						component.data.data = mem.alloc(type_info.size, type_info.align);
-					}
-				}
-				imgui.end_combo();
-			}
-			imgui.next_column();
-			
-			imgui.columns(1);
-			if component_show
-			{
-				component_editor(editor_state, &component, index);
-				imgui.columns(1);
-				if imgui.button("Remove Component")
-				{
-					to_remove = index + 1;
-					record_history_step(editor_state);
-				}
-				imgui.tree_pop();
-				imgui.separator();
-			}
-			imgui.pop_id();
-		}
-		if to_remove > 0
-		{
-			remove_component(editor_state, to_remove - 1);
-		}
-		if(imgui.button("+"))
-		{
-			component: objects.Component_Model;
-			component.id = fmt.aprint("component", len(components));
-			append(&components, component);
-			record_history_step(editor_state);
-		}
-		imgui.separator();
-	}
-
-	search_config = File_Search_Config{
-		start_folder = "config/prefabs", 
-		filter_type = .Show_With_Ext, 
-		extensions = extensions, 
-		hide_folders = false, 
-		can_create = true, 
-		confirm_dialog = true,
-	};
-	path, file_search_state = file_selector_popup_button("prefab_save", "Save Prefab", search_config);
-
-	if file_search_state == .Found
-	{
-		save_prefab(editor_state, path);
-	}
-
-	//if imgui.button("Update Display")
-	{
-		for instantiated_component in instantiated_components
-		{
-			log.info("Remove component", instantiated_component);
-			container.raw_handle_remove(instantiated_component);
-		}
-		clear(&instantiated_components);
-		input_values: map[string]any;
-		input_data := make([]objects.Prefab_Input, len(inputs));
-		for input, index in inputs
-		{
-			input_data[index] = input;
-			input_values[input.data.name] = input.display_value;
-		}
-
-		metadata_dispatcher: objects.Pending_Metadata_Dispatcher;
-		metadata_dispatcher[typeid_of(render.Sprite_Handle)] = {};
-		sprite_metadata_dispatch_table := &metadata_dispatcher[typeid_of(render.Sprite_Handle)];
-		
-		container.table_init(sprite_metadata_dispatch_table);
-		components, success := objects.components_instantiate(&scene.db, components[:], input_data, input_values, &metadata_dispatcher);
-		it := container.table_iterator(sprite_metadata_dispatch_table);
-		for sprite_metadata in container.table_iterate(&it)
-		{
-			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
-			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
-			component_data := container.handle_get_raw(components[sprite_metadata.component_index].value);
-			target_sprite_handle := cast(^render.Sprite_Handle)(uintptr(component_data) + sprite_metadata.offset_in_component);
-			ok: bool;
-			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
-			// assert(ok);
-		}
-		assert(success);
-		for named_component in components
-		{
-			log.info(named_component.name, any{container.handle_get_raw(named_component.value), named_component.value.raw_table.type_id});
-		}
-		if success
-		{
-			for component in components
-			{
-				append(&instantiated_components, component.value);
-			}
-		}
-	}
-	input_state: input.State;
-	gameplay.update_and_render(&scene, 0, screen_size, &input_state);
-	sprite_it := container.table_iterator(&scene.sprite_database.sprites);
-	for sprite, sprite_handle in container.table_iterate(&sprite_it)
-	{
-		imgui.text_unformatted(fmt.tprint(sprite));
-	}
-}
-
-json_write_open_body :: proc(file: os.Handle, using write_state: ^Json_Write_State, character := "{")
-{
-	if has_precedent
-	{
-		os.write_string(file, ",\n");
-		json_write_tabs(file, write_state);
-	}
-	os.write_string(file, character);
-	has_precedent = false;
-
-	tab_count += 1;
-}
-
-json_write_close_body ::  proc(file: os.Handle, using write_state: ^Json_Write_State, character := "}")
-{
-	os.write_string(file, "\n");
-	has_precedent = true;
-	tab_count -= 1;
-	json_write_tabs(file, write_state);
-	os.write_string(file, character);
-}
-
-json_write_member :: proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
-{
-	if has_precedent do os.write_byte(file, ',');
-	os.write_byte(file, '\n');
-	json_write_tabs(file, write_state);
-	os.write_byte(file, '\"');
-	os.write_string(file, name);
-	os.write_byte(file, '\"');
-	os.write_byte(file, ':');
-	has_precedent = false;
-}
-
-json_write_value :: #force_inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
-{
-	os.write_byte(file, '\"');
-	os.write_string(file, name);
-	os.write_byte(file, '\"');
-	has_precedent = true;
-}
-
-typeid_to_string :: #force_inline proc(type_id: typeid, allocator := context.temp_allocator) -> string
-{
-	builder: strings.Builder = strings.make_builder_len_cap(0, 100, allocator);
-	reflect.write_typeid(&builder, type_id);
-	return strings.to_string(builder);
-}
-
-json_write_input :: #force_inline proc(file: os.Handle, input_index: int, using write_state: ^Json_Write_State)
-{
-	os.write_string(file, "\"&");
-	os.write_string(file, fmt.tprint(input_index));
-	os.write_byte(file, '\"');
-	has_precedent = true;
-}
-
-json_write_ref :: #force_inline proc(file: os.Handle, name: string, using write_state: ^Json_Write_State)
-{
-	os.write_string(file, "\"@");
-	os.write_string(file, name);
-	os.write_byte(file, '\"');
-	has_precedent = true;
-}
-
-json_write_tabs :: #force_inline proc(handle: os.Handle, using write_state: ^Json_Write_State)
-{
-	for i in 0..<tab_count do os.write_byte(handle, '\t');
-}
-
-Json_Write_State :: struct
-{
-	tab_count: int,
-	has_precedent: bool,
-}
-
-json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab_Editor_State, component: objects.Component_Model_Data, type_info: ^runtime.Type_Info, offset: uintptr, write_state: ^Json_Write_State)
-{
-	for index in 0..<component.metadata_count
-	{
-		if component.metadata_offsets[index] == offset
-		{
-			switch metadata in component.metadata[index]
-			{
-				case objects.Ref_Metadata:
-					json_write_ref(file, components[metadata.component_index].id, write_state);
-				
-				case objects.Input_Metadata:
-					json_write_input(file, metadata.input_index, write_state);
-				case objects.Type_Specific_Metadata:
-			}
-			return;
-		}
-	}
-
-	for component_type in scene.db.component_types
-	{
-		if component_type.value == type_info.id
-		{
-			json_write_value(file, "nil", write_state);
-			return;
-		}
-	} 
-
-	#partial switch variant in type_info.variant
-	{
-		case runtime.Type_Info_Struct:
-			json_write_open_body(file, write_state);
-			struct_info, ok := type_info.variant.(runtime.Type_Info_Struct);
-			for name, index in struct_info.names
-			{
-				json_write_member(file, name, write_state);
-				json_write_component_member(file, editor_state, component, struct_info.types[index], offset + struct_info.offsets[index], write_state);
-			}
-			json_write_close_body(file, write_state);
-
-		case runtime.Type_Info_Named:
-			json_write_component_member(file, editor_state, component, type_info_of(variant.base.id), offset, write_state);
-		case runtime.Type_Info_Float:
-			os.write_string(file, fmt.tprint((cast(^f32)(uintptr(component.data) + offset))^));
-			write_state.has_precedent = true;
-		case runtime.Type_Info_Integer:
-			os.write_string(file, fmt.tprint(any{rawptr(uintptr(component.data) + offset), type_info.id}));
-			write_state.has_precedent = true;
-		case runtime.Type_Info_String:
-			json_write_value(file, (cast(^string)(uintptr(component.data) + offset))^, write_state);
-			write_state.has_precedent = true;
-		case runtime.Type_Info_Array:
-			os.write_byte(file, '[');
-			write_state.tab_count += 1;
-			for i in 0..<variant.count
-			{
-				if i > 0 do os.write_string(file, ", ");
-				component_data := component.data;
-				element_size := variant.elem_size;
-				json_write_component_member(file, editor_state, component, variant.elem, offset + uintptr(i * variant.elem_size), write_state);
-			}
-			os.write_byte(file, ']');
-			write_state.has_precedent = true;
-			write_state.tab_count -= 1;
-	}
-}
-
-save_prefab :: proc(using editor_state: ^Prefab_Editor_State, path: string)
-{
-	file, errno := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC);
-	if errno == 0
-	{
-		write_state: Json_Write_State;
-		json_write_open_body(file, &write_state);
-		json_write_member(file, "inputs", &write_state);
-			json_write_open_body(file, &write_state, "[");
-			for input in inputs
-			{
-				json_write_open_body(file, &write_state);
-
-				json_write_member(file, "name", &write_state);
-				json_write_value(file, input.name, &write_state);
-				json_write_member(file, "type", &write_state);
-
-				input_types := objects.get_input_types_list(&scene.db);
-				for input_type in input_types
-				{
-					// TODO : if type_id is nil, empty type
-					if input_type.type_id == input.type_id do json_write_value(file, input_type.name, &write_state);
-				}
-
-				json_write_close_body(file, &write_state);
-			}
-			json_write_close_body(file, &write_state, "]");
-			write_state.has_precedent = true;
-		json_write_member(file, "components", &write_state);
-			json_write_open_body(file, &write_state);
-			for component in components
-			{
-				json_write_member(file, component.id, &write_state);
-				json_write_open_body(file, &write_state);
-				json_write_member(file, "type", &write_state);
-				component_table := scene.db.tables[component.table_index];
-				json_write_value(file, component_table.name, &write_state);
-				component_type_id := runtime.typeid_base(component_table.table.type_id);
-				type_info := type_info_of(component_type_id);
-
-				for type_info != nil
-				{
-					#partial switch variant in type_info.variant
-					{
-						case runtime.Type_Info_Struct:
-						struct_info, ok := type_info.variant.(runtime.Type_Info_Struct);
-						for name, index in struct_info.names
-						{
-							json_write_member(file, name, &write_state);
-							json_write_component_member(file, editor_state, component.data, struct_info.types[index], struct_info.offsets[index], &write_state);
-						}
-						type_info = nil;
-
-						case runtime.Type_Info_Named:
-							type_info = type_info_of(variant.base.id);
-					}
-
-				}
-
-				json_write_close_body(file, &write_state);
-				
-			}
-			json_write_close_body(file, &write_state);
-		json_write_close_body(file, &write_state);
-		os.close(file);
-	}
-	else
-	{
-		log.error("Error trying to save to file", path, ":", errno);
-	} 
-}
 
 record_history_step :: proc(using editor_state: ^Prefab_Editor_State)
 {
@@ -980,7 +827,7 @@ record_history_step :: proc(using editor_state: ^Prefab_Editor_State)
 	copy(components_copy, components[:]);
 	for component, index in &components_copy
 	{
-		component_table := scene.db.tables[component.table_index];
+		component_table := scene.prefab_tables.tables[component.table_index];
 		component_type_id := runtime.typeid_base(component_table.table.type_id);
 		component_type := type_info_of(component_type_id);
 		component.data.data = mem.alloc(component_type.size, component_type.align);
@@ -997,11 +844,162 @@ undo_history :: proc(using editor_state: ^Prefab_Editor_State)
 	clear(&components);
 	for component in backup_components
 	{
-		component_table := scene.db.tables[component.table_index];
+		component_table := scene.prefab_tables.tables[component.table_index];
 		component_type_id := runtime.typeid_base(component_table.table.type_id);
 		component_type := type_info_of(component_type_id);
 		log.info(any{component.data.data, component_type_id});
 		append(&components, component);
 	}
 	delete(backup_components);
+}
+
+save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: string)
+{
+	file, errno := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC);
+	if errno == 0
+	{
+		write_state: serialization.Json_Write_State;
+		serialization.json_write_open_body(file, &write_state);
+		serialization.json_write_member(file, "inputs", &write_state);
+		serialization.json_write_open_body(file, &write_state, "[");
+		{
+			for input in inputs
+			{
+				serialization.json_write_open_body(file, &write_state);
+
+				serialization.json_write_member(file, "name", &write_state);
+				serialization.json_write_value(file, input.name, &write_state);
+				serialization.json_write_member(file, "type", &write_state);
+
+				input_types := objects.get_input_types_list(&scene.prefab_tables);
+				for input_type in input_types
+				{
+					// TODO : if type_id is nil, empty type
+					if objects.is_same_input_type(input_type.type, input.type) do serialization.json_write_value(file, input_type.name, &write_state);
+				}
+
+				serialization.json_write_close_body(file, &write_state);
+			}
+		}
+		serialization.json_write_close_body(file, &write_state, "]");
+		write_state.has_precedent = true;
+		serialization.json_write_member(file, "components", &write_state);
+		serialization.json_write_open_body(file, &write_state);
+		{
+			for component in components
+			{
+				serialization.json_write_member(file, component.id, &write_state);
+				serialization.json_write_open_body(file, &write_state);
+				serialization.json_write_member(file, "type", &write_state);
+				component_table := scene.prefab_tables.tables[component.table_index];
+				serialization.json_write_value(file, component_table.name, &write_state);
+				component_type_id := runtime.typeid_base(component_table.table.type_id);
+				type_info := type_info_of(component_type_id);
+
+				for type_info != nil
+				{
+					#partial switch variant in type_info.variant
+					{
+						case runtime.Type_Info_Struct:
+						struct_info, ok := type_info.variant.(runtime.Type_Info_Struct);
+						for name, index in struct_info.names
+						{
+							serialization.json_write_member(file, name, &write_state);
+							json_write_component_member(file, editor_state, component.data, struct_info.types[index], struct_info.offsets[index], &write_state);
+						}
+						type_info = nil;
+
+						case runtime.Type_Info_Named:
+							type_info = type_info_of(variant.base.id);
+
+					}
+				}
+
+				serialization.json_write_close_body(file, &write_state);
+				
+			}
+		}
+		serialization.json_write_close_body(file, &write_state);
+		serialization.json_write_close_body(file, &write_state);
+		os.close(file);
+	}
+	else
+	{
+		log.error("Error trying to save to file", path, ":", errno);
+	} 
+}
+
+json_write_metadata :: proc(file: os.Handle, metadata: objects.Type_Specific_Metadata, write_state: ^serialization.Json_Write_State)
+{
+	serialization.json_write_open_body(file, write_state);
+	serialization.json_write_struct(file, metadata.data, type_info_of(metadata.metadata_type_id), write_state);
+
+	serialization.json_write_close_body(file, write_state);
+}
+
+json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab_Editor_State, component: objects.Component_Model_Data, type_info: ^runtime.Type_Info, offset: uintptr, write_state: ^serialization.Json_Write_State)
+{
+	for index in 0..<component.metadata_count
+	{
+		if component.metadata_offsets[index] == offset
+		{
+			switch metadata in component.metadata[index]
+			{
+				case objects.Ref_Metadata:
+					serialization.json_write_ref(file, components[metadata.component_index].id, write_state);
+				case objects.Input_Metadata:
+					serialization.json_write_input(file, metadata.input_index, write_state);
+				case objects.Type_Specific_Metadata:
+					json_write_metadata(file, metadata, write_state);
+			}
+			return;
+		}
+	}
+
+	for component_type in scene.prefab_tables.component_types
+	{
+		if component_type.handle_type_id == type_info.id
+		{
+			serialization.json_write_value(file, "nil", write_state);
+			return;
+		}
+	} 
+
+	#partial switch variant in type_info.variant
+	{
+		case runtime.Type_Info_Struct:
+			serialization.json_write_open_body(file, write_state);
+			struct_info, ok := type_info.variant.(runtime.Type_Info_Struct);
+			for name, index in struct_info.names
+			{
+				serialization.json_write_member(file, name, write_state);
+				json_write_component_member(file, editor_state, component, struct_info.types[index], offset + struct_info.offsets[index], write_state);
+			}
+			serialization.json_write_close_body(file, write_state);
+
+		case runtime.Type_Info_Named:
+			json_write_component_member(file, editor_state, component, type_info_of(variant.base.id), offset, write_state);
+		case runtime.Type_Info_Float:
+			os.write_string(file, fmt.tprint((cast(^f32)(uintptr(component.data) + offset))^));
+			write_state.has_precedent = true;
+		case runtime.Type_Info_Integer:
+			os.write_string(file, fmt.tprint(any{rawptr(uintptr(component.data) + offset), type_info.id}));
+			write_state.has_precedent = true;
+		case runtime.Type_Info_String:
+			serialization.json_write_value(file, (cast(^string)(uintptr(component.data) + offset))^, write_state);
+			write_state.has_precedent = true;
+		case runtime.Type_Info_Array:
+			os.write_byte(file, '[');
+			write_state.tab_count += 1;
+			for i in 0..<variant.count
+			{
+				if i > 0 do os.write_string(file, ", ");
+				component_data := component.data;
+				element_size := variant.elem_size;
+				json_write_component_member(file, editor_state, component, variant.elem, offset + uintptr(i * variant.elem_size), write_state);
+			}
+			os.write_byte(file, ']');
+			write_state.has_precedent = true;
+			write_state.tab_count -= 1;
+	}
 }

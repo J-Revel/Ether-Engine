@@ -91,12 +91,6 @@ Sprite_Editor_Render_Data :: struct
 				Prefab Editor
 ------------------------------------------------*/
 
-Editor_Type_Callback :: #type proc
-(
-	using editor_state: ^Prefab_Editor_State, 
-	using field: Prefab_Field
-);
-
 Prefab_Field :: struct
 {
 	using component_field: Component_Field,
@@ -116,14 +110,31 @@ Prefab_Editor_Input :: struct
 	display_value: rawptr,
 }
 
+Editor_Prefab :: struct
+{
+	prefab_tables: ^objects.Named_Table_List,
+	components: []objects.Component_Model,
+	inputs: []Prefab_Editor_Input,
+}
+
+
+Editor_Type_Callback :: #type proc
+(
+	prefab: Editor_Prefab, 
+	field: Prefab_Field,
+	scene_database: ^container.Database
+);
+
+Editor_Type_Callback_List :: map[typeid]Editor_Type_Callback;
+
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
 	components: [dynamic]objects.Component_Model,
 	inputs: [dynamic]Prefab_Editor_Input,
 	components_history: [dynamic][]objects.Component_Model,
-	editor_type_callbacks: map[typeid]Editor_Type_Callback,
-	input_types: [dynamic]objects.Prefab_Input_Type,
+	component_editor_callbacks: Editor_Type_Callback_List,
+	input_types: [dynamic]objects.Prefab_Input,
 	z_down: bool,
 	instantiated_components: [dynamic]container.Raw_Handle,
 	ref_input_popup_field: Prefab_Field,

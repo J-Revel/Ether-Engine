@@ -188,34 +188,17 @@ raw_table_copy :: proc(target: ^Raw_Table, model: ^Raw_Table)
 
 }
 
-db_get_table :: proc(db: ^Database, name: string) -> (Raw_Table, int, bool)
-{
-	for table, table_index in db.tables
-	{
-		if table.name == name
-		{
-			return table.table, table_index, true;
-		}
-	}
-	return {}, 0, false;
-}
-
-db_get_tables_of_type :: proc(db: ^Database, type_id: typeid, allocator := context.temp_allocator) -> []Database_Named_Table
-{
-	result := make([]Database_Named_Table, len(db.tables), allocator);
-	result_count := 0;
-	for named_table in &db.tables
-	{
-		if named_table.table.type_id == type_id
-		{
-			result[result_count] = named_table;
-			result_count += 1;
-		}
-	}
-	return result[0:result_count];
-}
-
 to_raw_table :: proc(table: ^Table($T)) -> Raw_Table
 {
 	return Raw_Table{table, typeid_of(T), typeid_of(Handle(T))};
+}
+
+database_add :: proc(database: ^Database, element: ^$T)
+{
+	database[typeid_of(T)] = element;
+}
+
+database_get :: proc(database: ^Database, $T: typeid) -> ^T
+{
+	return cast(^T)database[T];
 }

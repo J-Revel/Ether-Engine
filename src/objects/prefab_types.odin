@@ -38,7 +38,7 @@ Type_Specific_Metadata :: struct
 	data: rawptr,
 }
 
-Pending_Metadata :: struct
+Instantiate_Metadata :: struct
 {
 	metadata_type_id: typeid,
 	metadata: rawptr,
@@ -46,7 +46,24 @@ Pending_Metadata :: struct
 	offset_in_component: uintptr,
 }
 
-Pending_Metadata_Dispatcher :: map[typeid]container.Table(Pending_Metadata);
+Load_Metadata :: struct
+{
+	data_type_id: typeid,
+	data: rawptr,
+	component_index: int,
+	offset_in_component: uintptr,
+}
+
+Serialized_Data :: union
+{
+	i64, f64, bool, string
+}
+
+Instantiate_Metadata_Dispatcher :: map[typeid]container.Table(Instantiate_Metadata);
+Load_Metadata_Dispatcher :: map[typeid] struct {
+	type_id: typeid,
+	table: container.Table(Load_Metadata)
+};
 
 // Every data that a component field can have that must be computed during the prefab instantiation
 Component_Field_Metadata :: union
@@ -73,17 +90,25 @@ Component_Model :: struct
 	data: Component_Model_Data,
 }
 
-Prefab_Input_Type :: struct
+Named_Input_Type :: struct
 {
 	name: string,
 	type_id: typeid,
+}
+
+Primitive_Type :: typeid;
+
+Input_Type :: union
+{
+	Primitive_Type,
+	Component_Type,
 }
 
 // TODO : maybe remove Prefab_Input_Type ? Same data
 Prefab_Input :: struct
 {
 	name: string,
-	type_id: typeid
+	type: Input_Type
 }
 
 Dynamic_Prefab :: struct
@@ -110,4 +135,17 @@ Registered_Component_Data :: struct
 {
 	component_index: int,
 	table_index: int,
+}
+
+Component_Type :: struct
+{
+	name: string
+	type_id: typeid,
+	handle_type_id: typeid
+}
+
+Named_Table :: struct { name: string, table: container.Raw_Table };
+Named_Table_List :: struct {
+	tables: [dynamic]Named_Table,
+	component_types: [dynamic]Component_Type,
 }

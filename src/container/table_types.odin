@@ -2,12 +2,6 @@ package table
 
 import "core:mem"
 
-Database_Named_Table :: struct { name: string, table: Raw_Table };
-Database :: struct {
-	tables: [dynamic]Database_Named_Table,
-	component_types: [dynamic]Named_Element(typeid),
-}
-
 Named_Element :: struct(T: typeid)
 {
 	name: string,
@@ -58,3 +52,5 @@ Table_Iterator :: struct(T: typeid)
 	table: ^Table(T),
 	cursor: int,
 }
+
+Database :: map[typeid]rawptr;

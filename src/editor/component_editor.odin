@@ -20,11 +20,11 @@ import "../container"
 import "../objects"
 import "../animation"
 
-handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+handle_component_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	current_value_name := "nil";
-	component := editor_state.components[field.component_index];
+	component := components[field.component_index];
 	if metadata_index >= 0
 	{
 		switch metadata_content in component.data.metadata[metadata_index]
@@ -42,27 +42,6 @@ handle_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 		}
 	}
 	imgui.text(current_value_name);
-	// tables := container.db_get_tables_of_type(&scene.db, field.type_id);
-	// field_data := get_component_field_data(components[:], field);
-	// current_value := (cast(^container.Raw_Handle)field_data);
-
-
-	// current_value_name := "";
-	// selected_input_name : string;
-
-	// component := editor_state.components[field.component_index];
-
-	// display_value := current_value_name;
-
-	// struct_field := reflect.Struct_Field
-	// {
-	// 	name = field.name, 
-	// 	type = field.type_id, 
-	// 	offset = field.offset_in_component
-	// };
-	// imgui.push_id("handles");
-	// if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
-	// imgui.pop_id();
 }
 
 to_type_specific_metadata :: proc(field_type_id: typeid, data: $T, allocator := context.allocator) -> (result: objects.Type_Specific_Metadata)
@@ -79,16 +58,25 @@ to_type_specific_metadata :: proc(field_type_id: typeid, data: $T, allocator := 
 	return;
 }
 
+to_type_specific_metadata_raw :: proc(field_type_id: typeid, data: rawptr, data_type: ^runtime.Type_Info, allocator := context.allocator) -> (result: objects.Type_Specific_Metadata)
+{
+	result = objects.Type_Specific_Metadata {
+		field_type_id = field_type_id,
+		metadata_type_id = data_type.id,
+		data = mem.alloc(data_type.size, data_type.align, allocator),
+	};
+	mem.copy(result.data, data, data_type.size);
+	return;
+}
 
-
-get_type_specific_metadata :: proc($T: typeid, metadata: ^objects.Type_Specific_Metadata) -> ^T
+get_type_specific_metadata :: #force_inline proc($T: typeid, metadata: ^objects.Type_Specific_Metadata) -> ^T
 {
 	assert(metadata.metadata_type_id == T);
 	return cast(^T)metadata.data;
 }
 
 
-animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+animation_player_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	selected_metadata_index := get_component_field_metadata_index(components[:], field);
 	component_data := &components[field.component_index].data;
@@ -137,7 +125,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 			{
 				if imgui.tree_node(component.id)
 				{
-					component_type := scene.db.tables[component.table_index].table.type_id;
+					component_type := prefab_tables.tables[component.table_index].table.type_id;
 					for field in find_component_fields_of_type(component_type, typeid_of(f32))
 					{
 						is_selected_component := index == anim_param_data.component_index - 1;
@@ -163,7 +151,7 @@ animation_player_editor_callback :: proc(using editor_state: ^Prefab_Editor_Stat
 			selected_field_name := "nil";
 			selectable_fields: [dynamic]Prefab_Field;
 			selected_component_index := anim_param_data.component_index-1;
-			selected_component_type := scene.db.tables[selected_component_index].table.type_id;
+			selected_component_type := prefab_tables.tables[selected_component_index].table.type_id;
 
 
 			for component_field in find_component_fields_of_type(selected_component_type, typeid_of(f32))
@@ -217,12 +205,12 @@ find_component_fields_of_type :: proc(struct_type_id: typeid, expected_type_id: 
 	return make([]reflect.Struct_Field, 0);
 }
 
-find_components_fields_of_type :: proc(db: ^container.Database, components: []objects.Component_Model, expected_type_id: typeid) -> []Prefab_Field
+find_components_fields_of_type :: proc(prefab_tables: ^objects.Named_Table_List, components: []objects.Component_Model, expected_type_id: typeid) -> []Prefab_Field
 {
 	result := make([dynamic]Prefab_Field, context.temp_allocator);
 	for component, component_index in components
 	{
-		component_type_id := db.tables[component.table_index].table.type_id;
+		component_type_id := prefab_tables.tables[component.table_index].table.type_id;
 		#partial switch variant in type_info_of(component_type_id).variant
 		{
 			case runtime.Type_Info_Named:
@@ -245,35 +233,33 @@ find_components_fields_of_type :: proc(db: ^container.Database, components: []ob
 	return result[:];
 }
 
-sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: Prefab_Field)
+sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
-	current_value_name := "nil";
-	component := editor_state.components[field.component_index];
+	component := components[field.component_index];
 	display_sprite: render.Sprite_Handle;
 	sprite_asset: render.Sprite_Asset;
+	sprite_database := container.database_get(scene_database, render.Sprite_Database);
 
 	if metadata_index >= 0
 	{
 		metadata, ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
-		if ok
-		{
-			sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
-			assert(ok);
-			_, found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
-			// assert(found);
-		}
+		assert(ok);
 		sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
-		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
+		sprite_handle, sprite_found := render.get_or_load_sprite(sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
+		if !sprite_found
+		{
+			log.info("Could not load sprite", transmute(render.Sprite_Asset)(sprite_metadata^));
+			assert(false);
+		}
 		if sprite_found
 		{
-			if sprite_widget(&scene.sprite_database, sprite_handle)
+			if sprite_widget(sprite_database, sprite_handle)
 			{
 				open_sprite_selector("sprite_selector", "resources/textures");
 				imgui.open_popup("sprite_selector");
 			}
 		}
-		using scene.sprite_database;
 	}
 	else
 	{
@@ -293,16 +279,16 @@ sprite_editor_callback :: proc(using editor_state: ^Prefab_Editor_State, field: 
 		
 	}
 	if imgui.begin_popup_modal("sprite_selector", nil, .AlwaysAutoResize)
+	{
+		result, search_state := sprite_selector_popup_content(sprite_database, "sprite_selector");
+		imgui.end_popup();
+		#partial switch search_state
 		{
-			result, search_state := sprite_selector_popup_content(&scene.sprite_database, "sprite_selector");
-			imgui.end_popup();
-			#partial switch search_state
+			case .Found:
 			{
-				case .Found:
-				{
-					sprite_metadata := render.Sprite_Asset{strings.clone(result.path), strings.clone(result.sprite_id)};
-					set_component_field_metadata(components[:], field, to_type_specific_metadata(field.type_id, sprite_metadata));
-				}
+				sprite_metadata := render.Sprite_Asset{strings.clone(result.path), strings.clone(result.sprite_id)};
+				set_component_field_metadata(components[:], field, to_type_specific_metadata(field.type_id, sprite_metadata));
 			}
 		}
+	}
 }

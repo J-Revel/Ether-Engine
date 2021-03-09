@@ -1,0 +1,19 @@
+/*
+BEGIN_BLOCK :: proc(name: string, loc := #caller_location) {
+    record_event(name, loc);
+}
+
+END_BLOCK :: proc(name: string = "", loc := #caller_location) {
+    record_event(name, loc);
+}
+
+@(deferred_in=END_BLOCK)
+SCOPED_BLOCK :: proc(name: string, loc := #caller_location) -> bool {
+    BEGIN_BLOCK(name, loc);
+    return true;
+}
+
+deferred_in = use these input arguments 
+deferred_out = use my returns as input arguments
+deferred _in_out = all of the above
+*/

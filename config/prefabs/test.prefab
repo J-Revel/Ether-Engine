@@ -1,25 +1,20 @@
 {
-	"inputs":[{
-			"name":"parent",
-			"type":"transform"
-		},
-		{
-			"name":"rot",
-			"type":"transform"
-		}
+	"inputs":[
 	],
-	"anim-params":{
-		"param1": {
-			"component": 0,
-			"field": "scale"
-		}
-	},
 	"components":{
-		"Test":{
+		"component 0":{
+			"type":"sprite_component",
+			"transform":"@component 1",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/LD47_ennemy_03",
+				"sprite_id":"Ship Body"
+			}
+		},
+		"component 1":{
 			"type":"transform",
-			"parent":"&0",
-			"pos":[10.000, 12.000],
-			"scale":20.000,
+			"parent":"nil",
+			"pos":[-50.000, 0.000],
+			"scale":0.200,
 			"angle":0.000
 		}
 	}
