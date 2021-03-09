@@ -90,17 +90,25 @@ Component_Model :: struct
 	data: Component_Model_Data,
 }
 
-Prefab_Input_Type :: struct
+Named_Input_Type :: struct
 {
 	name: string,
 	type_id: typeid,
+}
+
+Primitive_Type :: typeid;
+
+Input_Type :: union
+{
+	Primitive_Type,
+	Component_Type,
 }
 
 // TODO : maybe remove Prefab_Input_Type ? Same data
 Prefab_Input :: struct
 {
 	name: string,
-	type_id: typeid
+	type: Input_Type
 }
 
 Dynamic_Prefab :: struct
@@ -129,8 +137,15 @@ Registered_Component_Data :: struct
 	table_index: int,
 }
 
+Component_Type :: struct
+{
+	name: string
+	type_id: typeid,
+	handle_type_id: typeid
+}
+
 Named_Table :: struct { name: string, table: container.Raw_Table };
 Named_Table_List :: struct {
 	tables: [dynamic]Named_Table,
-	component_types: [dynamic]container.Named_Element(typeid),
+	component_types: [dynamic]Component_Type,
 }

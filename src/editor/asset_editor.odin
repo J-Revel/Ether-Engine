@@ -32,7 +32,7 @@ Sprite_Selection_Data :: struct
 sprite_selectors: map[string]Sprite_Selection_Data;
 available_sprite_extensions := [?]string{".meta"};
 
-sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folder: string) -> (out_sprite: render.Sprite_Handle, search_state: File_Search_State)
+sprite_selector :: proc(sprite_database: ^render.Sprite_Database, selector_id: string, start_folder: string) -> (out_sprite: render.Sprite_Handle, search_state: File_Search_State)
 {
 	sprite_selector_popup_id := fmt.tprint(selector_id, "sprite");
 	if selector_id not_in sprite_selectors
@@ -55,9 +55,9 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 				// TODO : load corresponding texture if not already in db (=> path = found_path - ".meta")
 				texture_path := fmt.tprintf("%s.png", found_path[0:len(found_path)-5]);
 				texture_found: bool;
-				selection_data.texture, texture_found = render.get_or_load_texture(&scene.sprite_database, texture_path);
+				selection_data.texture, texture_found = render.get_or_load_texture(sprite_database, texture_path);
 				assert(texture_found);
-				render.load_sprites_to_db(&scene.sprite_database, selection_data.texture, found_path);
+				render.load_sprites_to_db(sprite_database, selection_data.texture, found_path);
 				imgui.open_popup(sprite_selector_popup_id);
 			case .Stopped:
 				return {}, .Stopped;
@@ -67,13 +67,13 @@ sprite_selector :: proc(scene: ^gameplay.Scene, selector_id: string, start_folde
 	}
 	if imgui.begin_popup_modal(sprite_selector_popup_id)
 	{
-		sprite_it := container.table_iterator(&scene.sprites);
+		sprite_it := container.table_iterator(&sprite_database.sprites);
 		for sprite, sprite_id in container.table_iterate(&sprite_it)
 		{
 			if sprite.texture == selection_data.texture
 			{
 				imgui.push_id(sprite.id);
-				if sprite_widget(scene, sprite_id)
+				if sprite_widget(sprite_database, sprite_id)
 				{
 					imgui.close_current_popup();
 					delete_key(&sprite_selectors, selector_id);

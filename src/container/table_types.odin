@@ -52,3 +52,5 @@ Table_Iterator :: struct(T: typeid)
 	table: ^Table(T),
 	cursor: int,
 }
+
+Database :: map[typeid]rawptr;

@@ -192,3 +192,13 @@ to_raw_table :: proc(table: ^Table($T)) -> Raw_Table
 {
 	return Raw_Table{table, typeid_of(T), typeid_of(Handle(T))};
 }
+
+database_add :: proc(database: ^Database, element: ^$T)
+{
+	database[typeid_of(T)] = element;
+}
+
+database_get :: proc(database: ^Database, $T: typeid) -> ^T
+{
+	return cast(^T)database[T];
+}

@@ -29,14 +29,14 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	{
 		append(&input_types, type);
 	}
-	for component_type_id in &scene.prefab_tables.component_types
+	for component_type in &scene.prefab_tables.component_types
 	{
-		editor_type_callbacks[component_type_id.value] = handle_editor_callback;
-		append(&input_types, objects.Prefab_Input_Type{component_type_id.name, component_type_id.value});
+		component_editor_callbacks[component_type.handle_type_id] = handle_component_editor_callback;
+		append(&input_types, objects.Prefab_Input{component_type.name, component_type});
 	}
 
-	editor_type_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
-	editor_type_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
+	component_editor_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
+	component_editor_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
 }
 
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_size: [2]f32)
@@ -68,8 +68,15 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		for input in loaded_prefab.inputs
 		{
 			input_data: Prefab_Editor_Input;
-			type_info := type_info_of(input.type_id);
-			input_data.display_value = mem.alloc(type_info.size, type_info.align);
+			data_type_info: runtime.Type_Info;
+			switch input_type in input.type
+			{
+				case objects.Primitive_Type:
+					data_type_info := type_info_of(input_type);
+				case objects.Component_Type:
+					data_type_info := type_info_of(input_type.type_id);
+			}
+			input_data.display_value = mem.alloc(data_type_info.size, data_type_info.align);
 			append(&inputs, input_data);
 		}
 		it := container.table_iterator(sprite_metadata_dispatch_table);
@@ -115,7 +122,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			selected_input_type := 0;
 			for input_type, index in input_types
 			{
-				if input_type.type_id == input.type_id
+				if objects.is_same_input_type(input_type.type, input.type)
 				{
 					selected_input_type = index;
 				}
@@ -124,16 +131,48 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			{
 				for input_type, index in input_types
 				{
-					if imgui.selectable(input_type.name, input_type.type_id == input.type_id)
+					if imgui.selectable(input_type.name, objects.is_same_input_type(input_type.type, input.type))
 					{
-						input.type_id = input_type.type_id;
+						log.info(input_type);
+						input.type = input_type.type;
 						mem.free(input.display_value);
-						input.display_value = mem.alloc(reflect.size_of_typeid(input.type_id));
+						switch input_type in input.type
+						{
+							case objects.Primitive_Type:
+								input.display_value = mem.alloc(reflect.size_of_typeid(input_type));
+							case objects.Component_Type:
+								input.display_value = mem.alloc(reflect.size_of_typeid(input_type.type_id));
+						}
+
 					}
 				}
 				imgui.end_combo();
 			}
-			if struct_editor(&scene, input.display_value, input.type_id)
+
+			input_component_data: objects.Component_Model_Data = {
+				data = input.display_value
+			};
+			// not in default_input_types == component type
+			input_component_model: objects.Component_Model = {
+				data = input_component_data,
+			};
+			prefab := Editor_Prefab{
+				prefab_tables = &scene.prefab_tables,
+				components = []objects.Component_Model{input_component_model}
+			};
+
+			field := Component_Field {
+				offset_in_component = 0,
+			};
+			switch input_type in input.type
+			{
+				case objects.Primitive_Type:
+					field.type_id = input_type;
+				case objects.Component_Type:
+					field.type_id = input_type.type_id;
+			}
+			imgui.next_column();
+			if component_field_body(prefab, fmt.tprintf("input%i", index), {field, 0}, component_editor_callbacks, &scene.scene_database)
 			{
 				record_history_step(editor_state);
 			}
@@ -181,7 +220,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			imgui.columns(1);
 			if component_show
 			{
-				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, editor_type_callbacks, &scene);
+				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &scene.scene_database);
 				imgui.columns(1);
 				if imgui.button("Remove Component")
 				{
@@ -438,7 +477,7 @@ input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_F
 		for input, index in inputs
 		{
 			ref_input_index = index;
-			if input.type_id == field.type_id
+			if objects.can_use_input_type(field.type_id, input.type)
 			{
 				if !input_found do imgui.text_unformatted("Inputs :");
 				input_found = true;
@@ -462,11 +501,11 @@ input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_F
 	return modified;
 }
 
-//component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, editor_type_callbacks: map[typeid]Editor_Type_Callback)
-component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, editor_type_callbacks: map[typeid]Editor_Type_Callback, scene: ^gameplay.Scene)
+//component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: map[typeid]Editor_Type_Callback)
+component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: map[typeid]Editor_Type_Callback, scene_database: ^container.Database)
 {
 	component := &components[component_index];
-	component_table := scene.prefab_tables.tables[component.table_index];
+	component_table := prefab_tables.tables[component.table_index];
 	component_type_id := runtime.typeid_base(component_table.table.type_id);
 	if component.data.data == nil
 	{
@@ -476,10 +515,10 @@ component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int,
 	component_data := any{component.data.data, component_type_id};
 	
 	field_cursor := Prefab_Field{{component.id, 0, component_type_id}, component_index};
-	callback, callback_found := editor_type_callbacks[component_type_id];
+	callback, callback_found := component_editor_callbacks[component_type_id];
 	if callback_found
 	{
-		callback(prefab, field_cursor, scene);
+		callback(prefab, field_cursor, scene_database);
 		return;
 	}
 	type_info := type_info_of(component_data.id);
@@ -495,7 +534,7 @@ component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int,
 			{
 				field_cursor.offset_in_component = struct_info.offsets[i];
 				child_field := Prefab_Field{{struct_info.names[i], struct_info.offsets[i], struct_info.types[i].id}, component_index};
-				component_editor_child(prefab, struct_info.names[i], child_field, editor_type_callbacks, scene);
+				component_editor_child(prefab, struct_info.names[i], child_field, component_editor_callbacks, scene_database);
 			}
 			return;
 
@@ -505,7 +544,7 @@ component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int,
 	}
 }
 
-component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, editor_type_callbacks: Editor_Type_Callback_List, scene: ^gameplay.Scene) -> (modified: bool)
+component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	type_info := type_info_of(field.type_id);
 	#partial switch variant in type_info.variant
@@ -514,44 +553,41 @@ component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, f
 			if imgui.tree_node(base_name)
 			{
 				imgui.next_column();
-				modified |= component_field_body(prefab, base_name, field, editor_type_callbacks, scene);
+				modified |= component_field_body(prefab, base_name, field, component_editor_callbacks, scene_database);
 				imgui.next_column();
 				imgui.tree_pop();
 			}
 		case runtime.Type_Info_Named:
-			if field.type_id in editor_type_callbacks
+			if field.type_id in component_editor_callbacks
 			{
 				imgui.text_unformatted(base_name);
 				imgui.next_column();
-				modified |= component_field_body(prefab, base_name, field, editor_type_callbacks, scene);
+				modified |= component_field_body(prefab, base_name, field, component_editor_callbacks, scene_database);
 				imgui.next_column();
 			}
 			else
 			{
 				child_field := field;
 				child_field.type_id = variant.base.id;
-				modified |= component_field_header(prefab, base_name, child_field, editor_type_callbacks, scene);
+				modified |= component_field_header(prefab, base_name, child_field, component_editor_callbacks, scene_database);
 			}
 			return;
 		case:
 			imgui.text_unformatted(base_name);
 			imgui.next_column();
-			modified |= component_field_body(prefab, base_name, field, editor_type_callbacks, scene);
+			modified |= component_field_body(prefab, base_name, field, component_editor_callbacks, scene_database);
 			imgui.next_column();
 	}
 	return;
 }
 
-component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, editor_type_callbacks: Editor_Type_Callback_List, scene: ^gameplay.Scene) -> (modified: bool)
+component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 
 	if input_ref_available(prefab, field)
 	{
-		if imgui.button("*")
-		{
-			
-		}
+		imgui.button("*");
 		if imgui.begin_popup_context_item("ref_input_popup", .MouseButtonLeft)
 		{
 			struct_field := Prefab_Field
@@ -593,10 +629,10 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 
 	imgui.same_line();
 	type_info := type_info_of(field.type_id);
-	callback, callback_found := editor_type_callbacks[field.type_id];
+	callback, callback_found := component_editor_callbacks[field.type_id];
 	if callback_found
 	{
-		callback(prefab, field, scene);
+		callback(prefab, field, scene_database);
 		return;
 	}
 
@@ -618,14 +654,14 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 					}, 
 					field.component_index
 				};
-				component_editor_child(prefab, variant.names[i], child_field, editor_type_callbacks, scene);
+				component_editor_child(prefab, variant.names[i], child_field, component_editor_callbacks, scene_database);
 				imgui.pop_id();
 			}
 			imgui.get_cursor_screen_pos(&B);
 		case runtime.Type_Info_Named:
 			child_field := field;
 			child_field.type_id = variant.base.id;
-			component_editor_child(prefab, base_name, child_field, editor_type_callbacks, scene);
+			component_editor_child(prefab, base_name, child_field, component_editor_callbacks, scene_database);
 		case runtime.Type_Info_Integer:
 			metadata_index := get_component_field_metadata_index(components[:], field);
 			if metadata_index >= 0
@@ -707,7 +743,7 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 					char := 'x' + i;
 					txt := fmt.tprintf("%c", char);
 
-					if component_editor_child(prefab, txt, prefab_field, editor_type_callbacks, scene) do modified = true;
+					if component_editor_child(prefab, txt, prefab_field, component_editor_callbacks, scene_database) do modified = true;
 					imgui.pop_id();
 				}
 			}
@@ -716,11 +752,11 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 
 }
 
-component_editor_child :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, editor_type_callbacks: Editor_Type_Callback_List, scene: ^gameplay.Scene) -> (modified: bool)
+component_editor_child :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	imgui.push_id(base_name);
-	modified = component_field_header(prefab, base_name, field, editor_type_callbacks, scene);
+	modified = component_field_header(prefab, base_name, field, component_editor_callbacks, scene_database);
 	imgui.next_column();
 
 	imgui.pop_id();
@@ -730,6 +766,8 @@ component_editor_child :: proc(using prefab: Editor_Prefab, base_name: string, f
 
 input_ref_available :: proc(using prefab: Editor_Prefab, field: Prefab_Field) -> bool
 {
+	if prefab_tables == nil do return false;
+
 	for component, index in components
 	{
 		if prefab_tables.tables[component.table_index].table.handle_type_id == field.type_id 
@@ -740,7 +778,7 @@ input_ref_available :: proc(using prefab: Editor_Prefab, field: Prefab_Field) ->
 
 	for input, index in inputs
 	{
-		if input.type_id == field.type_id
+		if objects.can_use_input_type(field.type_id, input.type)
 		{
 			return true;
 		}
@@ -767,7 +805,7 @@ ref_input_popup_content :: proc(using prefab: Editor_Prefab, field: Prefab_Field
 
 	for input, index in inputs
 	{
-		if input.type_id == field.type_id
+		if objects.can_use_input_type(field.type_id, input.type)
 		{
 			imgui.text_unformatted("Inputs :");
 			if imgui.button(input.name)
@@ -837,7 +875,7 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 				for input_type in input_types
 				{
 					// TODO : if type_id is nil, empty type
-					if input_type.type_id == input.type_id do serialization.json_write_value(file, input_type.name, &write_state);
+					if objects.is_same_input_type(input_type.type, input.type) do serialization.json_write_value(file, input_type.name, &write_state);
 				}
 
 				serialization.json_write_close_body(file, &write_state);
@@ -920,7 +958,7 @@ json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab
 
 	for component_type in scene.prefab_tables.component_types
 	{
-		if component_type.value == type_info.id
+		if component_type.handle_type_id == type_info.id
 		{
 			serialization.json_write_value(file, "nil", write_state);
 			return;

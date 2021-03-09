@@ -20,7 +20,7 @@ import "../container"
 import "../objects"
 import "../animation"
 
-Struct_Editor_Delegate :: proc(scene: ^gameplay.Scene, data: rawptr) -> bool;
+Struct_Editor_Delegate :: proc(data: rawptr, scene_database: ^container.Database) -> bool;
 Editor_Delegate_Map :: map[typeid]Struct_Editor_Delegate;
 
 default_struct_editor_delegates: Editor_Delegate_Map =
@@ -28,17 +28,17 @@ default_struct_editor_delegates: Editor_Delegate_Map =
 	typeid_of(render.Sprite_Handle) = sprite_struct_editor
 };
 
-struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr, type_id: typeid, delegates: Editor_Delegate_Map = default_struct_editor_delegates) -> bool
+struct_editor :: proc(data: rawptr, type_id: typeid, scene_database: ^container.Database, delegates: Editor_Delegate_Map = default_struct_editor_delegates) -> bool
 {
 	type_info := type_info_of(type_id);
-	return struct_editor_rec(scene, data, type_info, delegates);
+	return struct_editor_rec(data, type_info, delegates, scene_database);
 }
 
-struct_editor_rec :: proc(using scene: ^gameplay.Scene, data: rawptr, type_info: ^runtime.Type_Info, delegates: Editor_Delegate_Map) -> bool
+struct_editor_rec :: proc(data: rawptr, type_info: ^runtime.Type_Info, delegates: Editor_Delegate_Map, scene_database: ^container.Database) -> bool
 {
 	if type_info.id in delegates
 	{
-		return delegates[type_info.id](scene, data);
+		return delegates[type_info.id](data, scene_database);
 	}
 	#partial switch variant in type_info.variant
 	{
@@ -47,12 +47,12 @@ struct_editor_rec :: proc(using scene: ^gameplay.Scene, data: rawptr, type_info:
 			for i in 0..<len(variant.names)
 			{
 				imgui.push_id(variant.names[i]);
-				result |= struct_editor_rec(scene, rawptr(uintptr(data) + variant.offsets[i]), variant.types[i], delegates);
+				result |= struct_editor_rec(rawptr(uintptr(data) + variant.offsets[i]), variant.types[i], delegates, scene_database);
 				imgui.pop_id();
 			}
 
 		case runtime.Type_Info_Named:
-			return struct_editor_rec(scene, data, variant.base, delegates);
+			return struct_editor_rec(data, variant.base, delegates, scene_database);
 		case runtime.Type_Info_Float:
 			imgui.input_float("", transmute(^f32)data);
 		case runtime.Type_Info_Integer:
@@ -88,7 +88,7 @@ struct_editor_rec :: proc(using scene: ^gameplay.Scene, data: rawptr, type_info:
 			for i in 0..<variant.count
 			{
 				imgui.push_id(i32(i));
-				result |= struct_editor_rec(scene, rawptr(uintptr(data) + uintptr(i * variant.elem_size)), variant.elem, delegates);
+				result |= struct_editor_rec(rawptr(uintptr(data) + uintptr(i * variant.elem_size)), variant.elem, delegates, scene_database);
 				imgui.pop_id();
 			}
 
@@ -118,8 +118,9 @@ sprite_widget :: proc(using db: ^render.Sprite_Database, sprite: render.Sprite_H
 	return result;
 }
 
-sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool
+sprite_struct_editor :: proc(data: rawptr, scene_database: ^container.Database) -> bool
 {
+	sprite_database := container.database_get(scene_database, render.Sprite_Database);
 	sprite := cast(^render.Sprite_Handle)data;
 	log.info(sprite);
 	if sprite.id == 0
@@ -128,11 +129,11 @@ sprite_struct_editor :: proc(using scene: ^gameplay.Scene, data: rawptr) -> bool
 	}
 	else
 	{
-		sprite_widget(scene, sprite^);
+		sprite_widget(sprite_database, sprite^);
 	}
 	imgui.same_line();
 
-	selected_sprite, search_state := sprite_selector(scene, "sprite_selector", "resources/textures");
+	selected_sprite, search_state := sprite_selector(sprite_database, "sprite_selector", "resources/textures");
 	#partial switch search_state
 	{
 		case .Found:

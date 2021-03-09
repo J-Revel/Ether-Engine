@@ -12,7 +12,7 @@ import "core:strings"
 import "../container"
 import "../serialization"
 
-default_input_types := [?]Prefab_Input_Type{
+default_input_types := [?]Prefab_Input{
 	{"int", typeid_of(int)}, 
 	{"u32", typeid_of(u32)}, 
 	{"i32", typeid_of(i32)}, 
@@ -20,9 +20,9 @@ default_input_types := [?]Prefab_Input_Type{
 	{"vec2", typeid_of([2]f32)},
 };
 
-get_input_types_list :: proc(prefab_tables: ^Named_Table_List, allocator := context.allocator) -> []Prefab_Input_Type
+get_input_types_list :: proc(prefab_tables: ^Named_Table_List, allocator := context.allocator) -> []Prefab_Input
 {
-	result := make([dynamic]Prefab_Input_Type, allocator);
+	result := make([dynamic]Prefab_Input, allocator);
 	
 	for type in default_input_types
 	{
@@ -31,36 +31,64 @@ get_input_types_list :: proc(prefab_tables: ^Named_Table_List, allocator := cont
 
 	for component_type_id in &prefab_tables.component_types
 	{
-		append(&result, Prefab_Input_Type{component_type_id.name, component_type_id.value});
+		append(&result, Prefab_Input{component_type_id.name, component_type_id.handle_type_id});
 	}
 	return result[:];	
+}
+
+is_same_input_type :: proc(first: Input_Type, second: Input_Type) -> bool
+{
+	first_type_id, first_primitive := first.(Primitive_Type);
+	sec_type_id, sec_primitive := second.(Primitive_Type);
+	if first == nil || second == nil || first_primitive != sec_primitive do return false;
+	else if first_primitive do return first_type_id == sec_type_id;
+	else do return first.(Component_Type) == second.(Component_Type);
+}
+
+can_use_input_type :: proc(field_type_id: typeid, input_type: Input_Type) -> bool
+{
+	switch type in input_type
+	{
+		case Primitive_Type:
+			return type == field_type_id;
+		case Component_Type:
+			return type.handle_type_id == field_type_id;
+	}
+	return false;
 }
 
 is_input_type :: proc(prefab_tables: ^Named_Table_List, type_id: typeid) -> bool
 {
 	for input_type in default_input_types
 	{
-		if type_id == input_type.type_id do return true;
+		switch type in input_type.type
+		{
+			case Primitive_Type:
+				if type_id == type do return true;
+			case Component_Type:
+				if type_id == type.handle_type_id do return true;
+		}
+		
 	}
 	for component_type in prefab_tables.component_types
 	{
-		if component_type.value == type_id do return true;
+		if component_type.handle_type_id == type_id do return true;
 	}
 	return false;
 }
 
-get_input_types_map :: proc(prefab_tables: ^Named_Table_List, allocator := context.allocator) -> map[string]typeid
+get_input_types_map :: proc(prefab_tables: ^Named_Table_List, allocator := context.allocator) -> map[string]Input_Type
 {
-	result := make(map[string]typeid, 100, allocator);
+	result := make(map[string]Input_Type, 100, allocator);
 	
-	for type in default_input_types
+	for default_type in default_input_types
 	{
-		result[type.name] = type.type_id;
+		result[default_type.name] = default_type.type;
 	}
 
 	for type in &prefab_tables.component_types
 	{
-		result[type.name] = type.value;
+		result[type.name] = type.handle_type_id;
 	}
 	return result;	
 }
@@ -72,12 +100,16 @@ table_database_add_init :: proc(prefab_tables: ^Named_Table_List, name: string, 
 	type_already_added := false;
 	for type in prefab_tables.component_types 
 	{
-		if type.value == typeid_of(container.Handle(T))
+		if type.handle_type_id == typeid_of(container.Handle(T))
 		{
 			type_already_added = true;
 		}
 	}
-	if !type_already_added do append(&prefab_tables.component_types, container.Named_Element(typeid){name, typeid_of(container.Handle(T))});
+	if !type_already_added do append(&prefab_tables.component_types, Component_Type{
+		name, 
+		T, 
+		typeid_of(container.Handle(T))
+	});
 	log.info("Create database", name);
 }
 
@@ -342,7 +374,7 @@ load_prefab :: proc(path: string, prefab_tables: ^Named_Table_List, metadata_dis
 			input_types_map := get_input_types_map(prefab_tables);
 			if input_type in input_types_map
 			{
-				prefab.inputs[index].type_id = input_types_map[input_type];
+				prefab.inputs[index].type = input_types_map[input_type];
 			}
 		}
 
@@ -409,7 +441,7 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, prefab_tables
 			input_types_map := get_input_types_map(prefab_tables);
 			if input_type in input_types_map
 			{
-				new_input.type_id = input_types_map[input_type];
+				new_input.type = input_types_map[input_type];
 			}
 			append(&prefab.inputs, new_input);
 		}

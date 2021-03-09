@@ -20,7 +20,7 @@ import "../container"
 import "../objects"
 import "../animation"
 
-handle_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene: ^gameplay.Scene)
+handle_component_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	current_value_name := "nil";
@@ -42,27 +42,6 @@ handle_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field,
 		}
 	}
 	imgui.text(current_value_name);
-	// tables := container.db_get_tables_of_type(&scene.db, field.type_id);
-	// field_data := get_component_field_data(components[:], field);
-	// current_value := (cast(^container.Raw_Handle)field_data);
-
-
-	// current_value_name := "";
-	// selected_input_name : string;
-
-	// component := editor_state.components[field.component_index];
-
-	// display_value := current_value_name;
-
-	// struct_field := reflect.Struct_Field
-	// {
-	// 	name = field.name, 
-	// 	type = field.type_id, 
-	// 	offset = field.offset_in_component
-	// };
-	// imgui.push_id("handles");
-	// if input_ref_combo("", field, editor_state) do record_history_step(editor_state);
-	// imgui.pop_id();
 }
 
 to_type_specific_metadata :: proc(field_type_id: typeid, data: $T, allocator := context.allocator) -> (result: objects.Type_Specific_Metadata)
@@ -90,7 +69,6 @@ to_type_specific_metadata_raw :: proc(field_type_id: typeid, data: rawptr, data_
 	return;
 }
 
-
 get_type_specific_metadata :: #force_inline proc($T: typeid, metadata: ^objects.Type_Specific_Metadata) -> ^T
 {
 	assert(metadata.metadata_type_id == T);
@@ -98,7 +76,7 @@ get_type_specific_metadata :: #force_inline proc($T: typeid, metadata: ^objects.
 }
 
 
-animation_player_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene: ^gameplay.Scene)
+animation_player_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	selected_metadata_index := get_component_field_metadata_index(components[:], field);
 	component_data := &components[field.component_index].data;
@@ -255,19 +233,20 @@ find_components_fields_of_type :: proc(prefab_tables: ^objects.Named_Table_List,
 	return result[:];
 }
 
-sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene: ^gameplay.Scene)
+sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	component := components[field.component_index];
 	display_sprite: render.Sprite_Handle;
 	sprite_asset: render.Sprite_Asset;
+	sprite_database := container.database_get(scene_database, render.Sprite_Database);
 
 	if metadata_index >= 0
 	{
 		metadata, ok := component.data.metadata[metadata_index].(objects.Type_Specific_Metadata);
 		assert(ok);
 		sprite_metadata := get_type_specific_metadata(render.Sprite_Asset, &metadata);
-		sprite_handle, sprite_found := render.get_or_load_sprite(&scene.sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
+		sprite_handle, sprite_found := render.get_or_load_sprite(sprite_database, transmute(render.Sprite_Asset)(sprite_metadata^));
 		if !sprite_found
 		{
 			log.info("Could not load sprite", transmute(render.Sprite_Asset)(sprite_metadata^));
@@ -275,7 +254,7 @@ sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field,
 		}
 		if sprite_found
 		{
-			if sprite_widget(&scene.sprite_database, sprite_handle)
+			if sprite_widget(sprite_database, sprite_handle)
 			{
 				open_sprite_selector("sprite_selector", "resources/textures");
 				imgui.open_popup("sprite_selector");
@@ -301,7 +280,7 @@ sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field,
 	}
 	if imgui.begin_popup_modal("sprite_selector", nil, .AlwaysAutoResize)
 	{
-		result, search_state := sprite_selector_popup_content(&scene.sprite_database, "sprite_selector");
+		result, search_state := sprite_selector_popup_content(sprite_database, "sprite_selector");
 		imgui.end_popup();
 		#partial switch search_state
 		{

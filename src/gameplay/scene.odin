@@ -35,6 +35,8 @@ Scene :: struct
     sprite_components: container.Table(Sprite_Component),
     using sprite_database: render.Sprite_Database,
     using animation_database: animation.Animation_Database,
+
+    scene_database: container.Database,
 }
 
 init_empty_scene :: proc(using scene: ^Scene)
@@ -45,6 +47,9 @@ init_empty_scene :: proc(using scene: ^Scene)
 	objects.table_database_add_init(&prefab_tables, "sprite_component", &sprite_components, 500);
 	
 	animation.init_animation_database(&prefab_tables, &animation_database);
+
+	container.database_add(&scene_database, &sprite_database);
+	container.database_add(&scene_database, &animation_database);
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
 	render.init_color_renderer(&color_renderer.render_state);
