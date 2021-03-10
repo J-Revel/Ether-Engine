@@ -146,6 +146,7 @@ Component_Type :: struct
 
 Named_Table :: struct { name: string, table: container.Raw_Table };
 Named_Table_List :: struct {
+	// Stored in array instead of map to have a table_index
 	tables: [dynamic]Named_Table,
 	component_types: [dynamic]Component_Type,
 }

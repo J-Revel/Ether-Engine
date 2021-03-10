@@ -137,6 +137,7 @@ Prefab_Editor_State :: struct
 	input_types: [dynamic]objects.Prefab_Input,
 	z_down: bool,
 	instantiated_components: [dynamic]container.Raw_Handle,
+	allocated_data: [dynamic]rawptr,
 	ref_input_popup_field: Prefab_Field,
 }
 

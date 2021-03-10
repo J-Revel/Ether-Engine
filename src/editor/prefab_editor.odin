@@ -275,13 +275,34 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		{
 			container.raw_handle_remove(instantiated_component);
 		}
+		for to_free in allocated_data
+		{
+			mem.free(to_free);
+		}
 		clear(&instantiated_components);
+		clear(&allocated_data);
 		input_values: map[string]any;
 		input_data := make([]objects.Prefab_Input, len(inputs));
 		for input, index in inputs
 		{
 			input_data[index] = input;
-			input_values[input.data.name] = input.display_value;
+			switch input_type in input.type
+			{
+				case objects.Primitive_Type:
+					input_values[input.data.name] = input.display_value;
+				case objects.Component_Type:
+					type_info := type_info_of(input_type.type_id);
+					
+					table, table_index, table_found := objects.db_get_table(&scene.prefab_tables, input_type.name);
+					assert(table_found);
+					component, add_ok := container.table_add_raw(&table, input.display_value);
+					assert(add_ok);
+					append(&instantiated_components, component);
+					handle_data := mem.alloc(size_of(container.Raw_Handle), align_of(container.Raw_Handle));
+					mem.copy(handle_data, &component, size_of(container.Raw_Handle));
+					append(&allocated_data, handle_data);
+					input_values[input.data.name] = handle_data;
+			}
 		}
 
 		metadata_dispatcher: objects.Instantiate_Metadata_Dispatcher;
@@ -298,6 +319,11 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			ok: bool;
 			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
 			// assert(ok);
+		}
+		for component in components
+		{
+			log.info(any{container.handle_get_raw(component.value), component.value.raw_table.type_id}, component);
+
 		}
 		assert(success);
 		if success

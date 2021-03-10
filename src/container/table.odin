@@ -73,12 +73,13 @@ ptr_offset :: #force_inline proc(ptr: uintptr, n: int, type_size: int) -> uintpt
 	return uintptr(new);
 }
 
-table_add_raw :: proc(table: ^Raw_Table, value: any, type_size: int) -> (Raw_Handle, bool)
+table_add_raw :: proc(table: ^Raw_Table, value: rawptr) -> (Raw_Handle, bool)
 {
+	type_info := type_info_of(table.type_id);
 	index, ok := bit_array_allocate(table.allocation);
 	if ok
 	{
-		mem.copy(rawptr(ptr_offset(uintptr(table.data), int(index), type_size)), value.data, type_size);
+		mem.copy(rawptr(ptr_offset(uintptr(table.data), int(index), type_info.size)), value, type_info.size);
 	}
 	return Raw_Handle{index + 1, table}, ok;
 }
