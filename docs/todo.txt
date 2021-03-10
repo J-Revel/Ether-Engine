@@ -45,7 +45,7 @@
 			{
 				"id": "1361615079364542597246",
 				"name": "handle inputs in prefab editor display",
-				"state": ""
+				"state": "done"
 			},
 			{
 				"id": "136161481836093111545",
@@ -135,6 +135,11 @@
 			{
 				"id": "1361615246154180909988",
 				"name": "nested prefab system",
+				"state": ""
+			},
+			{
+				"id": "1361615418647371482419",
+				"name": "make helper functions to handle raw_handle to generic_handle conversion (used in components_instantiate)",
 				"state": ""
 			}
 		],
