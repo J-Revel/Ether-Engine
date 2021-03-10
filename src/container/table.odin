@@ -4,6 +4,7 @@ import "core:mem"
 import "core:runtime"
 import "core:log"
 import "core:reflect"
+import "core:fmt"
 
 bit_array_set :: proc(bit_array: ^Bit_Array, bit: uint, value: bool)
 {
@@ -17,6 +18,7 @@ bit_array_get :: proc(bit_array: ^Bit_Array, bit: int) -> bool
 {
 	array_index := bit / 32;
 	bit_index := bit % 32;
+	assert(array_index < len(bit_array));
 	value := bit_array[array_index];
 	return (value & (1 << uint(bit_index))) > 0;
 }
@@ -143,8 +145,9 @@ handle_get_raw :: proc(handle: Raw_Handle) -> rawptr
 	return rawptr(uintptr(int(uintptr(table.data)) + type_size * int(handle.id - 1)));
 }
 
-handle_get :: proc(handle: $A/Handle($T)) -> ^T
+handle_get :: proc(handle: $A/Handle($T), location := #caller_location) -> ^T
 {
+	assert(bit_array_get(&handle.table.allocation, handle.id - 1));
 	return mem.ptr_offset(cast(^T)handle.table.data, cast(int)handle.id - 1);
 }
 

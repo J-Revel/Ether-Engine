@@ -13,11 +13,11 @@ import "../container"
 import "../serialization"
 
 default_input_types := [?]Prefab_Input{
-	{"int", typeid_of(int)}, 
-	{"u32", typeid_of(u32)}, 
-	{"i32", typeid_of(i32)}, 
-	{"float", typeid_of(f32)}, 
-	{"vec2", typeid_of([2]f32)},
+	{"int", Primitive_Type(typeid_of(int))}, 
+	{"u32", Primitive_Type(typeid_of(u32))}, 
+	{"i32", Primitive_Type(typeid_of(i32))}, 
+	{"float", Primitive_Type(typeid_of(f32))}, 
+	{"vec2", Primitive_Type(typeid_of([2]f32))},
 };
 
 get_input_types_list :: proc(prefab_tables: ^Named_Table_List, allocator := context.allocator) -> []Prefab_Input
@@ -158,8 +158,6 @@ components_instantiate :: proc(prefab_tables: ^Named_Table_List, components: []C
 		for metadata_index in 0..<metadata_count
 		{
 			offset := metadata_offsets[metadata_index];
-			field_type := metadata_types[metadata_index];
-			field_size := reflect.size_of_typeid(field_type);
 			field_ptr := rawptr(uintptr(components_data[i]) + offset);
 			switch metadata_info in metadata[metadata_index]
 			{
@@ -176,12 +174,30 @@ components_instantiate :: proc(prefab_tables: ^Named_Table_List, components: []C
 					target_handle := cast(^container.Generic_Handle)field_ptr;
 					target_handle^ = generic_handle;
 					//log.info(target_handle);
+
 				case Input_Metadata: 
 					prefab_input := inputs[metadata_info.input_index];
-					if input_value, ok := input_data[prefab_input.name]; ok {
-						if input_value.id == field_type {
-							mem.copy(field_ptr, input_value.data, field_size);
+					input_value, ok := input_data[prefab_input.name];
+					if ok
+					{
+						switch input_type in prefab_input.type
+						{
+							case Primitive_Type:
+								mem.copy(field_ptr, input_value.data, type_info_of(input_type).size);
+							case Component_Type:
+								input_data_type_id := input_type.handle_type_id;
+								target_handle := cast(^container.Generic_Handle)field_ptr;
+								input_handle := cast(^container.Raw_Handle)input_value.data;
+								log.info("-----");
+								log.info(any{components_data[i], table.type_id}, input_handle);
+								table_data: ^container.Table_Data = input_handle.raw_table.table;
+								target_handle^ = container.Generic_Handle{input_handle.id, table_data};
+								log.info(any{components_data[i], table.type_id});
 						}
+						//if input_value.id == input_data_type_id {
+							
+						//}
+						
 					}
 				case Type_Specific_Metadata:
 					pending_metadata := Instantiate_Metadata{
@@ -204,6 +220,8 @@ components_instantiate :: proc(prefab_tables: ^Named_Table_List, components: []C
 		data_ptr := components_data[i];
 		component_data := container.handle_get_raw(component_handles[i]);
 		mem.copy(component_data, components_data[i], component_sizes[i]);
+		log.info(table.type_id);
+		log.info(any{component_data, table.type_id});
 	}
 
 	success = true;
@@ -375,6 +393,7 @@ load_prefab :: proc(path: string, prefab_tables: ^Named_Table_List, metadata_dis
 			if input_type in input_types_map
 			{
 				prefab.inputs[index].type = input_types_map[input_type];
+				log.info("INPUT TYPE", prefab.inputs[index].type);
 			}
 		}
 
