@@ -10,6 +10,7 @@ import "core:encoding/json"
 import "core:sort"
 import "core:fmt"
 import "core:runtime"
+import "../../libs/imgui"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -385,6 +386,24 @@ load_sprites_data :: proc (path: string, allocator := context.temp_allocator) ->
     return {}, {}, false;
 }
 
+generate_default_white_texture :: proc() -> (texture_id: u32) 
+{
+    gl.GenTextures(1, &texture_id);
+
+    data: []u8 = { 255, 255, 255, 255 };
+
+    gl.BindTexture(gl.TEXTURE_2D, texture_id);
+
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, &data[0]);
+    gl.BindTexture(gl.TEXTURE_2D, 0);
+    return texture_id;
+}
+
 init_sprite_renderer :: proc (result: ^Render_State) -> bool
 {
     vertex_shader := gl.CreateShader(gl.VERTEX_SHADER);
@@ -445,6 +464,8 @@ init_sprite_renderer :: proc (result: ^Render_State) -> bool
     gl.BindBuffer(gl.ARRAY_BUFFER, 0);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
     gl.BindVertexArray(0);
+
+    result.default_texture = generate_default_white_texture();
 
     return true;
 }
@@ -511,4 +532,78 @@ render_sprite :: proc(render_buffer: ^Sprite_Render_System, using sprite: ^Sprit
     append(&render_buffer.index, start_index + 3);
 }
 
+render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, color: Color)
+{
+    start_index := cast(u32) len(render_buffer.vertex);
+    
+    if container.is_valid(render_buffer.current_texture)
+    {
+        index_count := len(render_buffer.render_system.index);
+        append(&render_buffer.passes, Sprite_Render_Pass {
+                render_buffer.current_texture, 
+                index_count - render_buffer.current_pass_index
+        });
+        render_buffer.current_pass_index = index_count;
+        render_buffer.current_texture = {};
+    }
+
+    vertex_data : Sprite_Vertex_Data;
+    left_pos := pos.x;
+    right_pos := pos.x + size.x;
+    top_pos := pos.y;
+    bottom_pos := pos.y - size.y;
+
+    vertex_data.pos = [2]f32{left_pos, top_pos};
+    vertex_data.color = color;
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{right_pos, top_pos};
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{left_pos, bottom_pos};
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{right_pos, bottom_pos};
+
+    append(&render_buffer.vertex, vertex_data);
+
+    append(&render_buffer.index, start_index);
+    append(&render_buffer.index, start_index + 1);
+    append(&render_buffer.index, start_index + 2);
+    append(&render_buffer.index, start_index + 1);
+    append(&render_buffer.index, start_index + 2);
+    append(&render_buffer.index, start_index + 3);
+}
+
 // TODO : system to load/save sprites
+
+render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera)
+{
+    upload_buffer_data(&render_system.render_system);
+    index_cursor := 0;
+
+    for pass in render_system.passes
+    {
+        texture_id: u32 = render_system.render_state.default_texture;
+        if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
+        gl.BindTexture(gl.TEXTURE_2D, texture_id);
+        render_buffer_content_part(&render_system.render_system, camera, index_cursor, pass.index_count);
+        index_cursor += pass.index_count;
+        imgui.text_unformatted(fmt.tprint(pass.texture.id, pass.index_count));
+    }
+    texture_id: u32 = render_system.render_state.default_texture;
+    if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
+    gl.BindTexture(gl.TEXTURE_2D, texture_id);
+    render_buffer_content_part(&render_system.render_system, camera, index_cursor, len(render_system.render_system.index) - index_cursor);
+    imgui.text_unformatted(fmt.tprint(render_system.current_texture.id, len(render_system.render_system.index) - index_cursor));
+    log.info(render_system.passes);
+
+}
+
+clear_sprite_render_buffer :: proc(render_system: ^Sprite_Render_System)
+{
+    clear(&render_system.index);
+    clear(&render_system.vertex);
+    clear(&render_system.passes);
+    render_system.current_texture = {};
+}

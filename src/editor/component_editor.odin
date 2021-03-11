@@ -292,3 +292,31 @@ sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field,
 		}
 	}
 }
+
+transform_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
+{
+	component := components[field.component_index];
+	transform := get_component_field_data(components[:], field, gameplay.Transform);
+	parent_field := field;
+	parent_field.offset_in_component = reflect.struct_field_by_name(gameplay.Transform, "parent").offset;
+	metadata_index := get_component_field_metadata_index(components[:], field);
+	selected_parent_name: string;
+	if metadata_index >= 0
+	{
+		switch metadata_type in component.data.metadata[metadata_index]
+		{
+			case objects.Ref_Metadata:
+				selected_parent_name = components[metadata_type.component_index].id;
+			case objects.Input_Metadata:
+				selected_parent_name = inputs[metadata_type.input_index].name;
+			case objects.Type_Specific_Metadata:
+				panic("Error : Type_Specific_Metadata in Transform");
+		}
+	}
+	if imgui.begin_combo("Parent", selected_parent_name, .PopupAlignLeft)
+	{
+		
+		imgui.end_combo();
+	}
+
+}

@@ -131,7 +131,9 @@ main :: proc() {
             frame_index += 1;
             last_frame_tick = current_tick;
             imgui.text_unformatted(fmt.tprint(FRAME_SAMPLE_COUNT / sample_time_sum));
+            
             gameplay.update_and_render(&sceneInstance, delta_time, screen_size, &input_state);
+            gameplay.do_render(&sceneInstance, screen_size);
 
             if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed && !show_editor
             {

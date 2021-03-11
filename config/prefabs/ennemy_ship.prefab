@@ -1,0 +1,32 @@
+{
+	"inputs":[{
+			"name":"root",
+			"type":
+		}
+	],
+	"components":{
+		"Body Sprite":{
+			"type":"sprite_component",
+			"transform":"&0",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/LD47_ennemy_03",
+				"sprite_id":"Ship Body"
+			}
+		},
+		"Left Cannon Transform":{
+			"type":"transform",
+			"parent":"&0",
+			"pos":[-94.000, -110.000],
+			"scale":1.000,
+			"angle":0.000
+		},
+		"Left Cannon Sprite":{
+			"type":"sprite_component",
+			"transform":"@Left Cannon Transform",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/LD47_ennemy_03",
+				"sprite_id":"Cannon Left"
+			}
+		}
+	}
+}

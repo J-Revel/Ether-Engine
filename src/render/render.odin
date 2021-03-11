@@ -196,31 +196,6 @@ render_buffer_content_part :: proc(render_buffer : ^Render_System($T), camera: ^
     gl.UseProgram(0);
 }
 
-render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera)
-{
-    upload_buffer_data(&render_system.render_system);
-    index_cursor := 0;
-    for pass in render_system.passes
-    {
-        gl.BindTexture(gl.TEXTURE_2D, container.handle_get(pass.texture).texture_id);
-        render_buffer_content_part(&render_system.render_system, camera, index_cursor, pass.index_count);
-        index_cursor += pass.index_count;
-    }
-    if container.is_valid(render_system.current_texture)
-    {
-        gl.BindTexture(gl.TEXTURE_2D, container.handle_get(render_system.current_texture).texture_id);
-        render_buffer_content_part(&render_system.render_system, camera, index_cursor, len(render_system.render_system.index) - index_cursor);
-    }
-}
-
-clear_sprite_render_buffer :: proc(render_system: ^Sprite_Render_System)
-{
-    clear(&render_system.index);
-    clear(&render_system.vertex);
-    clear(&render_system.passes);
-    render_system.current_texture = {};
-}
-
 camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System(Color_Vertex_Data), pos: [2]i32) -> [2]f32
 {
     return [2]f32

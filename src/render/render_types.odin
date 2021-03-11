@@ -16,6 +16,7 @@ Render_State :: struct
     vao: u32,
     vbo: u32,
     elementBuffer: u32,
+    default_texture: u32,
 }
 
 Color_Vertex_Data :: struct

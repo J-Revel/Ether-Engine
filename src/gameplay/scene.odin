@@ -175,6 +175,10 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 		{
 			log.info("BUTTON3");
 		}
+}
+
+do_render :: proc(using scene: ^Scene, screen_size: [2]f32)
+{
 
 	ui.render_draw_list(&ui_ctx.draw_list, &scene.color_renderer);
 

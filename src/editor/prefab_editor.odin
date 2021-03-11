@@ -37,6 +37,7 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 
 	component_editor_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
 	component_editor_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
+	// component_editor_callbacks[typeid_of(container.Handle(gameplay.Transform))] = transform_editor_callback;
 }
 
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_size: [2]f32)
@@ -95,8 +96,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 				strings.clone(new_temp_metadata.sprite_id),
 			};
 			new_metadata := to_type_specific_metadata_raw(prefab_field.type_id, &metadata_copy, type_info_of(render.Sprite_Asset));
-			log.info(new_metadata);
-			log.info(prefab_field);
 			set_component_field_metadata(components[:], prefab_field, new_metadata);
 			log.info(cast(^render.Sprite_Asset)load_metadata.data);
 			// log.info(get_component_field_metadata(components[:], prefab_field));
@@ -225,6 +224,18 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 			imgui.columns(1);
 			if component_show
 			{
+				component_type := scene.prefab_tables.tables[components[index].table_index].table.type_id;
+				if component_type == typeid_of(gameplay.Transform)
+				{
+					if edited_component == index + 1
+					{
+						if imgui.button("Hide Gizmos") do edited_component = 0;
+					}
+					else if imgui.button("Show Gizmos")
+					{
+						edited_component = index + 1;
+					}
+				}
 				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &scene.scene_database);
 				imgui.columns(1);
 				if imgui.button("Remove Component")
@@ -336,11 +347,40 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 	{
 		imgui.text_unformatted(fmt.tprint(sprite));
 	}
+
+	update_gizmos(editor_state);
+	gameplay.do_render(&scene, screen_size);
 }
 
-get_component_field_data :: proc(components: []objects.Component_Model, using field: Prefab_Field) -> uintptr
+update_gizmos :: proc(using editor_state: ^Prefab_Editor_State)
+{
+	if edited_component > 0
+	{
+		transform : ^gameplay.Transform = get_component_data(components[:], edited_component-1, gameplay.Transform);
+		render.render_quad(&scene.sprite_renderer, transform.pos, {70, 5}, {1, 0, 0, 1});
+		render.render_quad(&scene.sprite_renderer, transform.pos + [2]f32{0, 70}, {5, 70}, {1, 0, 0, 1});
+	}
+}
+
+get_component_field_data :: proc
+{
+	get_component_field_data_raw,
+	get_component_field_data_typed
+};
+
+get_component_data :: proc(components: []objects.Component_Model, component_index: int, $T: typeid) -> ^T
+{
+	return cast(^T)components[component_index].data.data;
+}
+
+get_component_field_data_raw :: proc(components: []objects.Component_Model, using field: Prefab_Field) -> uintptr
 {
 	return (uintptr(components[field.component_index].data.data) + field.offset_in_component);
+}
+
+get_component_field_data_typed :: proc(components: []objects.Component_Model, using field: Prefab_Field, $T: typeid) -> ^T
+{
+	return cast(^T)(uintptr(components[field.component_index].data.data) + field.offset_in_component);
 }
 
 get_component_field_metadata_index :: proc(components: []objects.Component_Model, field: Prefab_Field) -> int
