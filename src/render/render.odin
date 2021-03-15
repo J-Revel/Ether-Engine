@@ -4,6 +4,7 @@ import "core:mem";
 import "core:log";
 import "core:strings";
 import "core:math";
+import "core:math/linalg"
 
 import "../container"
 
@@ -39,7 +40,8 @@ void main()
     frag_pos = pos;
     float zoom = camPosZoom.z;
     vec2 camPos = camPosZoom.xy;
-    gl_Position = vec4((pos.xy - camPos) * 2 / screenSize * camPosZoom.z,0,1);
+    vec2 screenPos = (pos.xy - camPos) * 2 / screenSize * camPosZoom.z;
+    gl_Position = vec4(screenPos.x, -screenPos.y,0,1);
 }
 `;
 
@@ -145,7 +147,7 @@ clear_render_buffer :: proc(render_buffer: ^Render_Buffer($T))
     clear(&render_buffer.vertex);
 }
 
-render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camera)
+render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camera, viewport: Viewport)
 {
     vertex_count := len(render_buffer.vertex);
     index_count := len(render_buffer.index);
@@ -159,8 +161,8 @@ render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camer
     gl.BindVertexArray(0);
 
     gl.UseProgram(render_buffer.render_state.shader);
-    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.pos.x, camera.pos.y, camera.zoom);
-    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, render_buffer.screen_size.x, render_buffer.screen_size.y);
+    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
+    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, f32(viewport.size.x), f32(viewport.size.y));
 
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, nil);
@@ -183,26 +185,17 @@ upload_buffer_data :: proc(render_buffer: ^Render_System($T))
     gl.BindVertexArray(0);
 }
 
-render_buffer_content_part :: proc(render_buffer : ^Render_System($T), camera: ^Camera, start_index: int, index_count: int)
+render_buffer_content_part :: proc(render_buffer : ^Render_System($T), camera: ^Camera, viewport: Viewport, start_index: int, index_count: int)
 {
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.UseProgram(render_buffer.render_state.shader);
-    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.pos.x, camera.pos.y, camera.zoom);
-    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, render_buffer.screen_size.x, render_buffer.screen_size.y);
+    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
+    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, f32(viewport.size.x), f32(viewport.size.y));
 
     gl.BindVertexArray(render_buffer.render_state.vao);
     gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, rawptr(uintptr(size_of(u32) * start_index)));
     gl.BindVertexArray(0);
     gl.UseProgram(0);
-}
-
-camera_to_world :: proc(camera : ^Camera, render_system: ^Render_System(Color_Vertex_Data), pos: [2]i32) -> [2]f32
-{
-    return [2]f32
-    {
-        cast(f32)pos.x + camera.pos.x - render_system.screen_size.x / 2,
-        -cast(f32)pos.y + camera.pos.y + render_system.screen_size.y / 2
-    };
 }
 
 hex_char_val :: proc(r: rune) -> (u32, bool)
@@ -249,4 +242,16 @@ hex_color_to_u32 :: proc(hex: string) -> (u32, bool)
 color_replace_alpha :: proc(color: u32, alpha: int) -> u32
 {
     return (color & 0x00ffffff) | u32(alpha << 24);
+}
+
+screen_to_world :: proc(camera: ^Camera, viewport: Viewport, screen_pos: [2]int) -> (world_pos: [2]f32)
+{
+    viewport_center := viewport.top_left + viewport.size / 2;
+    return camera.world_pos + linalg.to_f32(screen_pos - viewport_center) * camera.zoom * [2]f32{1, -1};
+}
+
+world_to_screen :: proc(camera: ^Camera, viewport: Viewport, world_pos: [2]f32) -> (screen_pos: [2]int)
+{
+    viewport_center := viewport.top_left + viewport.size / 2;
+    return viewport_center + linalg.to_int((world_pos - camera.world_pos) / camera.zoom) * [2]int{1, -1};
 }

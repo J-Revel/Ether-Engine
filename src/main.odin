@@ -87,7 +87,7 @@ main :: proc() {
 
         show_demo_window := false;
         io := imgui.get_io();
-        screen_size : vec2;
+        screen_size: [2]int;
 
         sceneInstance : gameplay.Scene;
         gameplay.init_main_scene(&sceneInstance);
@@ -106,8 +106,8 @@ main :: proc() {
             mx, my: i32;
             sdl.gl_get_drawable_size(window, &mx, &my);
 
-            screen_size.x = cast(f32)mx;
-            screen_size.y = cast(f32)my;
+            screen_size.x = cast(int)mx;
+            screen_size.y = cast(int)my;
             
             input.new_frame(&input_state);
             input.process_events(&input_state);
@@ -132,8 +132,12 @@ main :: proc() {
             last_frame_tick = current_tick;
             imgui.text_unformatted(fmt.tprint(FRAME_SAMPLE_COUNT / sample_time_sum));
             
-            gameplay.update_and_render(&sceneInstance, delta_time, screen_size, &input_state);
-            gameplay.do_render(&sceneInstance, screen_size);
+            viewport := render.Viewport{
+                {0, 0},
+                screen_size,
+            };
+            gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport);
+            gameplay.do_render(&sceneInstance, viewport);
 
             if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed && !show_editor
             {
@@ -149,7 +153,7 @@ main :: proc() {
             
             if show_editor
             {
-                editor.update_editor(&editor_state, screen_size);
+                editor.update_editor(&editor_state, viewport, &input_state);
             }
             imgui.render();
 

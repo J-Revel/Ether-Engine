@@ -82,8 +82,8 @@ Sprite_Side :: enum
 
 Sprite_Editor_Render_Data :: struct
 {
-	editor_rect: geometry.Rect,
-	texture_rect: geometry.Rect,
+	editor_rect: geometry.Rect(f32),
+	texture_rect: geometry.Rect(f32),
 	mouse_pos: [2]f32,
 }
 

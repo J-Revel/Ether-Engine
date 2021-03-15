@@ -8,6 +8,7 @@ import "core:strconv"
 import imgui "../../libs/imgui"
 import "core:math/rand"
 import "core:math"
+import "core:math/linalg"
 
 import sdl "shared:odin-sdl2"
 
@@ -130,13 +131,9 @@ init_main_scene :: proc(using scene: ^Scene)
 time : f32 = 0;
 ui_ctx: ui.UI_Context;
 
-update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]f32, input_state: ^input.State)
+update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
 
-	color_renderer.screen_size = screen_size;
-	sprite_renderer.screen_size = screen_size;
-	world_mouse_pos := render.camera_to_world(&scene.camera, &color_renderer, input_state.mouse_pos);
-	
 	animation.update_animations(&animation_players, delta_time);
 
 	// spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
@@ -146,7 +143,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&scene.sprite_renderer, &sprite_components);
 
-	ui.reset_ctx(&ui_ctx, input_state, screen_size);
+	ui.reset_ctx(&ui_ctx, input_state, linalg.to_f32(viewport.size));
 	
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
@@ -177,8 +174,11 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, screen_size: [2]
 		}
 }
 
-do_render :: proc(using scene: ^Scene, screen_size: [2]f32)
+do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 {
+	gl.Enable(gl.BLEND);
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.Viewport(i32(viewport.top_left.x), i32(viewport.top_left.y), i32(viewport.size.x), i32(viewport.size.y));
 
 	ui.render_draw_list(&ui_ctx.draw_list, &scene.color_renderer);
 
@@ -186,13 +186,14 @@ do_render :: proc(using scene: ^Scene, screen_size: [2]f32)
 	
 	// render.render_buffer_content(&color_renderer, &camera);
 	// texture_id := container.table_get(&textures, spaceship_sprite_data.texture).texture_id;
-	gl.Enable(gl.BLEND);
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	
-	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera);
+	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 
-	ui_camera := render.Camera{screen_size / 2, 1};
-    render.render_buffer_content(&scene.color_renderer, &ui_camera);
+	ui_camera := render.Camera{
+		world_pos = linalg.to_f32(viewport.size / 2),
+		zoom = 1,
+	};
+    render.render_buffer_content(&scene.color_renderer, &ui_camera, viewport);
     render.clear_render_buffer(&color_renderer.buffer);
     render.clear_sprite_render_buffer(&scene.sprite_renderer);
 }

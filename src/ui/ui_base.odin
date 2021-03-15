@@ -35,7 +35,7 @@ rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 ui_element :: proc(pos: [2]f32, size: [2]f32, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
 {
 	state = .Normal;
-	element_hash := runtime.source_code_location_hash(location);
+	element_hash := uintptr(hash.djb2(transmute([]byte)location.file_path)) + uintptr(location.line);
 	ctx.current_element = element_hash;
 	ctx.current_element_pos = pos;
 	ctx.current_element_size = size;

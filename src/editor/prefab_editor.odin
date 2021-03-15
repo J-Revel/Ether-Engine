@@ -12,6 +12,7 @@ import "core:slice"
 import "core:os"
 import "core:encoding/json"
 import sdl "shared:odin-sdl2"
+import gl "shared:odin-gl";
 
 import "../geometry"
 import "../gameplay"
@@ -40,7 +41,7 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	// component_editor_callbacks[typeid_of(container.Handle(gameplay.Transform))] = transform_editor_callback;
 }
 
-update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_size: [2]f32)
+update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, viewport: render.Viewport)
 {
 	io := imgui.get_io();
 	
@@ -341,24 +342,44 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, screen_si
 		}
 	}
 	input_state: input.State;
-	gameplay.update_and_render(&scene, 0, screen_size, &input_state);
+	gameplay.update_and_render(&scene, 0, &input_state, viewport);
 	sprite_it := container.table_iterator(&scene.sprite_database.sprites);
 	for sprite, sprite_handle in container.table_iterate(&sprite_it)
 	{
 		imgui.text_unformatted(fmt.tprint(sprite));
 	}
+	scene_viewport := render.Viewport{
+		viewport.top_left,
+		{viewport.size.x / 2, viewport.size.y}
+	};
 
-	update_gizmos(editor_state);
-	gameplay.do_render(&scene, screen_size);
+	update_gizmos(editor_state, &input_state, &scene.camera, scene_viewport);
+	gameplay.do_render(&scene, scene_viewport);
 }
 
-update_gizmos :: proc(using editor_state: ^Prefab_Editor_State)
+update_gizmos :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, camera: ^render.Camera, viewport: render.Viewport)
 {
 	if edited_component > 0
 	{
 		transform : ^gameplay.Transform = get_component_data(components[:], edited_component-1, gameplay.Transform);
-		render.render_quad(&scene.sprite_renderer, transform.pos, {70, 5}, {1, 0, 0, 1});
-		render.render_quad(&scene.sprite_renderer, transform.pos + [2]f32{0, 70}, {5, 70}, {1, 0, 0, 1});
+		
+		color: render.Color = {1, 1, 1, 1};
+		io := imgui.get_io();
+		screen_transform_pos := render.world_to_screen(camera, viewport, transform.pos);
+		log.info(io.mouse_pos, screen_transform_pos);
+		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {70, 5}}, linalg.to_int(io.mouse_pos))
+		{
+			color = {1, 0, 0, 1};
+		}
+		render.render_quad(&scene.sprite_renderer, transform.pos, {70, 5}, color);
+
+		color = {1, 1, 1, 1};
+		screen_transform_pos = render.world_to_screen(camera, viewport, transform.pos + [2]f32{0, 70});
+		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {5, 70}}, linalg.to_int(io.mouse_pos))
+		{
+			color = {1, 0, 0, 1};
+		}
+		render.render_quad(&scene.sprite_renderer, transform.pos + [2]f32{0, 70}, {5, 70}, color);
 	}
 }
 

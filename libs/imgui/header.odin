@@ -587,7 +587,7 @@ set_next_window_collapsed              :: #force_inline proc(collapsed: bool, co
 set_next_window_content_size           :: #force_inline proc(size: Vec2)                                                                                                                                                            do igSetNextWindowContentSize(size);
 set_next_window_focus                  :: #force_inline proc()                                                                                                                                                                      do igSetNextWindowFocus();
 set_next_window_pos                    :: #force_inline proc(pos: Vec2, cond := Cond(0), pivot := Vec2(Vec2 {0,0}))                                                                                                                 do igSetNextWindowPos(pos, cond, pivot);
-set_next_window_size                   :: #force_inline proc(size: Vec2, cond := Cond(0))                                                                                                                                           do return;//igSetNextWindowSize(size, cond);
+set_next_window_size                   :: #force_inline proc(size: Vec2, cond := Cond(0))                                                                                                                                           do igSetNextWindowSize(size, cond);
 set_next_window_size_constraints       :: #force_inline proc(size_min: Vec2, size_max: Vec2, custom_callback : Size_Callback = nil, custom_callback_data : rawptr = nil)                                                            do igSetNextWindowSizeConstraints(size_min, size_max, custom_callback, custom_callback_data);
 
 set_scroll_from_pos_x :: proc {

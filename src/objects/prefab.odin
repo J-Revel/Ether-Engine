@@ -220,8 +220,6 @@ components_instantiate :: proc(prefab_tables: ^Named_Table_List, components: []C
 		data_ptr := components_data[i];
 		component_data := container.handle_get_raw(component_handles[i]);
 		mem.copy(component_data, components_data[i], component_sizes[i]);
-		log.info(table.type_id);
-		log.info(any{component_data, table.type_id});
 	}
 
 	success = true;

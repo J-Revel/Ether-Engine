@@ -25,9 +25,15 @@ Color_Vertex_Data :: struct
     color: Color
 }
 
+Viewport :: struct
+{
+    top_left: [2]int,
+    size: [2]int,
+}
+
 Camera :: struct
 {
-    pos: vec2,
+    world_pos: vec2,
     zoom: f32,
 }
 
@@ -39,7 +45,6 @@ Render_Buffer :: struct(T: typeid)
 
 Render_System :: struct(T: typeid)
 {
-    screen_size: vec2,
     using buffer: Render_Buffer(T),
     render_state: Render_State,
 }
@@ -60,7 +65,7 @@ Texture_Handle :: container.Handle(Texture);
 Sprite_Data :: struct
 {
     anchor: [2]f32,
-    clip: geometry.Rect,
+    clip: geometry.Rect(f32),
 }
 
 Sprite :: struct

@@ -47,7 +47,8 @@ void main()
     frag_uv = uv;
     float zoom = camPosZoom.z;
     vec2 camPos = camPosZoom.xy;
-    gl_Position = vec4((pos.xy - camPos) * 2 / screenSize * camPosZoom.z,0,1);
+    vec2 screenPos = (pos.xy - camPos) * 2 / screenSize * camPosZoom.z;
+    gl_Position = vec4(screenPos.x, screenPos.y,0,1);
 }
 `;
 
@@ -509,19 +510,19 @@ render_sprite :: proc(render_buffer: ^Sprite_Render_System, using sprite: ^Sprit
 
     vertex_data.pos = [2]f32{left_pos, top_pos};
     vertex_data.color = color;
-    vertex_data.uv = clip.pos + {0, 0};
-    append(&render_buffer.vertex, vertex_data);
-
-    vertex_data.pos = [2]f32{right_pos, top_pos};
-    vertex_data.uv = clip.pos + {clip_size.x, 0};
-    append(&render_buffer.vertex, vertex_data);
-
-    vertex_data.pos = [2]f32{left_pos, bottom_pos};
     vertex_data.uv = clip.pos + {0, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = [2]f32{right_pos, bottom_pos};
+    vertex_data.pos = [2]f32{right_pos, top_pos};
     vertex_data.uv = clip.pos + {clip_size.x, clip_size.y};
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{left_pos, bottom_pos};
+    vertex_data.uv = clip.pos + {0, 0};
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{right_pos, bottom_pos};
+    vertex_data.uv = clip.pos + {clip_size.x, 0};
     append(&render_buffer.vertex, vertex_data);
 
     append(&render_buffer.index, start_index);
@@ -577,7 +578,7 @@ render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]
 
 // TODO : system to load/save sprites
 
-render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera)
+render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera, viewport: Viewport)
 {
     upload_buffer_data(&render_system.render_system);
     index_cursor := 0;
@@ -587,16 +588,15 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
         texture_id: u32 = render_system.render_state.default_texture;
         if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
         gl.BindTexture(gl.TEXTURE_2D, texture_id);
-        render_buffer_content_part(&render_system.render_system, camera, index_cursor, pass.index_count);
+        render_buffer_content_part(&render_system.render_system, camera, viewport, index_cursor, pass.index_count);
         index_cursor += pass.index_count;
         imgui.text_unformatted(fmt.tprint(pass.texture.id, pass.index_count));
     }
     texture_id: u32 = render_system.render_state.default_texture;
     if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
-    render_buffer_content_part(&render_system.render_system, camera, index_cursor, len(render_system.render_system.index) - index_cursor);
+    render_buffer_content_part(&render_system.render_system, camera, viewport, index_cursor, len(render_system.render_system.index) - index_cursor);
     imgui.text_unformatted(fmt.tprint(render_system.current_texture.id, len(render_system.render_system.index) - index_cursor));
-    log.info(render_system.passes);
 
 }
 

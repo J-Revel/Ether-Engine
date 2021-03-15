@@ -12,6 +12,7 @@ import "core:math/linalg"
 
 import "../geometry"
 import "../animation"
+import "../input"
 
 apply_style :: proc()
 {
@@ -99,19 +100,20 @@ init_editor :: proc(using editor_state: ^Editor_State)
 	init_anim_editor(&anim_editor);
 }
 
-update_editor :: proc(using editor_state: ^Editor_State, screen_size: [2]f32)
+update_editor :: proc(using editor_state: ^Editor_State, viewport: render.Viewport, input_state: ^input.State)
 {
-	imgui.text_unformatted(fmt.tprint(screen_size));
-	imgui.set_next_window_pos({screen_size.x / 2, 0}, .None);
-    imgui.set_next_window_size({screen_size.x / 2, screen_size.y}, .Once);
+	window_top_left: [2]int = {viewport.top_left.x + viewport.size.x / 2, viewport.top_left.y};
+	
+	imgui.set_next_window_pos(linalg.to_f32(window_top_left), .None);
+    imgui.set_next_window_size({f32(viewport.size.x) / 2, f32(viewport.size.y)}, .Always);
 
 	imgui.begin("editor main", nil, .NoMove | .NoResize | .NoTitleBar);
 
     imgui.checkbox("Show Demo Window", &editor_state.show_demo_window);
 
-	update_sprite_editor(&editor_state.sprite_editor, screen_size);
+	update_sprite_editor(&editor_state.sprite_editor, viewport);
     imgui.separator();
-	update_prefab_editor(&prefab_editor, screen_size);
+	update_prefab_editor(&prefab_editor, input_state, viewport);
 	keyframe : animation.Keyframe(f32);
 	// curve_editor(&anim_editor.curve_editor_state, &anim_editor.anim_curve);
     if editor_state.show_demo_window
@@ -145,7 +147,7 @@ save_sprites :: proc(output_path: string, using editor_state: ^Sprite_Editor_Sta
 	//render.save_sprites_to_file_editor(output_path, );
 }
 
-update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_size: [2]f32)
+update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, viewport: render.Viewport)
 {
 	io := imgui.get_io();
 	extensions := []string{".png"};
@@ -237,7 +239,7 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, screen_si
 		}
 
 		editor_pos : [2]f32 = {0, 0};
-		editor_size : [2]f32 = {screen_size.x / 2, screen_size.y};
+		editor_size : [2]f32 = {f32(viewport.size.x) / 2, f32(viewport.size.y)};
 		imgui.set_next_window_pos(editor_pos, .Always);
 	    imgui.set_next_window_size(editor_size, .Always);
 		imgui.begin("Sprite Editor", nil, .NoMove | .NoResize | .NoTitleBar | .NoScrollbar);
@@ -579,7 +581,7 @@ update_move_anchor_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State,
 	}
 }
 
-compute_sprite_edit_corners :: proc(sprite_rect: geometry.Rect, mouse_pos: [2]f32, precision: f32) -> (out_hovered: bool, out_h: Sprite_Edit_Corner, out_v: Sprite_Edit_Corner)
+compute_sprite_edit_corners :: proc(sprite_rect: geometry.Rect(f32), mouse_pos: [2]f32, precision: f32) -> (out_hovered: bool, out_h: Sprite_Edit_Corner, out_v: Sprite_Edit_Corner)
 {
 	out_hovered = (mouse_pos.x > sprite_rect.pos.x - precision && mouse_pos.y > sprite_rect.pos.y - precision
 		&& mouse_pos.x < sprite_rect.pos.x + sprite_rect.size.x + precision && mouse_pos.y < sprite_rect.pos.y + sprite_rect.size.y + precision);
@@ -634,18 +636,18 @@ load_sprites_for_texture :: proc(using editor_state: ^Sprite_Editor_State, path:
 	}
 }
 
-render_sprite_point :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect, relative_point: [2]f32, color: u32)
+render_sprite_point :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect(f32), relative_point: [2]f32, color: u32)
 {
 	imgui.draw_list_add_circle(draw_list, rect.pos + rect.size * relative_point, 2, color);
 }
 
-render_sprite_rect :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect, color: u32)
+render_sprite_rect :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect(f32), color: u32)
 {
 	imgui.draw_list_add_rect(draw_list, rect.pos, rect.pos + rect.size, color);
 	imgui.draw_list_add_rect_filled(draw_list, rect.pos, rect.pos + rect.size, render.color_replace_alpha(color, 50));
 }
 
-render_sprite_corner :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect, side: Sprite_Side, color: u32)
+render_sprite_corner :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect(f32), side: Sprite_Side, color: u32)
 {
 	top_left := rect.pos;
 	bottom_right := rect.pos + rect.size;
