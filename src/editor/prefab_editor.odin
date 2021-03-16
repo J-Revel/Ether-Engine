@@ -228,13 +228,13 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 				component_type := scene.prefab_tables.tables[components[index].table_index].table.type_id;
 				if component_type == typeid_of(gameplay.Transform)
 				{
-					if edited_component == index + 1
+					if gizmo_state.edited_component == index + 1
 					{
-						if imgui.button("Hide Gizmos") do edited_component = 0;
+						if imgui.button("Hide Gizmos") do gizmo_state.edited_component = 0;
 					}
 					else if imgui.button("Show Gizmos")
 					{
-						edited_component = index + 1;
+						gizmo_state.edited_component = index + 1;
 					}
 				}
 				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &scene.scene_database);
@@ -341,8 +341,8 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 			}
 		}
 	}
-	input_state: input.State;
-	gameplay.update_and_render(&scene, 0, &input_state, viewport);
+	empty_input_state: input.State;
+	gameplay.update_and_render(&scene, 0, &empty_input_state, viewport);
 	sprite_it := container.table_iterator(&scene.sprite_database.sprites);
 	for sprite, sprite_handle in container.table_iterate(&sprite_it)
 	{
@@ -353,33 +353,121 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 		{viewport.size.x / 2, viewport.size.y}
 	};
 
-	update_gizmos(editor_state, &input_state, &scene.camera, scene_viewport);
+	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
 	gameplay.do_render(&scene, scene_viewport);
+}
+
+get_editor_transform_absolute :: proc(components: []objects.Component_Model, component_index: int) -> (position: [2]f32, angle: f32, scale: f32)
+{
+	scale = 1;
+	field := reflect.struct_field_by_name(typeid_of(gameplay.Transform), "parent");
+
+	parent_field := Prefab_Field {
+		component_field = Component_Field {
+			name = "parent",
+			offset_in_component = field.offset,
+		},
+		component_index = component_index,
+	};
+
+	for parent_field.component_index >= 0
+	{
+		transform : ^gameplay.Transform = get_component_data(components, parent_field.component_index, gameplay.Transform);
+		position += transform.pos;
+		scale *= transform.scale;
+		imgui.text_unformatted(fmt.tprint(parent_field.component_index, position));
+		{
+			comp_data := components[parent_field.component_index].data;
+		}
+		metadata_index := get_component_field_metadata_index(components, parent_field);
+		imgui.text_unformatted(fmt.tprint("Metadata index : ", metadata_index));
+		if metadata_index >= 0
+		{
+			metadata, ok := components[parent_field.component_index].data.metadata[metadata_index].(objects.Ref_Metadata);
+			parent_field.component_index = ok ? metadata.component_index : -1;
+		}
+		else
+		{
+			parent_field.component_index = -1;
+		}
+	}
+	return;
+}
+
+draw_gizmo :: proc(components: []objects.Component_Model, component_index: int, color: render.Color, camera: ^render.Camera, viewport: render.Viewport, sprite_renderer: ^render.Sprite_Render_System)
+{
+	transform : ^gameplay.Transform = get_component_data(components[:], component_index, gameplay.Transform);
+		
+	io := imgui.get_io();
+	world_transform_pos, world_transform_angle, world_transform_scale := get_editor_transform_absolute(components[:], component_index);
+	screen_transform_pos := render.world_to_screen(camera, viewport, world_transform_pos);
+	
+	render.render_quad(sprite_renderer, world_transform_pos, {70, 5}, color);
+
+	screen_transform_pos = render.world_to_screen(camera, viewport, world_transform_pos + [2]f32{0, 70});
+	render.render_quad(sprite_renderer, world_transform_pos + [2]f32{0, 70}, {5, 70}, color);
+
 }
 
 update_gizmos :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, camera: ^render.Camera, viewport: render.Viewport)
 {
+	using gizmo_state;
+	for _, component_index in components
+	{
+		draw_gizmo(components[:], component_index, render.Color{0.5, 0.5, 0.5, 0.5}, camera, viewport, &scene.sprite_renderer);
+	}
 	if edited_component > 0
 	{
 		transform : ^gameplay.Transform = get_component_data(components[:], edited_component-1, gameplay.Transform);
 		
 		color: render.Color = {1, 1, 1, 1};
 		io := imgui.get_io();
-		screen_transform_pos := render.world_to_screen(camera, viewport, transform.pos);
-		log.info(io.mouse_pos, screen_transform_pos);
-		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {70, 5}}, linalg.to_int(io.mouse_pos))
+		world_transform_pos, world_transform_angle, world_transform_scale := get_editor_transform_absolute(components[:], edited_component-1);
+		screen_transform_pos := render.world_to_screen(camera, viewport, world_transform_pos);
+		imgui.text_unformatted(fmt.tprint(world_transform_pos));
+
+		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {70, 5}}, input_state.mouse_pos)
 		{
 			color = {1, 0, 0, 1};
+			if input.get_mouse_state(input_state, 0) == .Pressed
+			{
+				dragging = true;
+				drag_action = .Translate_X;
+				drag_start_pos = input_state.mouse_pos;
+			}
 		}
-		render.render_quad(&scene.sprite_renderer, transform.pos, {70, 5}, color);
+		render.render_quad(&scene.sprite_renderer, world_transform_pos, {70, 5}, color);
 
 		color = {1, 1, 1, 1};
-		screen_transform_pos = render.world_to_screen(camera, viewport, transform.pos + [2]f32{0, 70});
-		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {5, 70}}, linalg.to_int(io.mouse_pos))
+		screen_transform_pos = render.world_to_screen(camera, viewport, world_transform_pos + [2]f32{0, 70});
+		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {5, 70}}, input_state.mouse_pos)
 		{
 			color = {1, 0, 0, 1};
+			if input.get_mouse_state(input_state, 0) == .Pressed
+			{
+				dragging = true;
+				drag_action = .Translate_Y;
+				drag_start_pos = input_state.mouse_pos;
+			}
 		}
-		render.render_quad(&scene.sprite_renderer, transform.pos + [2]f32{0, 70}, {5, 70}, color);
+		render.render_quad(&scene.sprite_renderer, world_transform_pos + [2]f32{0, 70}, {5, 70}, color);
+
+		if dragging
+		{
+			if !input.is_down(input.get_mouse_state(input_state, 0))
+			{
+				dragging = false;
+			}
+			#partial switch drag_action
+			{
+				case .Translate_X:
+					transform.pos.x += linalg.to_f32(input_state.mouse_pos - drag_start_pos).x / camera.zoom;
+					drag_start_pos = input_state.mouse_pos;
+				case .Translate_Y:
+					transform.pos.y -= linalg.to_f32(input_state.mouse_pos - drag_start_pos).y / camera.zoom;
+					drag_start_pos = input_state.mouse_pos;
+			}
+		}
 	}
 }
 

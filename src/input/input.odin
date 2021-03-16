@@ -4,9 +4,10 @@ import sdl "shared:odin-sdl2"
 import imgui "../../libs/imgui"
 import "core:log"
 import runtime "core:runtime"
+import "core:math/linalg"
 
 vec2 :: [2]f32;
-ivec2 ::[2]i32;
+ivec2 ::[2]int;
 
 current_frame: int = 1;
 
@@ -171,11 +172,11 @@ update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     io.mouse_down[0] = is_down(get_mouse_state(state, 0));
     io.mouse_down[1] = is_down(get_mouse_state(state, 2));
     io.mouse_down[2] = is_down(get_mouse_state(state, 1));
-
+    
     // Set mouse pos if window is focused
     io.mouse_pos = imgui.Vec2{min(f32), min(f32)};
     if sdl.get_keyboard_focus() == window {
-        state.mouse_pos = {mx, my};
+        state.mouse_pos = [2]int{int(mx), int(my)};
         io.mouse_pos = imgui.Vec2{f32(mx), f32(my)};
     }
 

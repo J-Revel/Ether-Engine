@@ -1,0 +1,66 @@
+{
+	"inputs":[
+	],
+	"components":{
+		"Transform Root":{
+			"type":"transform",
+			"parent":"nil",
+			"pos":[27.000, -145.000],
+			"scale":0.500,
+			"angle":0.000
+		},
+		"Right Cannon Transform":{
+			"type":"transform",
+			"parent":"@Transform Root",
+			"pos":[104.000, 24.000],
+			"scale":1.000,
+			"angle":0.000
+		},
+		"Left Cannon Transform":{
+			"type":"transform",
+			"parent":"@Transform Root",
+			"pos":[-109.000, 24.000],
+			"scale":1.000,
+			"angle":0.000
+		},
+		"Ship Sprite":{
+			"type":"sprite_component",
+			"transform":"@Transform Root",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/spaceship",
+				"sprite_id":"Ship Body"
+			}
+		},
+		"Middle Cannon sprite":{
+			"type":"sprite_component",
+			"transform":"@Middle Cannon Transform",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/spaceship",
+				"sprite_id":"Cannon Red"
+			}
+		},
+		"Middle Cannon Transform":{
+			"type":"transform",
+			"parent":"@Transform Root",
+			"pos":[0.000, 215.000],
+			"scale":1.000,
+			"angle":0.000
+		},
+		"component 6":{
+			"type":"sprite_component",
+			"transform":"@Right Cannon Transform",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/spaceship",
+				"sprite_id":"Cannon Green Left"
+			}
+		},
+		"component 7":{
+			"type":"sprite_component",
+			"transform":"@Left Cannon Transform",
+			"sprite":{
+				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/spaceship",
+				"sprite_id":"Cannon Green Left"
+			}
+		}
+	}
+}

@@ -127,6 +127,21 @@ Editor_Type_Callback :: #type proc
 
 Editor_Type_Callback_List :: map[typeid]Editor_Type_Callback;
 
+Gizmo_Drag_Action :: enum
+{
+	Translate_X,
+	Translate_Y,
+	Rotate,
+}
+
+Gizmo_State :: struct
+{
+	edited_component: int,
+	dragging: bool,
+	drag_start_pos: [2]int,
+	drag_action: Gizmo_Drag_Action,
+}
+
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
@@ -139,7 +154,7 @@ Prefab_Editor_State :: struct
 	instantiated_components: [dynamic]container.Raw_Handle,
 	allocated_data: [dynamic]rawptr,
 	ref_input_popup_field: Prefab_Field,
-	edited_component: int,
+	gizmo_state: Gizmo_State,
 }
 
 /*----------------------------------------------
