@@ -38,7 +38,8 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 
 	component_editor_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
 	component_editor_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
-	// component_editor_callbacks[typeid_of(container.Handle(gameplay.Transform))] = transform_editor_callback;
+	container.table_init(&transform_hierarchy.element_index_table, 500);
+	// component_editor_callbacks[typeid_of(container.Handle(objects.Transform))] = transform_editor_callback;
 }
 
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, viewport: render.Viewport)
@@ -226,7 +227,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 			if component_show
 			{
 				component_type := scene.prefab_tables.tables[components[index].table_index].table.type_id;
-				if component_type == typeid_of(gameplay.Transform)
+				if component_type == typeid_of(objects.Transform)
 				{
 					if gizmo_state.edited_component == index + 1
 					{
@@ -355,12 +356,14 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 
 	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
 	gameplay.do_render(&scene, scene_viewport);
+
+	transform_hierarchy_editor(&transform_hierarchy);
 }
 
 get_editor_transform_absolute :: proc(components: []objects.Component_Model, component_index: int) -> (position: [2]f32, angle: f32, scale: f32)
 {
 	scale = 1;
-	field := reflect.struct_field_by_name(typeid_of(gameplay.Transform), "parent");
+	field := reflect.struct_field_by_name(typeid_of(objects.Transform), "parent");
 
 	parent_field := Prefab_Field {
 		component_field = Component_Field {
@@ -372,7 +375,7 @@ get_editor_transform_absolute :: proc(components: []objects.Component_Model, com
 
 	for parent_field.component_index >= 0
 	{
-		transform : ^gameplay.Transform = get_component_data(components, parent_field.component_index, gameplay.Transform);
+		transform : ^objects.Transform = get_component_data(components, parent_field.component_index, objects.Transform);
 		position += transform.pos;
 		scale *= transform.scale;
 		imgui.text_unformatted(fmt.tprint(parent_field.component_index, position));
@@ -396,7 +399,7 @@ get_editor_transform_absolute :: proc(components: []objects.Component_Model, com
 
 draw_gizmo :: proc(components: []objects.Component_Model, component_index: int, color: render.Color, camera: ^render.Camera, viewport: render.Viewport, sprite_renderer: ^render.Sprite_Render_System)
 {
-	transform : ^gameplay.Transform = get_component_data(components[:], component_index, gameplay.Transform);
+	transform : ^objects.Transform = get_component_data(components[:], component_index, objects.Transform);
 		
 	io := imgui.get_io();
 	world_transform_pos, world_transform_angle, world_transform_scale := get_editor_transform_absolute(components[:], component_index);
@@ -418,7 +421,7 @@ update_gizmos :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^in
 	}
 	if edited_component > 0
 	{
-		transform : ^gameplay.Transform = get_component_data(components[:], edited_component-1, gameplay.Transform);
+		transform : ^objects.Transform = get_component_data(components[:], edited_component-1, objects.Transform);
 		
 		color: render.Color = {1, 1, 1, 1};
 		io := imgui.get_io();

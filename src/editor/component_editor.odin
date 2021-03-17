@@ -296,9 +296,9 @@ sprite_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field,
 transform_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Field, scene_database: ^container.Database)
 {
 	component := components[field.component_index];
-	transform := get_component_field_data(components[:], field, gameplay.Transform);
+	transform := get_component_field_data(components[:], field, objects.Transform);
 	parent_field := field;
-	parent_field.offset_in_component = reflect.struct_field_by_name(gameplay.Transform, "parent").offset;
+	parent_field.offset_in_component = reflect.struct_field_by_name(objects.Transform, "parent").offset;
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	selected_parent_name: string;
 	if metadata_index >= 0

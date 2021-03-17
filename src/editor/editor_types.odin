@@ -155,6 +155,7 @@ Prefab_Editor_State :: struct
 	allocated_data: [dynamic]rawptr,
 	ref_input_popup_field: Prefab_Field,
 	gizmo_state: Gizmo_State,
+	transform_hierarchy: objects.Transform_Hierarchy,
 }
 
 /*----------------------------------------------

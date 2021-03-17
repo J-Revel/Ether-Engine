@@ -34,7 +34,7 @@ Scene :: struct
 	prefab_tables: objects.Named_Table_List,
     color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
-    transforms: Transform_Table,
+    transforms: objects.Transform_Table,
     sprite_components: container.Table(Sprite_Component),
     using sprite_database: render.Sprite_Database,
     using animation_database: animation.Animation_Database,
@@ -108,7 +108,7 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_animation_handle, animation_added := table_add(&animation_configs, test_animation);
 	log.info("Animation added", animation_added);
 	test_anim_param : Animation_Param = {name="test", type_id=typeid_of(f32)};
-	test_anim_param.offset = reflect.struct_field_by_name(typeid_of(Transform), "scale").offset;
+	test_anim_param.offset = reflect.struct_field_by_name(typeid_of(objects.Transform), "scale").offset;
 	for prefab_component in prefab_instance_components
 	{
 		log.info(prefab_component);

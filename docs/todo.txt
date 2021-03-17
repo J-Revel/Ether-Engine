@@ -48,14 +48,34 @@
 				"state": "done"
 			},
 			{
+				"id": "1361615078866029628199",
+				"name": "Better Transform editor (tree display)",
+				"state": "priority"
+			},
+			{
+				"id": "1361615947270526841483",
+				"name": "hierarchy : handle down on first element (and maybe up on last element ?)",
+				"state": "priority"
+			},
+			{
 				"id": "136161481836093111545",
 				"name": "handle transform/sprite rotation",
 				"state": ""
 			},
 			{
-				"id": "1361615078874109364193",
-				"name": "transform gizmos",
+				"id": "1361615854624066409186",
+				"name": "rotation gizmos",
 				"state": ""
+			},
+			{
+				"id": "1361615854632274911495",
+				"name": "scale gizmos",
+				"state": ""
+			},
+			{
+				"id": "1361615078874109364193",
+				"name": "translate gizmos",
+				"state": "done"
 			},
 			{
 				"id": "1361614623628584329388",
@@ -80,7 +100,7 @@
 			{
 				"id": "1361614646656942106964",
 				"name": "use the same menu for sprite selector popup for input  and component",
-				"state": ""
+				"state": "done"
 			},
 			{
 				"id": "136161464670802267314",
@@ -105,11 +125,6 @@
 			{
 				"id": "1361615025625993305544",
 				"name": "Check data allocations on prefab load/ instantiate",
-				"state": ""
-			},
-			{
-				"id": "1361615078866029628199",
-				"name": "Better Transform editor (tree display)",
 				"state": ""
 			},
 			{
