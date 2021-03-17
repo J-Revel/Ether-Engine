@@ -116,6 +116,7 @@ transform_hierarchy_move_element_down :: proc(using hierarchy: ^Transform_Hierar
 	next_elements[next_index-1] = element_index;
 	previous_elements[next_index-1] = previous_index;
 	previous_elements[element_index-1] = next_index;
+	if levels[element_index-1] > levels[next_index-1] + 1 do levels[element_index-1] = levels[next_index-1] + 1;
 }
 
 transform_hierarchy_move_element_up :: proc(using hierarchy: ^Transform_Hierarchy, element: Transform_Hierarchy_Handle)
@@ -136,4 +137,6 @@ transform_hierarchy_move_element_up :: proc(using hierarchy: ^Transform_Hierarch
 	previous_elements[previous_index-1] = element_index;
 	next_elements[previous_index-1] = next_index;
 	next_elements[element_index-1] = previous_index;
+
+	if levels[element_index-1] > levels[previous_index-1] + 1 do levels[element_index-1] = levels[previous_index-1] + 1;
 }
