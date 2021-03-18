@@ -28,9 +28,20 @@ default_struct_editor_delegates: Editor_Delegate_Map =
 	typeid_of(render.Sprite_Handle) = sprite_struct_editor
 };
 
-struct_editor :: proc(data: rawptr, type_id: typeid, scene_database: ^container.Database, delegates: Editor_Delegate_Map = default_struct_editor_delegates) -> bool
+struct_editor :: proc {
+	struct_editor_raw,
+	struct_editor_typed,
+};
+
+struct_editor_raw :: proc(data: rawptr, type_id: typeid, scene_database: ^container.Database, delegates: Editor_Delegate_Map = default_struct_editor_delegates) -> bool
 {
 	type_info := type_info_of(type_id);
+	return struct_editor_rec(data, type_info, delegates, scene_database);
+}
+
+struct_editor_typed :: proc(data: ^$T, scene_database: ^container.Database, delegates: Editor_Delegate_Map = default_struct_editor_delegates) -> bool
+{
+	type_info := type_info_of(T);
 	return struct_editor_rec(data, type_info, delegates, scene_database);
 }
 

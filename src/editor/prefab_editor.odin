@@ -357,7 +357,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
 	gameplay.do_render(&scene, scene_viewport);
 
-	transform_hierarchy_editor(&transform_hierarchy);
+	transform_hierarchy_editor(&transform_hierarchy, &transform_editor_state, input_state);
 }
 
 get_editor_transform_absolute :: proc(components: []objects.Component_Model, component_index: int) -> (position: [2]f32, angle: f32, scale: f32)

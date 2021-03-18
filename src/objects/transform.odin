@@ -87,7 +87,7 @@ transform_hierarchy_add_leaf :: proc(using hierarchy: ^Transform_Hierarchy, tran
 	append(&transforms, transform);
 
 	parent_next_element := next_elements[parent_index-1];
-	previous_elements[parent_next_element-1] = new_element_index;
+	if parent_next_element > 0 do previous_elements[parent_next_element-1] = new_element_index;
 	append(&next_elements, parent_next_element);
 	append(&previous_elements, parent_index);
 	append(&levels, levels[parent_index-1] + 1);
@@ -111,12 +111,14 @@ transform_hierarchy_move_element_down :: proc(using hierarchy: ^Transform_Hierar
 	if next_next > 0 do previous_elements[next_next-1] = element_index;
 	else do last_element_index = element_index;
 
-	next_elements[previous_index-1] = next_index;
+	if previous_index > 0 do next_elements[previous_index-1] = next_index;
+	else do first_element_index = next_index;
 	next_elements[element_index-1] = next_elements[next_index-1];
 	next_elements[next_index-1] = element_index;
 	previous_elements[next_index-1] = previous_index;
 	previous_elements[element_index-1] = next_index;
-	if levels[element_index-1] > levels[next_index-1] + 1 do levels[element_index-1] = levels[next_index-1] + 1;
+
+	transform_hierarchy_fix_levels(hierarchy);
 }
 
 transform_hierarchy_move_element_up :: proc(using hierarchy: ^Transform_Hierarchy, element: Transform_Hierarchy_Handle)
@@ -132,11 +134,41 @@ transform_hierarchy_move_element_up :: proc(using hierarchy: ^Transform_Hierarch
 	if previous_previous > 0 do next_elements[previous_previous-1] = element_index;
 	else do first_element_index = element_index;
 
-	previous_elements[next_index-1] = previous_index;
+	if next_index > 0 do previous_elements[next_index-1] = previous_index;
+	else do last_element_index = previous_index;
 	previous_elements[element_index-1] = previous_elements[previous_index-1];
 	previous_elements[previous_index-1] = element_index;
 	next_elements[previous_index-1] = next_index;
 	next_elements[element_index-1] = previous_index;
 
-	if levels[element_index-1] > levels[previous_index-1] + 1 do levels[element_index-1] = levels[previous_index-1] + 1;
+	transform_hierarchy_fix_levels(hierarchy);
+}
+
+transform_hierarchy_add_level :: proc(using hierarchy: ^Transform_Hierarchy, element: Transform_Hierarchy_Handle, delta_level: int)
+{
+	element_index := container.table_get(&element_index_table, element)^;
+	previous_index := previous_elements[element_index - 1];
+	levels[element_index - 1] += delta_level;
+	if levels[element_index - 1] < 0 do levels[element_index - 1] = 0;
+	if previous_index <= 0 do levels[element_index - 1] = 0;
+	else if levels[previous_index - 1] + 1 < levels[element_index - 1]
+	{
+		levels[element_index - 1] = levels[previous_index - 1] + 1;
+	}
+	transform_hierarchy_fix_levels(hierarchy);
+}
+
+transform_hierarchy_fix_levels :: proc(using hierarchy: ^Transform_Hierarchy)
+{
+	cursor := first_element_index;
+	if levels[cursor - 1] > 0 do levels[cursor - 1] = 0;
+	for cursor > 0 && next_elements[cursor - 1] > 0
+	{
+		next_element := next_elements[cursor - 1];
+		if levels[next_element-1] > levels[cursor - 1] + 1
+		{
+			levels[next_element - 1] = levels[cursor - 1] + 1;
+		}
+		cursor = next_element;
+	}
 }

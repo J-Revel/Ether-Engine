@@ -142,6 +142,11 @@ Gizmo_State :: struct
 	drag_action: Gizmo_Drag_Action,
 }
 
+Transform_Hierarchy_Editor_State :: struct
+{
+	selected_index: int,
+}
+
 Prefab_Editor_State :: struct
 {
 	scene: gameplay.Scene,
@@ -156,6 +161,7 @@ Prefab_Editor_State :: struct
 	ref_input_popup_field: Prefab_Field,
 	gizmo_state: Gizmo_State,
 	transform_hierarchy: objects.Transform_Hierarchy,
+	transform_editor_state: Transform_Hierarchy_Editor_State,
 }
 
 /*----------------------------------------------
