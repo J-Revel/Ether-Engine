@@ -35,7 +35,7 @@ transform_hierarchy_editor :: proc(using hierarchy: ^objects.Transform_Hierarchy
 	}
 	if imgui.button("+")
 	{
-		objects.transform_hierarchy_add_root(hierarchy, {}, "root transform");
+		objects.transform_hierarchy_add_root(hierarchy, {scale = 1}, "root transform");
 	}
 	imgui.pop_id();
 		
@@ -46,7 +46,7 @@ transform_hierarchy_editor :: proc(using hierarchy: ^objects.Transform_Hierarchy
 
 		if input.get_key_state(input_state, .Kp_Plus) == .Pressed
 		{
-			objects.transform_hierarchy_add_leaf(hierarchy, {}, handles[selected_index-1], "leaf transform");
+			objects.transform_hierarchy_add_leaf(hierarchy, {scale = 1}, handles[selected_index-1], "leaf transform");
 		}
 		if input.get_key_state(input_state, .Up) == .Pressed
 		{

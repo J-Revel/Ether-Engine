@@ -172,3 +172,21 @@ transform_hierarchy_fix_levels :: proc(using hierarchy: ^Transform_Hierarchy)
 		cursor = next_element;
 	}
 }
+
+get_transform_parent :: proc(using hierarchy: ^Transform_Hierarchy, transform_handle: Transform_Hierarchy_Handle) -> Transform_Hierarchy_Handle
+{
+	cursor := container.table_get(&element_index_table, transform_handle)^;
+	element_level := levels[cursor-1];
+	for ;cursor > 0;cursor = previous_elements[cursor-1] 
+	{
+		if levels[cursor-1] < element_level do return handles[cursor-1];
+	}
+	return {};
+}
+
+get_absolute_transform :: proc(using hierarchy: ^Transform_Hierarchy, transform_handle: Transform_Hierarchy_Handle) -> Transform
+{
+	result: Transform;
+	
+	return result;
+}
