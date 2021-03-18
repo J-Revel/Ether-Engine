@@ -186,7 +186,20 @@ get_transform_parent :: proc(using hierarchy: ^Transform_Hierarchy, transform_ha
 
 get_absolute_transform :: proc(using hierarchy: ^Transform_Hierarchy, transform_handle: Transform_Hierarchy_Handle) -> Transform
 {
-	result: Transform;
-	
+	result: Transform = {scale = 1};
+	element_index := container.table_get(&transform_handle);
+	parent_list := make([]int, levels[element_index-1] + 1, context.temp_allocator);
+
+	for cursor := element_index; cursor > 0; cursor = previous_elements[cursor-1]
+	{
+		level := levels[cursor - 1];
+		if parent_list[level] == 0 do parent_list[level] = cursor;
+	}
+
+	for i in 0..<len(parent_list)
+	{
+		
+	}
+
 	return result;
 }
