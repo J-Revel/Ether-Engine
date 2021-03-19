@@ -153,7 +153,7 @@ handle_get :: proc(handle: $A/Handle($T), location := #caller_location) -> ^T
 
 handle_remove :: proc(handle: $A/Handle($T))
 {
-	bit_array_set(&handle.table.allocation, handle.id, 0);
+	bit_array_set(&handle.table.allocation, uint(handle.id-1), false);
 }
 
 raw_handle_remove :: proc(handle: Raw_Handle)

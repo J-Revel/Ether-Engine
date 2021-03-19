@@ -2,6 +2,8 @@ package prefab
 
 import "core:log"
 import "core:strings"
+import "core:math"
+
 import "../container"
 
 Transform :: struct
@@ -31,7 +33,7 @@ Transform_Hierarchy :: struct
 	last_element_index: int,
 }
 
-get_transform_absolute :: proc(transform_id: Transform_Handle) -> (pos: [2]f32, angle: f32, scale: f32)
+get_transform_absolute_old :: proc(transform_id: Transform_Handle) -> (pos: [2]f32, angle: f32, scale: f32)
 {
 	scale = 1;
 	for cursor := transform_id; cursor.id > 0;
@@ -144,6 +146,33 @@ transform_hierarchy_move_element_up :: proc(using hierarchy: ^Transform_Hierarch
 	transform_hierarchy_fix_levels(hierarchy);
 }
 
+// TODO : actually release the slot of the removed element
+transform_hierarchy_remove :: proc(using hierarchy: ^Transform_Hierarchy, element: Transform_Hierarchy_Handle)
+{
+	element_index := container.table_get(&element_index_table, element)^;
+	container.handle_remove(element);
+	previous_index := previous_elements[element_index-1];
+	next_index := next_elements[element_index-1];
+
+	if previous_index > 0
+	{
+		next_elements[previous_index-1] = next_index;
+	}
+	else 
+	{
+		first_element_index = next_index;
+	}
+	if next_index > 0
+	{
+		previous_elements[next_index-1] = previous_index;
+	}
+	else
+	{
+		last_element_index = previous_index;
+	}
+	transform_hierarchy_fix_levels(hierarchy);
+}
+
 transform_hierarchy_add_level :: proc(using hierarchy: ^Transform_Hierarchy, element: Transform_Hierarchy_Handle, delta_level: int)
 {
 	element_index := container.table_get(&element_index_table, element)^;
@@ -187,18 +216,26 @@ get_transform_parent :: proc(using hierarchy: ^Transform_Hierarchy, transform_ha
 get_absolute_transform :: proc(using hierarchy: ^Transform_Hierarchy, transform_handle: Transform_Hierarchy_Handle) -> Transform
 {
 	result: Transform = {scale = 1};
-	element_index := container.table_get(&transform_handle);
+	element_index := container.table_get(&element_index_table, transform_handle)^;
 	parent_list := make([]int, levels[element_index-1] + 1, context.temp_allocator);
 
 	for cursor := element_index; cursor > 0; cursor = previous_elements[cursor-1]
 	{
 		level := levels[cursor - 1];
-		if parent_list[level] == 0 do parent_list[level] = cursor;
+		if level < len(parent_list) && parent_list[level] == 0 do parent_list[level] = cursor;
 	}
 
 	for i in 0..<len(parent_list)
 	{
-		
+		parent_transform := transforms[parent_list[i] - 1];
+
+		local_right: [2]f32 = {math.cos(result.angle), math.sin(result.angle)};
+		using math;
+		local_up: [2]f32 = {math.cos(result.angle + PI / 2), math.sin(result.angle + PI / 2)};
+		result.pos += parent_transform.pos.x * local_right * result.scale;
+		result.pos += parent_transform.pos.y * local_up * result.scale;
+		result.angle += parent_transform.angle;
+		result.scale *= parent_transform.scale;
 	}
 
 	return result;

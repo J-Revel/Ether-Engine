@@ -4,12 +4,14 @@ import sdl "shared:odin-sdl2"
 import "core:strings"
 import "core:log"
 import gl "shared:odin-gl";
-import "../container"
 import "core:os"
 import "core:encoding/json"
 import "core:sort"
 import "core:fmt"
 import "core:runtime"
+import "core:math"
+
+import "../container"
 import "../../libs/imgui"
 
 @(private="package")
@@ -576,8 +578,49 @@ render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]
     append(&render_buffer.index, start_index + 3);
 }
 
-// TODO : system to load/save sprites
+render_rotated_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, angle: f32, pivot: [2]f32, color: Color)
+{
+    start_index := cast(u32) len(render_buffer.vertex);
+    
+    if container.is_valid(render_buffer.current_texture)
+    {
+        index_count := len(render_buffer.render_system.index);
+        append(&render_buffer.passes, Sprite_Render_Pass {
+                render_buffer.current_texture, 
+                index_count - render_buffer.current_pass_index
+        });
+        render_buffer.current_pass_index = index_count;
+        render_buffer.current_texture = {};
+    }
 
+    vertex_data : Sprite_Vertex_Data;
+    bottom_left_point := pos - size * pivot;
+    right := [2]f32{math.cos(angle), math.sin(angle)};
+    up := [2]f32{math.cos(angle + math.PI / 2), math.sin(angle + math.PI / 2)};
+
+    vertex_data.pos = bottom_left_point;
+    vertex_data.color = color;
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = bottom_left_point + right * size.x;
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = bottom_left_point + right * size.x + up * size.y;
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = bottom_left_point + up * size.y;
+
+    append(&render_buffer.vertex, vertex_data);
+
+    append(&render_buffer.index, start_index);
+    append(&render_buffer.index, start_index + 1);
+    append(&render_buffer.index, start_index + 2);
+    append(&render_buffer.index, start_index + 0);
+    append(&render_buffer.index, start_index + 2);
+    append(&render_buffer.index, start_index + 3);
+}
+
+// TODO : system to load/save sprites
 render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera, viewport: Viewport)
 {
     upload_buffer_data(&render_system.render_system);

@@ -2,6 +2,7 @@ package editor;
 
 import "core:fmt"
 import "core:log"
+import "core:math"
 
 import "../../libs/imgui"
 
@@ -9,7 +10,13 @@ import "../objects"
 import "../container"
 import "../input"
 
-transform_hierarchy_editor :: proc(using hierarchy: ^objects.Transform_Hierarchy, using editor_state: ^Transform_Hierarchy_Editor_State, input_state: ^input.State)
+import "../render"
+
+
+transform_hierarchy_editor :: proc(
+	using hierarchy: ^objects.Transform_Hierarchy,
+	using editor_state: ^Transform_Hierarchy_Editor_State,
+	input_state: ^input.State)
 {
 	imgui.separator();
 	cursor := first_element_index;
@@ -78,10 +85,52 @@ transform_hierarchy_editor :: proc(using hierarchy: ^objects.Transform_Hierarchy
 		{
 			objects.transform_hierarchy_add_level(hierarchy, handles[selected_index-1], -1);
 		}
+		if input.get_key_state(input_state, .Delete) == .Pressed
+		{
+			to_remove := handles[selected_index-1];
+			selected_index = next_elements[selected_index-1];
+			objects.transform_hierarchy_remove(hierarchy, to_remove);
+		}
+	}
+	if selected_index > 0
+	{
 		container_database: container.Database;
 		imgui.input_float2("pos", &transforms[selected_index-1].pos.x);
-		imgui.input_float("angle", &transforms[selected_index-1].angle);
+		angle := transforms[selected_index-1].angle * 180 / math.PI;
+		if imgui.drag_float("angle", &angle, 1)
+		{
+			transforms[selected_index-1].angle = angle * math.PI / 180;
+		}
 		imgui.input_float("scale", &transforms[selected_index-1].scale);
 		imgui.separator();
+	}
+}
+
+draw_transform_gizmo :: proc(transform: ^objects.Transform, color: render.Color, camera: ^render.Camera, viewport: render.Viewport, sprite_renderer: ^render.Sprite_Render_System)
+{
+	screen_transform_pos := render.world_to_screen(camera, viewport, transform.pos);
+	
+	render.render_rotated_quad(sprite_renderer, transform.pos, {70, 5} * transform.scale, transform.angle, {0, 0}, color);
+
+	render.render_rotated_quad(sprite_renderer, transform.pos, {70, 5} * transform.scale, transform.angle + math.PI / 2, {0, 0}, color);
+}
+
+transform_hierarchy_gizmos :: proc(
+		using hierarchy: ^objects.Transform_Hierarchy,
+		using editor_state: ^Transform_Hierarchy_Editor_State,
+		input_state: ^input.State, 
+		camera: ^render.Camera, 
+		viewport: render.Viewport, 
+		renderer: ^render.Sprite_Render_System)
+{
+	for cursor := first_element_index; cursor > 0; cursor = next_elements[cursor - 1]
+	{
+		color := render.Color{0.5, 0.5, 0.5, 0.5};
+		if selected_index == cursor
+		{
+			color = render.Color{1, 0, 0, 1};
+		}
+		absolute_transform := objects.get_absolute_transform(hierarchy, handles[cursor-1]);
+		draw_transform_gizmo(&absolute_transform, color, camera, viewport, renderer);
 	}
 }

@@ -357,7 +357,14 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
 	gameplay.do_render(&scene, scene_viewport);
 
-	transform_hierarchy_editor(&transform_hierarchy, &transform_editor_state, input_state);
+	transform_hierarchy_editor(&transform_hierarchy, 
+		&transform_editor_state, 
+		input_state);
+	transform_hierarchy_gizmos(&transform_hierarchy, 
+		&transform_editor_state,
+		input_state, &scene.camera,
+		scene_viewport, 
+		&editor_state.scene.sprite_renderer);
 }
 
 get_editor_transform_absolute :: proc(components: []objects.Component_Model, component_index: int) -> (position: [2]f32, angle: f32, scale: f32)
@@ -409,7 +416,6 @@ draw_gizmo :: proc(components: []objects.Component_Model, component_index: int, 
 
 	screen_transform_pos = render.world_to_screen(camera, viewport, world_transform_pos + [2]f32{0, 70});
 	render.render_quad(sprite_renderer, world_transform_pos + [2]f32{0, 70}, {5, 70}, color);
-
 }
 
 update_gizmos :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, camera: ^render.Camera, viewport: render.Viewport)
