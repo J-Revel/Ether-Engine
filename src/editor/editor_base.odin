@@ -83,7 +83,7 @@ apply_style :: proc()
 	style.colors = colors;
 }
 
-init_editor :: proc(using editor_state: ^Editor_State)
+init_editor :: proc(using editor_state: ^Editor_State, sprite_db: ^render.Sprite_Database)
 {
 
 	container.table_init(&editor_state.sprite_editor.loaded_textures, 10);
@@ -96,7 +96,7 @@ init_editor :: proc(using editor_state: ^Editor_State)
 
 	sprite_editor.file_selection_data.current_path = strings.clone("resources/textures");
 
-	init_prefab_editor(&prefab_editor);
+	init_prefab_editor(&prefab_editor, sprite_db);
 	init_anim_editor(&anim_editor);
 }
 

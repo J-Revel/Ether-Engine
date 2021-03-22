@@ -13,6 +13,7 @@ import "core:math"
 
 import "../container"
 import "../../libs/imgui"
+import "../objects"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -473,7 +474,11 @@ init_sprite_renderer :: proc (result: ^Render_State) -> bool
     return true;
 }
 
-render_sprite :: proc(render_buffer: ^Sprite_Render_System, using sprite: ^Sprite, pos: [2]f32, color: Color, scale: f32)
+render_sprite :: proc(
+    render_buffer: ^Sprite_Render_System, 
+    using sprite: ^Sprite, 
+    using absolute_transform: objects.Transform, 
+    color: Color)
 {
     start_index := cast(u32) len(render_buffer.vertex);
     texture_data := container.handle_get(texture);
@@ -649,4 +654,10 @@ clear_sprite_render_buffer :: proc(render_system: ^Sprite_Render_System)
     clear(&render_system.vertex);
     clear(&render_system.passes);
     render_system.current_texture = {};
+}
+
+init_sprite_database :: proc(using db: ^Sprite_Database, texture_cap : uint = 100, sprite_cap : uint = 200)
+{
+    container.table_init(&textures, texture_cap);
+    container.table_init(&sprites, sprite_cap);
 }

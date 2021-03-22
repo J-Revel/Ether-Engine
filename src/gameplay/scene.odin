@@ -35,42 +35,44 @@ Scene :: struct
     color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
     transforms: objects.Transform_Table,
+    transform_hierarchy: objects.Transform_Hierarchy,
     sprite_components: container.Table(Sprite_Component),
-    using sprite_database: render.Sprite_Database,
+    using sprite_database: ^render.Sprite_Database,
     using animation_database: animation.Animation_Database,
 
     scene_database: container.Database,
 }
 
-init_empty_scene :: proc(using scene: ^Scene)
+init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 {
-	container.table_init(&textures, 100);
-	container.table_init(&sprites, 200);
+	sprite_database = sprite_db;
 	objects.table_database_add_init(&prefab_tables, "transform", &transforms, 10000);
 	objects.table_database_add_init(&prefab_tables, "sprite_component", &sprite_components, 500);
-	
+	objects.transform_hierarchy_init(&transform_hierarchy, 5000);
+
 	animation.init_animation_database(&prefab_tables, &animation_database);
 
-	container.database_add(&scene_database, &sprite_database);
+	container.database_add(&scene_database, sprite_database);
 	container.database_add(&scene_database, &animation_database);
+	container.database_add(&scene_database, &transform_hierarchy);
 
 	render.init_sprite_renderer(&sprite_renderer.render_state);
 	render.init_color_renderer(&color_renderer.render_state);
-	
+
 	camera.zoom = 1;
 }
 
 test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32){0, 0}, animation.Keyframe(f32){0.5, 1}, animation.Keyframe(f32){0.75, 0.5}, animation.Keyframe(f32){1, 1} };
-init_main_scene :: proc(using scene: ^Scene)
+init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 {
 	using container;
-	init_empty_scene(scene);
+	init_empty_scene(scene, sprite_db);
 
 
 	render.load_sprites_from_file("test.sprites", &textures, &sprites);
-
-	spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
-	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(&sprite_database, "spaceship_2");
+	/*
+	spaceship_sprite, sprite_found := render.get_sprite_any_texture(sprite_database, "spaceship");
+	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
 	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;
 
 	prefab_instance, ok := objects.load_prefab("config/prefabs/buildings/ship.prefab", &prefab_tables, &load_metadata_dispatcher);
@@ -79,7 +81,13 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_input["pos"] = [2]f32{10, 50};
 	test_input["scale"] = f32(0.1);
 
-	prefab_instance_components, _ := objects.prefab_instantiate(&prefab_tables, &prefab_instance, test_input, {});
+	
+	prefab_instance_components, _ := objects.prefab_instantiate(
+		&prefab_tables,
+		&prefab_instance,
+		test_input,
+		{},
+		&scene.scene_database);
 	it := container.table_iterator(&transforms);
 	for transform in container.table_iterate(&it)
 	{
@@ -90,7 +98,12 @@ init_main_scene :: proc(using scene: ^Scene)
 	test_input["pos"] = [2]f32{-350, 0};
 	test_input["scale"] = f32(0.5);
 
-	objects.prefab_instantiate(&prefab_tables, &prefab_instance, test_input, {});
+	objects.prefab_instantiate(
+		&prefab_tables,
+		&prefab_instance,
+		test_input, 
+		{}, 
+		&scene.scene_database);
 
 	using animation;
 
@@ -126,6 +139,7 @@ init_main_scene :: proc(using scene: ^Scene)
 		params = params_array,
 	};
 	table_add(&animation_players, animation_player);
+	*/
 }
 
 time : f32 = 0;
@@ -141,7 +155,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 
 	// spaceship_sprite_data := container.handle_get(spaceship_sprite);
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
-	render_sprite_components(&scene.sprite_renderer, &sprite_components);
+	render_sprite_components(&transform_hierarchy, &sprite_renderer, &sprite_components);
 
 	ui.reset_ctx(&ui_ctx, input_state, linalg.to_f32(viewport.size));
 	

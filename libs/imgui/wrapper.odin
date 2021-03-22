@@ -316,21 +316,21 @@ swr_igDragFloat :: proc(label: string, v: ^f32, v_speed: f32, v_min: f32, v_max:
 }
 
 // AUTO_GENERATED for 'igDragFloat2'
-swr_igDragFloat2 :: proc(label: string, v: [2]f32, v_speed: f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
+swr_igDragFloat2 :: proc(label: string, v: ^[2]f32, v_speed: f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str5 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igDragFloat2(str0, v, v_speed, v_min, v_max, str5, flags);
 }
 
 // AUTO_GENERATED for 'igDragFloat3'
-swr_igDragFloat3 :: proc(label: string, v: [3]f32, v_speed: f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
+swr_igDragFloat3 :: proc(label: string, v: ^[3]f32, v_speed: f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str5 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igDragFloat3(str0, v, v_speed, v_min, v_max, str5, flags);
 }
 
 // AUTO_GENERATED for 'igDragFloat4'
-swr_igDragFloat4 :: proc(label: string, v: [4]f32, v_speed: f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
+swr_igDragFloat4 :: proc(label: string, v: ^[4]f32, v_speed: f32, v_min: f32, v_max: f32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str5 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igDragFloat4(str0, v, v_speed, v_min, v_max, str5, flags);
@@ -352,21 +352,21 @@ swr_igDragInt :: proc(label: string, v: ^i32, v_speed: f32, v_min: i32, v_max: i
 }
 
 // AUTO_GENERATED for 'igDragInt2'
-swr_igDragInt2 :: proc(label: string, v: [2]i32, v_speed: f32, v_min: i32, v_max: i32, format: string, flags: Slider_Flags) -> bool {
+swr_igDragInt2 :: proc(label: string, v: ^[2]i32, v_speed: f32, v_min: i32, v_max: i32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str5 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igDragInt2(str0, v, v_speed, v_min, v_max, str5, flags);
 }
 
 // AUTO_GENERATED for 'igDragInt3'
-swr_igDragInt3 :: proc(label: string, v: [3]i32, v_speed: f32, v_min: i32, v_max: i32, format: string, flags: Slider_Flags) -> bool {
+swr_igDragInt3 :: proc(label: string, v: ^[3]i32, v_speed: f32, v_min: i32, v_max: i32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str5 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igDragInt3(str0, v, v_speed, v_min, v_max, str5, flags);
 }
 
 // AUTO_GENERATED for 'igDragInt4'
-swr_igDragInt4 :: proc(label: string, v: [4]i32, v_speed: f32, v_min: i32, v_max: i32, format: string, flags: Slider_Flags) -> bool {
+swr_igDragInt4 :: proc(label: string, v: ^[4]i32, v_speed: f32, v_min: i32, v_max: i32, format: string, flags: Slider_Flags) -> bool {
 	str0 := strings.clone_to_cstring(label, context.temp_allocator);
 	str5 := strings.clone_to_cstring(format, context.temp_allocator);
 	return igDragInt4(str0, v, v_speed, v_min, v_max, str5, flags);

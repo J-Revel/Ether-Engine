@@ -7,20 +7,21 @@ import "../objects"
 
 Sprite_Component :: struct
 {
-	transform: objects.Transform_Handle,
+	transform: objects.Transform_Hierarchy_Handle,
 	sprite: render.Sprite_Handle,
 }
 
-render_sprite_components :: proc(render_buffer: ^render.Sprite_Render_System, table: ^container.Table(Sprite_Component))
+render_sprite_components :: proc(hierarchy: ^objects.Transform_Hierarchy, render_buffer: ^render.Sprite_Render_System, table: ^container.Table(Sprite_Component))
 {
 	it := container.table_iterator(table);
     for sprite_component, sprite_handle in container.table_iterate(&it)
     {
-    	pos, angle, scale := objects.get_transform_absolute_old(sprite_component.transform);
-    	if container.is_valid(sprite_component.sprite)
-    	{
+        log.info(sprite_component.transform, sprite_component.sprite);
+        if container.is_valid(sprite_component.transform) && container.is_valid(sprite_component.sprite)
+        {
+            absolute_transform := objects.get_absolute_transform(hierarchy, sprite_component.transform);
 	    	sprite := container.handle_get(sprite_component.sprite);
-	    	render.render_sprite(render_buffer, sprite, pos, {1, 1, 1, 1}, scale);
+	    	render.render_sprite(render_buffer, sprite, absolute_transform, {1, 1, 1, 1});
     	}
     }
 }
