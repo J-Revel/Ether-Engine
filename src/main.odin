@@ -89,13 +89,16 @@ main :: proc() {
         io := imgui.get_io();
         screen_size: [2]int;
 
+        sprite_database: render.Sprite_Database;
+        render.init_sprite_database(&sprite_database, 200, 200);
+
         sceneInstance : gameplay.Scene;
-        gameplay.init_main_scene(&sceneInstance);
+        gameplay.init_main_scene(&sceneInstance, &sprite_database);
 
 
         editor_state: editor.Editor_State;
         show_editor := false;
-        editor.init_editor(&editor_state);
+        editor.init_editor(&editor_state, &sprite_database);
 
         last_frame_tick := time.tick_now();
         sample_frame_times: [FRAME_SAMPLE_COUNT]f32;

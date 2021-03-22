@@ -150,16 +150,18 @@ Prefab_Editor_State :: struct
 	scene: gameplay.Scene,
 	components: [dynamic]objects.Component_Model,
 	inputs: [dynamic]Prefab_Editor_Input,
+	transform_hierarchy: objects.Transform_Hierarchy,
+	
 	components_history: [dynamic][]objects.Component_Model,
 	component_editor_callbacks: Editor_Callback_List,
 	input_types: [dynamic]objects.Prefab_Input,
 	z_down: bool,
-	instantiated_components: [dynamic]container.Raw_Handle,
 	allocated_data: [dynamic]rawptr,
 	ref_input_popup_field: Prefab_Field,
 	gizmo_state: Gizmo_State,
-	transform_hierarchy: objects.Transform_Hierarchy,
 	transform_editor_state: Transform_Hierarchy_Editor_State,
+
+	editor_database: container.Database,
 }
 
 /*----------------------------------------------

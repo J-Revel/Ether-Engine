@@ -6,6 +6,14 @@ import "core:log"
 import "core:reflect"
 import "core:fmt"
 
+bit_array_clear :: proc(bit_array: ^Bit_Array)
+{
+	for i in 0..<len(bit_array)
+	{
+		bit_array[i] = 0;
+	}
+}
+
 bit_array_set :: proc(bit_array: ^Bit_Array, bit: uint, value: bool)
 {
 	array_index := bit / 32;
@@ -185,6 +193,16 @@ table_copy :: proc(target: ^$A/Table($T), model: ^Table(T))
 	}
 	mem.copy(target.allocation.data, model.allocation.data, int(model.allocation.cap * size_of(u32)));
 	mem.copy(target.data, model.data, int(model.allocation.cap * 32 * size_of(T)));
+}
+
+table_clear :: proc(table: ^$A/Table($T))
+{
+	bit_array_clear(&table.allocation);
+}
+
+table_clear_raw :: proc(table: ^Raw_Table)
+{
+	bit_array_clear(&table.allocation);
 }
 
 raw_table_copy :: proc(target: ^Raw_Table, model: ^Raw_Table)

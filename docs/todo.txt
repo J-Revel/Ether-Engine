@@ -50,17 +50,32 @@
 			{
 				"id": "1361615078866029628199",
 				"name": "Better Transform editor (tree display)",
-				"state": "priority"
+				"state": "done"
 			},
 			{
 				"id": "1361615947270526841483",
 				"name": "hierarchy : handle down on first element (and maybe up on last element ?)",
-				"state": "priority"
+				"state": "done"
 			},
 			{
 				"id": "136161481836093111545",
 				"name": "handle transform/sprite rotation",
-				"state": ""
+				"state": "done"
+			},
+			{
+				"id": "1361616114010546129672",
+				"name": "Link of component and transform hierarchy systems",
+				"state": "done"
+			},
+			{
+				"id": "1361616379488691836225",
+				"name": "Handle sprite rotation",
+				"state": "priority"
+			},
+			{
+				"id": "1361616379493562931835",
+				"name": "fix sprite rendering",
+				"state": "priority"
 			},
 			{
 				"id": "1361615854624066409186",
@@ -114,7 +129,7 @@
 			},
 			{
 				"id": "1361614808226537108837",
-				"name": "Check if RenderSystem/RenderBuffer system still ok with the SpriteRenderBuffer",
+				"name": "Check if RenderSystem/RenderBuffer system still ok with the SpriteRenderBuffer (maybe remove the colorRenderSystem ?)",
 				"state": ""
 			},
 			{
@@ -155,6 +170,11 @@
 			{
 				"id": "1361615418647371482419",
 				"name": "make helper functions to handle raw_handle to generic_handle conversion (used in components_instantiate)",
+				"state": ""
+			},
+			{
+				"id": "1361616111939705554420",
+				"name": "fix memory leak in transform hierarchy remove (//TODO)",
 				"state": ""
 			}
 		],

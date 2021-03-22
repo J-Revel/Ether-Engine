@@ -8,6 +8,7 @@ import "core:encoding/json"
 import "core:runtime"
 import "core:strconv"
 import "core:strings"
+import "core:slice"
 
 import "../container"
 import "../serialization"
@@ -113,24 +114,104 @@ table_database_add_init :: proc(prefab_tables: ^Named_Table_List, name: string, 
 	log.info("Create database", name);
 }
 
-prefab_instantiate_dynamic :: proc(prefab_tables: ^Named_Table_List, prefab: ^Dynamic_Prefab, input_data: map[string]any, metadata_dispatcher: ^Instantiate_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate_dynamic :: proc(
+	prefab_tables: ^Named_Table_List,
+	prefab: ^Dynamic_Prefab,
+	input_data: map[string]any,
+	metadata_dispatcher: ^Instantiate_Metadata_Dispatcher,
+	scene_database: ^container.Database)
+-> (out_components: []Named_Raw_Handle, 
+	out_transforms: []Prefab_Instance_Transform, 
+	success: bool)
 {
-	return components_instantiate(prefab_tables, prefab.components[:], prefab.inputs[:], input_data, metadata_dispatcher);
+	return components_instantiate(
+		prefab_tables,
+		&prefab.transform_hierarchy,
+		prefab.components[:],
+		prefab.inputs[:],
+		input_data,
+		metadata_dispatcher,
+		scene_database,
+	);
 }
 
-prefab_instantiate :: proc(prefab_tables: ^Named_Table_List, prefab: ^Prefab, input_data: map[string]any, metadata_dispatcher: ^Instantiate_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
+prefab_instantiate :: proc(
+	prefab_tables: ^Named_Table_List,
+	prefab: ^Prefab,
+	input_data: map[string]any,
+	metadata_dispatcher: ^Instantiate_Metadata_Dispatcher,
+	scene_database: ^container.Database)
+-> (out_components: []Named_Raw_Handle, 
+	out_transforms: []Prefab_Instance_Transform, 
+	success: bool)
 {
-	return components_instantiate(prefab_tables, prefab.components, prefab.inputs, input_data, metadata_dispatcher);
+	return components_instantiate(
+		prefab_tables,
+		&prefab.transform_hierarchy,
+		prefab.components,
+		prefab.inputs,
+		input_data,
+		metadata_dispatcher,
+		scene_database,
+	);
 }
 
-components_instantiate :: proc(prefab_tables: ^Named_Table_List, components: []Component_Model, inputs: []Prefab_Input, input_data: map[string]any, metadata_dispatcher: ^Instantiate_Metadata_Dispatcher) -> (out_components: []Named_Raw_Handle, success: bool)
+Prefab_Instance_Transform :: struct {
+	origin: Transform_Hierarchy_Handle,
+	target: Transform_Hierarchy_Handle
+};
+
+components_instantiate :: proc(
+	prefab_tables: ^Named_Table_List, 
+	prefab_transforms: ^Transform_Hierarchy,
+	components: []Component_Model,
+	inputs: []Prefab_Input,
+	input_data: map[string]any,
+	metadata_dispatcher: ^Instantiate_Metadata_Dispatcher,
+	scene_database: ^container.Database) 
+-> (out_components: []Named_Raw_Handle, 
+	out_transforms: []Prefab_Instance_Transform, 
+	success: bool)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(components), context.temp_allocator);
-	component_handles := make([]container.Raw_Handle, len(components), context.allocator); // TODO : can use temp allocator instead ?
+
+	// TODO : used non temp allocator before => to check ?
+	component_handles := make([]container.Raw_Handle, len(components), context.temp_allocator);
 	component_sizes := make([]int, len(components), context.temp_allocator);
 
 	out_components = make([]Named_Raw_Handle, len(components), context.temp_allocator);
+
+	scene_transform_hierarchy := container.database_get(scene_database, Transform_Hierarchy);
+	
+	stack: [dynamic]Prefab_Instance_Transform;
+	spawned_transforms: [dynamic]Prefab_Instance_Transform;
+
+	for cursor := prefab_transforms.first_element_index; cursor > 0; cursor = prefab_transforms.next_elements[cursor-1]
+	{
+		using prefab_transforms;
+		current_level := levels[cursor-1];
+		if current_level >= len(stack)
+		{
+			append(&stack, Prefab_Instance_Transform{});
+		}
+		local_transform := prefab_transforms.transforms[cursor-1];
+		name := prefab_transforms.names[cursor-1];
+
+		new_stack_element := Prefab_Instance_Transform{origin = handles[cursor-1]};
+		if current_level == 0
+		{
+			new_stack_element.target = transform_hierarchy_add_root(scene_transform_hierarchy, local_transform, name);
+		}
+		else
+		{
+			new_stack_element.target = transform_hierarchy_add_leaf(scene_transform_hierarchy, local_transform, stack[current_level-1].target, name);
+		}
+		append(&spawned_transforms, new_stack_element);
+		stack[current_level] = new_stack_element;
+	}
+
+	out_transforms = slice.clone(spawned_transforms[:], context.temp_allocator);
 
 	for component, i in components
 	{

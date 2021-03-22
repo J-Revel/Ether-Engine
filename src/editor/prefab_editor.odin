@@ -23,13 +23,19 @@ import "../animation"
 import "../input"
 import "../serialization"
 
-init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
+init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, sprite_database: ^render.Sprite_Database)
 {
-	gameplay.init_empty_scene(&scene);
+	gameplay.init_empty_scene(&scene, sprite_database);
+
+	container.database_add(&editor_database, sprite_database);
+	container.database_add(&editor_database, &transform_hierarchy);
+
+	objects.transform_hierarchy_init(&transform_hierarchy, 5000);
 	for type in objects.default_input_types
 	{
 		append(&input_types, type);
 	}
+
 	for component_type in &scene.prefab_tables.component_types
 	{
 		component_editor_callbacks.elements[component_type.handle_type_id] = handle_component_editor_callback;
@@ -38,8 +44,8 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 
 	component_editor_callbacks.elements[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
 	component_editor_callbacks.elements[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
-	container.table_init(&transform_hierarchy.element_index_table, 500);
-	// component_editor_callbacks[typeid_of(container.Handle(objects.Transform))] = transform_editor_callback;
+	
+	component_editor_callbacks.elements[typeid_of(objects.Transform_Hierarchy_Handle)] = transform_editor_callback;
 }
 
 update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, viewport: render.Viewport)
@@ -238,7 +244,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 						gizmo_state.edited_component = index + 1;
 					}
 				}
-				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &scene.scene_database);
+				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &editor_database);
 				imgui.columns(1);
 				if imgui.button("Remove Component")
 				{
@@ -284,15 +290,15 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 
 	// if imgui.button("Update Display")
 	{
-		for instantiated_component in instantiated_components
+		for table in &scene.prefab_tables.tables
 		{
-			container.raw_handle_remove(instantiated_component);
+			container.table_clear_raw(&table.table);
 		}
+		objects.clear_transform_hierarchy(&scene.transform_hierarchy);
 		for to_free in allocated_data
 		{
 			mem.free(to_free);
 		}
-		clear(&instantiated_components);
 		clear(&allocated_data);
 		input_values: map[string]any;
 		input_data := make([]objects.Prefab_Input, len(inputs), context.temp_allocator);
@@ -310,7 +316,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 					assert(table_found);
 					component, add_ok := container.table_add_raw(&table, input.display_value);
 					assert(add_ok);
-					append(&instantiated_components, component);
 					handle_data := mem.alloc(size_of(container.Raw_Handle), align_of(container.Raw_Handle));
 					mem.copy(handle_data, &component, size_of(container.Raw_Handle));
 					append(&allocated_data, handle_data);
@@ -320,27 +325,48 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 
 		metadata_dispatcher: objects.Instantiate_Metadata_Dispatcher;
 		sprite_metadata_dispatch_table := objects.init_instantiate_metadata_dispatch_type(&metadata_dispatcher, render.Sprite_Handle);
+		transform_metadata_dispatch_table := objects.init_instantiate_metadata_dispatch_type(&metadata_dispatcher, objects.Transform_Hierarchy_Handle);
 
-		components, success := objects.components_instantiate(&scene.prefab_tables, components[:], input_data, input_values, &metadata_dispatcher);
-		it := container.table_iterator(sprite_metadata_dispatch_table);
-		for sprite_metadata in container.table_iterate(&it)
+		components, new_transforms, success := objects.components_instantiate(
+			&scene.prefab_tables, 
+			&transform_hierarchy, 
+			components[:], 
+			input_data, 
+			input_values,
+			&metadata_dispatcher,
+			&scene.scene_database,
+		);
+		sprite_it := container.table_iterator(sprite_metadata_dispatch_table);
+		for sprite_metadata in container.table_iterate(&sprite_it)
 		{
 			assert(sprite_metadata.metadata_type_id == typeid_of(render.Sprite_Asset));
 			sprite_asset := cast(^render.Sprite_Asset)sprite_metadata.metadata;
 			component_data := container.handle_get_raw(components[sprite_metadata.component_index].value);
 			target_sprite_handle := cast(^render.Sprite_Handle)(uintptr(component_data) + sprite_metadata.offset_in_component);
 			ok: bool;
-			target_sprite_handle^, ok = render.get_or_load_sprite(&scene.sprite_database, sprite_asset^);
+			target_sprite_handle^, ok = render.get_or_load_sprite(scene.sprite_database, sprite_asset^);
 			// assert(ok);
 		}
-		assert(success);
-		if success
+		transform_it := container.table_iterator(transform_metadata_dispatch_table);
+		for transform_metadata in container.table_iterate(&transform_it)
 		{
-			for component in components
+			assert(transform_metadata.metadata_type_id == typeid_of(objects.Transform_Metadata));
+			prefab_transform_handle := (cast(^objects.Transform_Metadata)transform_metadata.metadata).transform_handle;
+			component_data := container.handle_get_raw(components[transform_metadata.component_index].value);
+			target_transform_handle := cast(^objects.Transform_Hierarchy_Handle)(uintptr(component_data) + transform_metadata.offset_in_component);
+			
+			spawned_transform_handle: objects.Transform_Hierarchy_Handle;
+			for instance_transform in new_transforms
 			{
-				append(&instantiated_components, component.value);
+				if instance_transform.origin == prefab_transform_handle
+				{
+					target_transform_handle^ = instance_transform.target;
+					break;
+				}
 			}
 		}
+
+		assert(success);
 	}
 	empty_input_state: input.State;
 	gameplay.update_and_render(&scene, 0, &empty_input_state, viewport);
@@ -357,14 +383,19 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
 	gameplay.do_render(&scene, scene_viewport);
 
-	transform_hierarchy_editor(&transform_hierarchy, 
+	transform_hierarchy_editor(
+		&transform_hierarchy, 
 		&transform_editor_state, 
-		input_state);
-	transform_hierarchy_gizmos(&transform_hierarchy, 
+		input_state,
+	);
+	transform_hierarchy_gizmos(
+		&transform_hierarchy, 
 		&transform_editor_state,
 		input_state, &scene.camera,
 		scene_viewport, 
-		&editor_state.scene.sprite_renderer);
+		&editor_state.scene.sprite_renderer,
+	);
+	ui_print_transform_hierarchy(&scene.transform_hierarchy);
 }
 
 get_editor_transform_absolute :: proc(components: []objects.Component_Model, component_index: int) -> (position: [2]f32, angle: f32, scale: f32)

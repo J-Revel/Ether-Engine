@@ -113,12 +113,14 @@ Prefab_Input :: struct
 
 Dynamic_Prefab :: struct
 {
+	transform_hierarchy: Transform_Hierarchy,
 	components: [dynamic]Component_Model,
 	inputs: [dynamic]Prefab_Input
 }
 
 Prefab :: struct
 {
+	transform_hierarchy: Transform_Hierarchy,
 	components: []Component_Model,
 	inputs: []Prefab_Input,
 }

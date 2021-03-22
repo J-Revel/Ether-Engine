@@ -18,19 +18,40 @@ Transform_Handle :: container.Handle(Transform);
 Transform_Table :: container.Table(Transform);
 Transform_Hierarchy_Handle :: container.Handle(int);
 
-
-
 Transform_Hierarchy :: struct
 {
 	element_index_table: container.Table(int),
-	transforms: [dynamic]Transform,
-	names: [dynamic]string,
-	levels: [dynamic]int,
-	next_elements: [dynamic]int,
-	previous_elements: [dynamic]int,
-	handles: [dynamic]Transform_Hierarchy_Handle,
+	transforms: 		[dynamic]Transform,
+	names: 				[dynamic]string,
+	levels: 			[dynamic]int,
+	next_elements: 		[dynamic]int,
+	previous_elements: 	[dynamic]int,
+	handles: 			[dynamic]Transform_Hierarchy_Handle,
 	first_element_index: int,
 	last_element_index: int,
+}
+
+Transform_Metadata :: struct
+{
+	transform_handle: Transform_Hierarchy_Handle,
+}
+
+transform_hierarchy_init :: proc(hierarchy: ^Transform_Hierarchy, capacity: int, allocator := context.allocator)
+{
+	container.table_init(&hierarchy.element_index_table, 500);
+}
+
+clear_transform_hierarchy :: proc(using hierarchy: ^Transform_Hierarchy)
+{
+	container.table_clear(&element_index_table);
+	clear(&transforms);
+	clear(&names);
+	clear(&levels);
+	clear(&next_elements);
+	clear(&previous_elements);
+	clear(&handles);
+	first_element_index = 0;
+	last_element_index = 0;
 }
 
 get_transform_absolute_old :: proc(transform_id: Transform_Handle) -> (pos: [2]f32, angle: f32, scale: f32)
@@ -71,14 +92,18 @@ transform_hierarchy_add_root :: proc(using hierarchy: ^Transform_Hierarchy, tran
 	append(&levels, 0);
 	append(&names, strings.clone(name));
 	append(&handles, result);
-	log.info(next_elements);
 
 	last_element_index = new_element_index;
 	if first_element_index <= 0 do first_element_index = new_element_index;
 	return result;
 }
 
-transform_hierarchy_add_leaf :: proc(using hierarchy: ^Transform_Hierarchy, transform: Transform, parent: Transform_Hierarchy_Handle, name: string) -> Transform_Hierarchy_Handle
+transform_hierarchy_add_leaf :: proc(
+	using hierarchy: ^Transform_Hierarchy,
+	transform: Transform,
+	parent: Transform_Hierarchy_Handle,
+	name: string)
+-> Transform_Hierarchy_Handle
 {
 	new_element_index := len(transforms)+1;
 	result, ok := container.table_add(&element_index_table, new_element_index);
@@ -211,6 +236,13 @@ get_transform_parent :: proc(using hierarchy: ^Transform_Hierarchy, transform_ha
 		if levels[cursor-1] < element_level do return handles[cursor-1];
 	}
 	return {};
+}
+
+get_local_transform :: proc(using hierarchy: ^Transform_Hierarchy, transform_handle: Transform_Hierarchy_Handle) -> Transform
+{
+	element_index := container.table_get(&element_index_table, transform_handle)^;
+
+	return transforms[element_index - 1];
 }
 
 get_absolute_transform :: proc(using hierarchy: ^Transform_Hierarchy, transform_handle: Transform_Hierarchy_Handle) -> Transform
