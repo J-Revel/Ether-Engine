@@ -32,12 +32,12 @@ init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State)
 	}
 	for component_type in &scene.prefab_tables.component_types
 	{
-		component_editor_callbacks[component_type.handle_type_id] = handle_component_editor_callback;
+		component_editor_callbacks.elements[component_type.handle_type_id] = handle_component_editor_callback;
 		append(&input_types, objects.Prefab_Input{component_type.name, component_type});
 	}
 
-	component_editor_callbacks[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
-	component_editor_callbacks[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
+	component_editor_callbacks.elements[typeid_of([]animation.Animation_Param)] = animation_player_editor_callback;
+	component_editor_callbacks.elements[typeid_of(render.Sprite_Handle)] = sprite_editor_callback;
 	container.table_init(&transform_hierarchy.element_index_table, 500);
 	// component_editor_callbacks[typeid_of(container.Handle(objects.Transform))] = transform_editor_callback;
 }
@@ -685,8 +685,13 @@ input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_F
 	return modified;
 }
 
+Editor_Callback_List :: struct
+{
+	elements: map[typeid]Editor_Type_Callback,
+}
+
 //component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: map[typeid]Editor_Type_Callback)
-component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: map[typeid]Editor_Type_Callback, scene_database: ^container.Database)
+component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int, component_editor_callbacks: Editor_Callback_List, scene_database: ^container.Database)
 {
 	component := &components[component_index];
 	component_table := prefab_tables.tables[component.table_index];
@@ -699,7 +704,7 @@ component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int,
 	component_data := any{component.data.data, component_type_id};
 	
 	field_cursor := Prefab_Field{{component.id, 0, component_type_id}, component_index};
-	callback, callback_found := component_editor_callbacks[component_type_id];
+	callback, callback_found := component_editor_callbacks.elements[component_type_id];
 	if callback_found
 	{
 		callback(prefab, field_cursor, scene_database);
@@ -728,7 +733,7 @@ component_editor_root :: proc(using prefab: Editor_Prefab, component_index: int,
 	}
 }
 
-component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
+component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	type_info := type_info_of(field.type_id);
 	#partial switch variant in type_info.variant
@@ -742,7 +747,7 @@ component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, f
 				imgui.tree_pop();
 			}
 		case runtime.Type_Info_Named:
-			if field.type_id in component_editor_callbacks
+			if field.type_id in component_editor_callbacks.elements
 			{
 				imgui.text_unformatted(base_name);
 				imgui.next_column();
@@ -765,7 +770,7 @@ component_field_header :: proc(using prefab: Editor_Prefab, base_name: string, f
 	return;
 }
 
-component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
+component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Callback_List, scene_database: ^container.Database) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 
@@ -813,7 +818,7 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 
 	imgui.same_line();
 	type_info := type_info_of(field.type_id);
-	callback, callback_found := component_editor_callbacks[field.type_id];
+	callback, callback_found := component_editor_callbacks.elements[field.type_id];
 	if callback_found
 	{
 		callback(prefab, field, scene_database);
@@ -936,7 +941,12 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 
 }
 
-component_editor_child :: proc(using prefab: Editor_Prefab, base_name: string, field: Prefab_Field, component_editor_callbacks: Editor_Type_Callback_List, scene_database: ^container.Database) -> (modified: bool)
+component_editor_child :: proc(using prefab: Editor_Prefab, 
+	base_name: string, 
+	field: Prefab_Field, 
+	component_editor_callbacks: Editor_Callback_List, 
+	scene_database: ^container.Database
+	) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	imgui.push_id(base_name);
