@@ -505,6 +505,9 @@ render_sprite :: proc(
     render_size := texture_size * clip_size;
 
     vertex_data : Sprite_Vertex_Data;
+    right := [2]f32{math.cos(angle), math.sin(angle)} * render_size.x;
+    up := [2]f32{math.cos(angle + math.PI / 2), math.sin(angle + math.PI / 2)} * render_size.y;
+
     left_pos := pos.x - render_size.x * anchor.x * scale;
     right_pos := pos.x + render_size.x * (1 - anchor.x) * scale;
     top_pos := pos.y - render_size.y * anchor.y * scale;
@@ -515,20 +518,20 @@ render_sprite :: proc(
     top_uv := clip.pos.y;
     bottom_uv := clip.pos.y + clip_size.y;
 
-    vertex_data.pos = [2]f32{left_pos, top_pos};
+    vertex_data.pos = pos - right * anchor.x * scale - up * anchor.y * scale;
     vertex_data.color = color;
     vertex_data.uv = clip.pos + {0, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = [2]f32{right_pos, top_pos};
+    vertex_data.pos = pos + right * (1 - anchor.x) * scale - up * anchor.y * scale;
     vertex_data.uv = clip.pos + {clip_size.x, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = [2]f32{left_pos, bottom_pos};
+    vertex_data.pos = pos - right * anchor.x * scale + up * (1 - anchor.y) * scale;
     vertex_data.uv = clip.pos + {0, 0};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = [2]f32{right_pos, bottom_pos};
+    vertex_data.pos = pos + right * (1 - anchor.x) * scale + up * (1 - anchor.y) * scale; 
     vertex_data.uv = clip.pos + {clip_size.x, 0};
     append(&render_buffer.vertex, vertex_data);
 
