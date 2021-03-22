@@ -233,17 +233,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 			if component_show
 			{
 				component_type := scene.prefab_tables.tables[components[index].table_index].table.type_id;
-				if component_type == typeid_of(objects.Transform)
-				{
-					if gizmo_state.edited_component == index + 1
-					{
-						if imgui.button("Hide Gizmos") do gizmo_state.edited_component = 0;
-					}
-					else if imgui.button("Show Gizmos")
-					{
-						gizmo_state.edited_component = index + 1;
-					}
-				}
+				
 				component_editor_root({&scene.prefab_tables, components[:], inputs[:]}, index, component_editor_callbacks, &editor_database);
 				imgui.columns(1);
 				if imgui.button("Remove Component")
@@ -451,64 +441,64 @@ draw_gizmo :: proc(components: []objects.Component_Model, component_index: int, 
 
 update_gizmos :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^input.State, camera: ^render.Camera, viewport: render.Viewport)
 {
-	using gizmo_state;
-	for _, component_index in components
-	{
-		draw_gizmo(components[:], component_index, render.Color{0.5, 0.5, 0.5, 0.5}, camera, viewport, &scene.sprite_renderer);
-	}
-	if edited_component > 0
-	{
-		transform : ^objects.Transform = get_component_data(components[:], edited_component-1, objects.Transform);
+	// using gizmo_state;
+	// for _, component_index in components
+	// {
+	// 	draw_gizmo(components[:], component_index, render.Color{0.5, 0.5, 0.5, 0.5}, camera, viewport, &scene.sprite_renderer);
+	// }
+	// if edited_component > 0
+	// {
+	// 	transform : ^objects.Transform = get_component_data(components[:], edited_component-1, objects.Transform);
 		
-		color: render.Color = {1, 1, 1, 1};
-		io := imgui.get_io();
-		world_transform_pos, world_transform_angle, world_transform_scale := get_editor_transform_absolute(components[:], edited_component-1);
-		screen_transform_pos := render.world_to_screen(camera, viewport, world_transform_pos);
-		imgui.text_unformatted(fmt.tprint(world_transform_pos));
+	// 	color: render.Color = {1, 1, 1, 1};
+	// 	io := imgui.get_io();
+	// 	world_transform_pos, world_transform_angle, world_transform_scale := get_editor_transform_absolute(components[:], edited_component-1);
+	// 	screen_transform_pos := render.world_to_screen(camera, viewport, world_transform_pos);
+	// 	imgui.text_unformatted(fmt.tprint(world_transform_pos));
 
-		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {70, 5}}, input_state.mouse_pos)
-		{
-			color = {1, 0, 0, 1};
-			if input.get_mouse_state(input_state, 0) == .Pressed
-			{
-				dragging = true;
-				drag_action = .Translate_X;
-				drag_start_pos = input_state.mouse_pos;
-			}
-		}
-		render.render_quad(&scene.sprite_renderer, world_transform_pos, {70, 5}, color);
+	// 	if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {70, 5}}, input_state.mouse_pos)
+	// 	{
+	// 		color = {1, 0, 0, 1};
+	// 		if input.get_mouse_state(input_state, 0) == .Pressed
+	// 		{
+	// 			dragging = true;
+	// 			drag_action = .Translate_X;
+	// 			drag_start_pos = input_state.mouse_pos;
+	// 		}
+	// 	}
+	// 	render.render_quad(&scene.sprite_renderer, world_transform_pos, {70, 5}, color);
 
-		color = {1, 1, 1, 1};
-		screen_transform_pos = render.world_to_screen(camera, viewport, world_transform_pos + [2]f32{0, 70});
-		if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {5, 70}}, input_state.mouse_pos)
-		{
-			color = {1, 0, 0, 1};
-			if input.get_mouse_state(input_state, 0) == .Pressed
-			{
-				dragging = true;
-				drag_action = .Translate_Y;
-				drag_start_pos = input_state.mouse_pos;
-			}
-		}
-		render.render_quad(&scene.sprite_renderer, world_transform_pos + [2]f32{0, 70}, {5, 70}, color);
+	// 	color = {1, 1, 1, 1};
+	// 	screen_transform_pos = render.world_to_screen(camera, viewport, world_transform_pos + [2]f32{0, 70});
+	// 	if geometry.is_in_rect(geometry.Rect(int){screen_transform_pos, {5, 70}}, input_state.mouse_pos)
+	// 	{
+	// 		color = {1, 0, 0, 1};
+	// 		if input.get_mouse_state(input_state, 0) == .Pressed
+	// 		{
+	// 			dragging = true;
+	// 			drag_action = .Translate_Y;
+	// 			drag_start_pos = input_state.mouse_pos;
+	// 		}
+	// 	}
+	// 	render.render_quad(&scene.sprite_renderer, world_transform_pos + [2]f32{0, 70}, {5, 70}, color);
 
-		if dragging
-		{
-			if !input.is_down(input.get_mouse_state(input_state, 0))
-			{
-				dragging = false;
-			}
-			#partial switch drag_action
-			{
-				case .Translate_X:
-					transform.pos.x += linalg.to_f32(input_state.mouse_pos - drag_start_pos).x / camera.zoom;
-					drag_start_pos = input_state.mouse_pos;
-				case .Translate_Y:
-					transform.pos.y -= linalg.to_f32(input_state.mouse_pos - drag_start_pos).y / camera.zoom;
-					drag_start_pos = input_state.mouse_pos;
-			}
-		}
-	}
+	// 	if dragging
+	// 	{
+	// 		if !input.is_down(input.get_mouse_state(input_state, 0))
+	// 		{
+	// 			dragging = false;
+	// 		}
+	// 		#partial switch drag_action
+	// 		{
+	// 			case .Translate_X:
+	// 				transform.pos.x += linalg.to_f32(input_state.mouse_pos - drag_start_pos).x / camera.zoom;
+	// 				drag_start_pos = input_state.mouse_pos;
+	// 			case .Translate_Y:
+	// 				transform.pos.y -= linalg.to_f32(input_state.mouse_pos - drag_start_pos).y / camera.zoom;
+	// 				drag_start_pos = input_state.mouse_pos;
+	// 		}
+	// 	}
+	// }
 }
 
 get_component_field_data :: proc
@@ -627,6 +617,7 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 		metadata_count = slice_remove_at(component.data.metadata[0:metadata_count], metadata_to_remove[:]);
 	}
 	ordered_remove(&components, to_remove_index);
+	log.info(components);
 }
 
 input_ref_combo :: proc(using prefab: Editor_Prefab, id: string, field: Prefab_Field) -> bool

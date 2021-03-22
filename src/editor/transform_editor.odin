@@ -137,7 +137,7 @@ transform_hierarchy_editor :: proc(
 		{
 			transforms[selected_index-1].angle = angle * math.PI / 180;
 		}
-		imgui.input_float("scale", &transforms[selected_index-1].scale);
+		imgui.drag_float("scale", &transforms[selected_index-1].scale, 0.01);
 		imgui.separator();
 	}
 }

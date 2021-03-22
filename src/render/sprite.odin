@@ -594,8 +594,8 @@ render_rotated_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, s
     {
         index_count := len(render_buffer.render_system.index);
         append(&render_buffer.passes, Sprite_Render_Pass {
-                render_buffer.current_texture, 
-                index_count - render_buffer.current_pass_index
+            render_buffer.current_texture, 
+            index_count - render_buffer.current_pass_index
         });
         render_buffer.current_pass_index = index_count;
         render_buffer.current_texture = {};
@@ -628,22 +628,21 @@ render_rotated_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, s
     append(&render_buffer.index, start_index + 3);
 }
 
-// TODO : system to load/save sprites
 render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera, viewport: Viewport)
 {
     upload_buffer_data(&render_system.render_system);
     index_cursor := 0;
 
+    texture_id: u32 = render_system.render_state.default_texture;
     for pass in render_system.passes
     {
-        texture_id: u32 = render_system.render_state.default_texture;
         if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
         gl.BindTexture(gl.TEXTURE_2D, texture_id);
         render_buffer_content_part(&render_system.render_system, camera, viewport, index_cursor, pass.index_count);
         index_cursor += pass.index_count;
         imgui.text_unformatted(fmt.tprint(pass.texture.id, pass.index_count));
     }
-    texture_id: u32 = render_system.render_state.default_texture;
+    texture_id = render_system.render_state.default_texture;
     if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
     render_buffer_content_part(&render_system.render_system, camera, viewport, index_cursor, len(render_system.render_system.index) - index_cursor);

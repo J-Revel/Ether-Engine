@@ -215,7 +215,7 @@ transform_hierarchy_add_level :: proc(using hierarchy: ^Transform_Hierarchy, ele
 transform_hierarchy_fix_levels :: proc(using hierarchy: ^Transform_Hierarchy)
 {
 	cursor := first_element_index;
-	if levels[cursor - 1] > 0 do levels[cursor - 1] = 0;
+	if cursor > 0 && levels[cursor - 1] > 0 do levels[cursor - 1] = 0;
 	for cursor > 0 && next_elements[cursor - 1] > 0
 	{
 		next_element := next_elements[cursor - 1];

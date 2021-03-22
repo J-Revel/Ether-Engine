@@ -158,7 +158,6 @@ Prefab_Editor_State :: struct
 	z_down: bool,
 	allocated_data: [dynamic]rawptr,
 	ref_input_popup_field: Prefab_Field,
-	gizmo_state: Gizmo_State,
 	transform_editor_state: Transform_Hierarchy_Editor_State,
 
 	editor_database: container.Database,

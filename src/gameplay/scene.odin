@@ -46,7 +46,6 @@ Scene :: struct
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 {
 	sprite_database = sprite_db;
-	objects.table_database_add_init(&prefab_tables, "transform", &transforms, 10000);
 	objects.table_database_add_init(&prefab_tables, "sprite_component", &sprite_components, 500);
 	objects.transform_hierarchy_init(&transform_hierarchy, 5000);
 
