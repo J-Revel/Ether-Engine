@@ -8,7 +8,6 @@ import "../container"
 
 Transform :: struct
 {
-	parent: container.Handle(Transform),
 	pos: [2]f32, // position relative to parent
 	scale: f32,
 	angle: f32
@@ -17,6 +16,8 @@ Transform :: struct
 Transform_Handle :: container.Handle(Transform);
 Transform_Table :: container.Table(Transform);
 Transform_Hierarchy_Handle :: container.Handle(int);
+
+Transform_UID :: distinct int;
 
 Transform_Hierarchy :: struct
 {
@@ -27,18 +28,19 @@ Transform_Hierarchy :: struct
 	next_elements: 		[dynamic]int,
 	previous_elements: 	[dynamic]int,
 	handles: 			[dynamic]Transform_Hierarchy_Handle,
+	uids:				[dynamic]Transform_UID,
 	first_element_index: int,
 	last_element_index: int,
+
+	next_uid: Transform_UID,
 }
 
-Transform_Metadata :: struct
-{
-	transform_handle: Transform_Hierarchy_Handle,
-}
+Transform_Metadata :: Transform_UID; 
 
 transform_hierarchy_init :: proc(hierarchy: ^Transform_Hierarchy, capacity: int, allocator := context.allocator)
 {
 	container.table_init(&hierarchy.element_index_table, 500);
+	hierarchy.next_uid = 1;
 }
 
 clear_transform_hierarchy :: proc(using hierarchy: ^Transform_Hierarchy)
@@ -50,28 +52,9 @@ clear_transform_hierarchy :: proc(using hierarchy: ^Transform_Hierarchy)
 	clear(&next_elements);
 	clear(&previous_elements);
 	clear(&handles);
+	clear(&uids);
 	first_element_index = 0;
 	last_element_index = 0;
-}
-
-get_transform_absolute_old :: proc(transform_id: Transform_Handle) -> (pos: [2]f32, angle: f32, scale: f32)
-{
-	scale = 1;
-	for cursor := transform_id; cursor.id > 0;
-	{
-		cursor_data := container.handle_get(cursor);
-		if cursor_data != nil
-		{
-			pos += cursor_data.pos;
-			cursor = cursor_data.parent;
-			scale *= cursor_data.scale;
-		}
-		else
-		{
-			cursor = {};
-		}
-	}
-	return;
 }
 
 transform_hierarchy_add_root :: proc(using hierarchy: ^Transform_Hierarchy, transform: Transform, name: string) -> Transform_Hierarchy_Handle
@@ -92,6 +75,8 @@ transform_hierarchy_add_root :: proc(using hierarchy: ^Transform_Hierarchy, tran
 	append(&levels, 0);
 	append(&names, strings.clone(name));
 	append(&handles, result);
+	append(&uids, next_uid);
+	next_uid += 1;
 
 	last_element_index = new_element_index;
 	if first_element_index <= 0 do first_element_index = new_element_index;
@@ -120,6 +105,8 @@ transform_hierarchy_add_leaf :: proc(
 	append(&levels, levels[parent_index-1] + 1);
 	append(&names, strings.clone(name));
 	append(&handles, result);
+	append(&uids, next_uid);
+	next_uid += 1;
 
 	next_elements[parent_index-1] = new_element_index;
 	return result;
@@ -271,4 +258,13 @@ get_absolute_transform :: proc(using hierarchy: ^Transform_Hierarchy, transform_
 	}
 
 	return result;
+}
+
+find_transform_from_uid :: proc(using hierarchy: ^Transform_Hierarchy, uid: Transform_UID) -> (handle: Transform_Hierarchy_Handle, index: int)
+{
+	for i in 0..len(uids) 
+	{
+		if uids[i] == uid do return handles[i], i + 1;
+	}
+	return {}, 0;
 }

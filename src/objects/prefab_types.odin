@@ -152,3 +152,9 @@ Named_Table_List :: struct {
 	tables: [dynamic]Named_Table,
 	component_types: [dynamic]Component_Type,
 }
+
+Prefab_Instance_Transform :: struct {
+	handle: Transform_Hierarchy_Handle
+	uid: Transform_UID,
+};
+

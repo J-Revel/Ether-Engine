@@ -341,16 +341,17 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 		for transform_metadata in container.table_iterate(&transform_it)
 		{
 			assert(transform_metadata.metadata_type_id == typeid_of(objects.Transform_Metadata));
-			prefab_transform_handle := (cast(^objects.Transform_Metadata)transform_metadata.metadata).transform_handle;
+			prefab_transform_uid := (cast(^objects.Transform_Metadata)transform_metadata.metadata);
+
 			component_data := container.handle_get_raw(components[transform_metadata.component_index].value);
 			target_transform_handle := cast(^objects.Transform_Hierarchy_Handle)(uintptr(component_data) + transform_metadata.offset_in_component);
 			
 			spawned_transform_handle: objects.Transform_Hierarchy_Handle;
 			for instance_transform in new_transforms
 			{
-				if instance_transform.origin == prefab_transform_handle
+				if instance_transform.uid == prefab_transform_uid^
 				{
-					target_transform_handle^ = instance_transform.target;
+					target_transform_handle^ = instance_transform.handle;
 					break;
 				}
 			}
@@ -371,7 +372,6 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 	};
 
 	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
-	gameplay.do_render(&scene, scene_viewport);
 
 	transform_hierarchy_editor(
 		&transform_hierarchy, 
@@ -385,6 +385,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 		scene_viewport, 
 		&editor_state.scene.sprite_renderer,
 	);
+	gameplay.do_render(&scene, scene_viewport);
 	ui_print_transform_hierarchy(&scene.transform_hierarchy);
 }
 
@@ -1099,6 +1100,25 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 		}
 		serialization.json_write_close_body(file, &write_state, "]");
 		write_state.has_precedent = true;
+		serialization.json_write_member(file, "transforms", &write_state);
+		
+		{
+			serialization.json_write_body(file, &write_state, "[", "]");
+			for cursor := transform_hierarchy.first_element_index; cursor > 0; cursor = transform_hierarchy.next_elements[cursor-1]
+			{
+				serialization.json_write_body(file, &write_state);
+				serialization.json_write_member(file, "name", &write_state);
+				serialization.json_write_value(file, transform_hierarchy.names[cursor-1], &write_state);
+				serialization.json_write_member(file, "level", &write_state);
+				level := transform_hierarchy.levels[cursor-1];
+				serialization.json_write_scalar(file, level, &write_state);
+				serialization.json_write_member(file, "transform", &write_state);
+				{
+					serialization.json_write_body(file, &write_state);
+					serialization.json_write_struct(file, &transform_hierarchy.transforms[cursor-1], type_info_of(objects.Transform), &write_state);
+				}
+			}
+		}
 		serialization.json_write_member(file, "components", &write_state);
 		serialization.json_write_open_body(file, &write_state);
 		{

@@ -22,6 +22,7 @@ transform_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Fie
 	parent_field.offset_in_component = reflect.struct_field_by_name(objects.Transform, "parent").offset;
 	metadata_index := get_component_field_metadata_index(components[:], field);
 	selected_name: string;
+	selected_transform_uid: objects.Transform_UID;
 	selected_transform_index: int;
 	if metadata_index >= 0
 	{
@@ -33,8 +34,9 @@ transform_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Fie
 				panic("Input metadata for transform handle");
 			case objects.Type_Specific_Metadata:
 				assert(metadata_type.metadata_type_id == typeid_of(objects.Transform_Metadata));
-				transform_handle := cast(^objects.Transform_Metadata)metadata_type.data;
-				selected_transform_index = container.table_get(&hierarchy.element_index_table, transform_handle.transform_handle)^;
+				transform_uid := cast(^objects.Transform_Metadata)metadata_type.data;
+				selected_transform_uid = transform_uid^;
+				_, selected_transform_index = objects.find_transform_from_uid(hierarchy, selected_transform_uid); 
 				selected_name = hierarchy.names[selected_transform_index-1];
 		}
 	}
@@ -44,7 +46,7 @@ transform_editor_callback :: proc(using prefab: Editor_Prefab, field: Prefab_Fie
 		{
 			if imgui.selectable(hierarchy.names[cursor-1], cursor == selected_transform_index)
 			{
-				new_transform_metadata := objects.Transform_Metadata{hierarchy.handles[cursor-1]};
+				new_transform_metadata := hierarchy.uids[cursor-1];
 				new_metadata := to_type_specific_metadata_raw(field.type_id, &new_transform_metadata, type_info_of(objects.Transform_Metadata));
 				set_component_field_metadata(components[:], field, new_metadata);
 			}

@@ -5,6 +5,9 @@ import "../render"
 import "core:log"
 import "../objects"
 
+import "../../libs/imgui"
+import "core:fmt"
+
 Sprite_Component :: struct
 {
 	transform: objects.Transform_Hierarchy_Handle,
@@ -16,7 +19,7 @@ render_sprite_components :: proc(hierarchy: ^objects.Transform_Hierarchy, render
 	it := container.table_iterator(table);
     for sprite_component, sprite_handle in container.table_iterate(&it)
     {
-        log.info(sprite_component.transform, sprite_component.sprite);
+        imgui.text_unformatted(fmt.tprint(sprite_component.transform, sprite_component.sprite));
         if container.is_valid(sprite_component.transform) && container.is_valid(sprite_component.sprite)
         {
             absolute_transform := objects.get_absolute_transform(hierarchy, sprite_component.transform);

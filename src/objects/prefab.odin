@@ -156,11 +156,6 @@ prefab_instantiate :: proc(
 	);
 }
 
-Prefab_Instance_Transform :: struct {
-	origin: Transform_Hierarchy_Handle,
-	target: Transform_Hierarchy_Handle
-};
-
 components_instantiate :: proc(
 	prefab_tables: ^Named_Table_List, 
 	prefab_transforms: ^Transform_Hierarchy,
@@ -198,14 +193,14 @@ components_instantiate :: proc(
 		local_transform := prefab_transforms.transforms[cursor-1];
 		name := prefab_transforms.names[cursor-1];
 
-		new_stack_element := Prefab_Instance_Transform{origin = handles[cursor-1]};
+		new_stack_element := Prefab_Instance_Transform{uid = uids[cursor-1]};
 		if current_level == 0
 		{
-			new_stack_element.target = transform_hierarchy_add_root(scene_transform_hierarchy, local_transform, name);
+			new_stack_element.handle = transform_hierarchy_add_root(scene_transform_hierarchy, local_transform, name);
 		}
 		else
 		{
-			new_stack_element.target = transform_hierarchy_add_leaf(scene_transform_hierarchy, local_transform, stack[current_level-1].target, name);
+			new_stack_element.handle = transform_hierarchy_add_leaf(scene_transform_hierarchy, local_transform, stack[current_level-1].handle, name);
 		}
 		append(&spawned_transforms, new_stack_element);
 		stack[current_level] = new_stack_element;

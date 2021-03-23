@@ -149,6 +149,20 @@ json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocat
 	return result;
 }
 
+@(deferred_in=json_write_body_end)
+json_write_body :: proc(file: os.Handle, using write_state: ^Json_Write_State, open_char := "{", close_char := "}")
+{
+    json_write_open_body(file, write_state, open_char);
+}
+
+json_write_body_end :: proc(file: os.Handle, using write_state: ^Json_Write_State, open_char := "{", close_char := "}")
+{
+	os.write_string(file, "\n");
+	has_precedent = true;
+	tab_count -= 1;
+	json_write_tabs(file, write_state);
+	os.write_string(file, close_char);
+}
 
 json_write_open_body :: proc(file: os.Handle, using write_state: ^Json_Write_State, character := "{")
 {
@@ -190,6 +204,12 @@ json_write_value :: #force_inline proc(file: os.Handle, name: string, using writ
 	output_value, was_allocation := strings.replace_all(name, "\\", "/", context.temp_allocator);
 	os.write_string(file, output_value);
 	os.write_byte(file, '\"');
+	has_precedent = true;
+}
+
+json_write_scalar :: #force_inline proc(file: os.Handle, value: $T, using write_state: ^Json_Write_State)
+{
+	os.write_string(file, fmt.tprint(value));
 	has_precedent = true;
 }
 
