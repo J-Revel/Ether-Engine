@@ -488,14 +488,17 @@ load_prefab :: proc(
 			append(&transforms, transform_instance);
 			append(&names, main_json_object["name"].value.(json.String));
 			append(&levels, parse_json_int(main_json_object["level"]));
-			append(&next_elements, 0,);
-			if index > 0 do next_elements[index] = index + 1;
+			append(&next_elements, 0);
+			if index > 0 do next_elements[index-1] = index + 1;
 			append(&previous_elements, index);
 			new_transform_handle, ok := container.table_add(&element_index_table, index+1);
 			assert(ok);
 			append(&handles, new_transform_handle);
 			uid := parse_json_int(main_json_object["uid"]);
 			append(&uids, cast(Transform_UID)uid);
+			log.info(uids);
+			log.info(next_elements);
+			log.info(previous_elements);
 		}
 		prefab.transform_hierarchy.first_element_index = 1;
 		prefab.transform_hierarchy.last_element_index = len(prefab.transform_hierarchy.handles);
