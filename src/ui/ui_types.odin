@@ -54,10 +54,19 @@ Layout :: struct
 	cursor: [2]f32,
 }
 
+Layout_Group :: struct
+{
+	layouts: [dynamic]Layout,
+	cursor: int,
+}
+
+Layout_Stack :: [dynamic]Layout_Group;
+
 UI_Context :: struct
 {
 	draw_list: Draw_List,
 	state_storage: map[UIID]int,
+
 	mouse_pos: [2]f32,
 	mouse_click: bool,
 	hovered_element: uintptr,
@@ -65,6 +74,5 @@ UI_Context :: struct
 	current_element: uintptr,
 	current_element_pos: [2]f32,
 	current_element_size: [2]f32,
-	current_layout: Layout,
-	layouts: [dynamic]Layout,
+	layout_stack: Layout_Stack,
 }

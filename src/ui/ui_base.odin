@@ -6,17 +6,49 @@ import "core:hash"
 import "core:runtime"
 import "../input"
 
-reset_ctx :: proc(ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
+reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
 {
-	ui_ctx.mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
-	ui_ctx.hovered_element = ui_ctx.next_hovered_element;
-	ui_ctx.next_hovered_element = 0;
-	ui_ctx.mouse_click = input.get_mouse_state(input_state, 0) == input.Key_State.Pressed;
-	ui_ctx.current_layout = Layout{
+	mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
+	hovered_element = ui_ctx.next_hovered_element;
+	next_hovered_element = 0;
+	mouse_click = input.get_mouse_state(input_state, 0) == input.Key_State.Pressed;
+	clear(&layout_stack);
+	base_layout := Layout{
 		pos = {0, 0}, size = screen_size,
 		direction = .Vertical,
-		cursor = {0, 0}
+		cursor = {0, 0},
 	};
+	push_layout_group(ui_ctx);
+	add_layout_to_group(ui_ctx, base_layout);
+}
+
+push_layout_group :: proc(using ui_ctx: ^UI_Context)
+{
+	new_layout_group: Layout_Group;
+	append(&layout_stack, new_layout_group);
+}
+
+pop_layout_group :: proc(using ui_ctx: ^UI_Context)
+{
+	pop(&layout_stack);
+}
+
+add_layout_to_group :: proc(using ui_ctx: ^UI_Context, layout: Layout)
+{
+	current_layout_group := &layout_stack[len(layout_stack)-1];
+	append(&current_layout_group.layouts, layout);
+}
+
+next_layout :: proc(using ui_ctx: ^UI_Context)
+{
+	current_group := &layout_stack[len(layout_stack)-1];
+	current_group.cursor = (current_group.cursor + 1) % len(current_group.layouts);
+}
+
+current_layout :: proc(using ui_ctx: ^UI_Context) -> Layout
+{
+	current_group := layout_stack[len(layout_stack)-1];
+	return current_group.layouts[current_group.cursor];
 }
 
 rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
@@ -79,9 +111,9 @@ button :: proc(label: string, pos: [2]f32, size: [2]f32, ui_ctx: ^UI_Context, lo
 	return false;
 }
 
-layout_button :: proc(label: string, size: [2]f32, ui_ctx: ^UI_Context, location := #caller_location) -> (clicked: bool)
+layout_button :: proc(label: string, size: [2]f32, using ui_ctx: ^UI_Context, location := #caller_location) -> (clicked: bool)
 {
-	layout := &ui_ctx.current_layout;
+	layout := current_layout(ui_ctx);
 	clicked = false;
 	#partial switch ui_element(layout.pos, size, ui_ctx, location)
 	{
@@ -100,18 +132,15 @@ layout_button :: proc(label: string, size: [2]f32, ui_ctx: ^UI_Context, location
 
 vsplit_layout :: proc(split_ratio: f32, using ui_ctx: ^UI_Context)
 {
-	new_layout := current_layout;
-	left_split_width := new_layout.size.x * split_ratio;
-	new_layout.pos.x += left_split_width;
+	new_layout := current_layout(ui_ctx);
+	total_width := new_layout.size.x;
+	left_split_width := total_width * split_ratio;
 	new_layout.size.x -= left_split_width;
-	current_layout.size.x = left_split_width;
-	append(&layouts, new_layout);
-}
+	push_layout_group(ui_ctx);
+	add_layout_to_group(ui_ctx, new_layout);
+	new_layout.pos.x += left_split_width;
+	new_layout.size.x = total_width * (1 - split_ratio);
 
-next_layout :: proc(using ui_ctx: ^UI_Context)
-{
-	assert(len(layouts) > 0);
-	current_layout = layouts[len(layouts)-1];
 }
 
 render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Render_Buffer)
