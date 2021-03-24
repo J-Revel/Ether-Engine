@@ -529,20 +529,20 @@ render_sprite :: proc(
     top_uv := clip.pos.y;
     bottom_uv := clip.pos.y + clip_size.y;
 
-    vertex_data.pos = pos - right * anchor.x * scale - up * anchor.y * scale;
+    vertex_data.pos = pos - right * anchor.x * scale - up * (1-anchor.y) * scale;
     vertex_data.color = color;
     vertex_data.uv = clip.pos + {0, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = pos + right * (1 - anchor.x) * scale - up * anchor.y * scale;
+    vertex_data.pos = pos + right * (1 - anchor.x) * scale - up * (1-anchor.y) * scale;
     vertex_data.uv = clip.pos + {clip_size.x, clip_size.y};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = pos - right * anchor.x * scale + up * (1 - anchor.y) * scale;
+    vertex_data.pos = pos - right * anchor.x * scale + up * anchor.y * scale;
     vertex_data.uv = clip.pos + {0, 0};
     append(&render_buffer.vertex, vertex_data);
 
-    vertex_data.pos = pos + right * (1 - anchor.x) * scale + up * (1 - anchor.y) * scale; 
+    vertex_data.pos = pos + right * (1 - anchor.x) * scale + up * anchor.y * scale; 
     vertex_data.uv = clip.pos + {clip_size.x, 0};
     append(&render_buffer.vertex, vertex_data);
 

@@ -98,8 +98,7 @@ parse_json_float :: proc(json_data: json.Value) -> f32
 json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocator := context.allocator) -> rawptr
 {
 	base_ti := runtime.type_info_base(ti);
-	result := mem.alloc(ti.size, ti.align);
-	log.info(json_data);
+	result := mem.alloc(ti.size, ti.align, allocator);
 	
 	for name, value in json_data
 	{

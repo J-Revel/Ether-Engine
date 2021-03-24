@@ -3,6 +3,7 @@
 	],
 	"transforms":[{
 			"name":"root transform",
+			"uid":1,
 			"level":0,
 			"transform":{
 				"pos":[0.000, 0.000],
@@ -11,27 +12,23 @@
 			}
 		},
 		{
-			"name":"dsorm",
-			"level":1,
+			"name":"root transform bis blabla",
+			"uid":1,
+			"level":0,
 			"transform":{
-				"pos":[0.000, 0.000],
+				"pos":[30.000, 75.000],
 				"scale":1.000,
-				"angle":0.000
+				"angle":0.489
 			}
 		}
 	],
 	"components":{
 		"component 0":{
 			"type":"sprite_component",
-			"transform":{
-				"transform_handle":{
-					"id":1,
-					"table":
-				}
-			},
+			"transform":1,
 			"sprite":{
 				"path":"D:/Documents/Projects/Odin/Ether-Engine/resources/textures/LD47_ennemy_03",
-				"sprite_id":"Ship Body"
+				"sprite_id":"Cannon Left"
 			}
 		}
 	}

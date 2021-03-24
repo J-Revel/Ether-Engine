@@ -315,6 +315,19 @@ parse_json_float :: proc(json_data: json.Value) -> f32
 	return 0;
 }
 
+parse_json_int :: proc(json_data: json.Value) -> int
+{
+
+	#partial switch v in json_data.value
+	{
+		case json.Integer:
+			return int(v);
+		case json.Float:
+			return int(v);
+	}
+	return 0;
+}
+
 // same as reflect.struct_field_by_name, but goes inside params with using
 find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field: reflect.Struct_Field, field_found: bool)
 {
@@ -439,7 +452,12 @@ build_component_model_from_json :: proc(
 	}
 }
 
-load_prefab :: proc(path: string, prefab_tables: ^Named_Table_List, metadata_dispatcher: ^Load_Metadata_Dispatcher, allocator := context.allocator) -> (Prefab, bool)
+load_prefab :: proc(
+	path: string,
+	prefab_tables: ^Named_Table_List,
+	metadata_dispatcher: ^Load_Metadata_Dispatcher,
+	allocator := context.allocator
+) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path, context.temp_allocator);
 	if ok
@@ -451,7 +469,38 @@ load_prefab :: proc(path: string, prefab_tables: ^Named_Table_List, metadata_dis
 		json_object: json.Object = parsed_json.value.(json.Object);
 		component_count := len(json_object["components"].value.(json.Object));
 		
+		transform_hierarchy_init(&prefab.transform_hierarchy, 100);
 
+		transform_array := json_object["transforms"].value.(json.Array);
+		for transform_json, index in transform_array
+		{
+			main_json_object: json.Object = transform_json.value.(json.Object);
+			transform_json_object := main_json_object["transform"].value.(json.Object);
+			transform_type_info := type_info_of(Transform);
+			log.info("load transform", index);
+			parsed_transform := serialization.json_read_struct(
+				transform_json_object,
+				transform_type_info,
+				context.temp_allocator);
+			using prefab.transform_hierarchy;
+			transform_instance := (cast(^Transform)parsed_transform)^;
+			log.info(transform_instance);
+			append(&transforms, transform_instance);
+			append(&names, main_json_object["name"].value.(json.String));
+			append(&levels, parse_json_int(main_json_object["level"]));
+			append(&next_elements, 0,);
+			if index > 0 do next_elements[index] = index + 1;
+			append(&previous_elements, index);
+			new_transform_handle, ok := container.table_add(&element_index_table, index+1);
+			assert(ok);
+			append(&handles, new_transform_handle);
+			uid := parse_json_int(main_json_object["uid"]);
+			append(&uids, cast(Transform_UID)uid);
+		}
+		prefab.transform_hierarchy.first_element_index = 1;
+		prefab.transform_hierarchy.last_element_index = len(prefab.transform_hierarchy.handles);
+
+		log.info(prefab.transform_hierarchy);
 		prefab.components = make([]Component_Model, component_count, allocator);
 
 		registered_components: map[string]Registered_Component_Data;

@@ -73,6 +73,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 		{
 			append(&components, component);
 		}
+		transform_hierarchy = loaded_prefab.transform_hierarchy;
 		clear(&inputs);
 		for input in loaded_prefab.inputs
 		{
@@ -599,17 +600,20 @@ remove_component :: proc(using editor_state: ^Prefab_Editor_State, to_remove_ind
 						metadata_info.component_index -= 1;
 					}
 				case objects.Type_Specific_Metadata:
-					anim_param_list := get_type_specific_metadata(objects.Anim_Param_List_Metadata, &metadata_info);
-					for index in 0..anim_param_list.count
+					if metadata_info.metadata_type_id == typeid_of(objects.Anim_Param_List_Metadata)
 					{
-						anim_param := anim_param_list.anim_params[index];
-						if anim_param.component_index == to_remove_index
+						anim_param_list := get_type_specific_metadata(objects.Anim_Param_List_Metadata, &metadata_info);
+						for index in 0..anim_param_list.count
 						{
-							anim_param_list.anim_params[index].component_index = -1;
-						}
-						else if anim_param.component_index > to_remove_index
-						{
-							anim_param_list.anim_params[index].component_index -= 1;
+							anim_param := anim_param_list.anim_params[index];
+							if anim_param.component_index == to_remove_index
+							{
+								anim_param_list.anim_params[index].component_index = -1;
+							}
+							else if anim_param.component_index > to_remove_index
+							{
+								anim_param_list.anim_params[index].component_index -= 1;
+							}
 						}
 					}
 			}
@@ -1109,6 +1113,8 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 				serialization.json_write_body(file, &write_state);
 				serialization.json_write_member(file, "name", &write_state);
 				serialization.json_write_value(file, transform_hierarchy.names[cursor-1], &write_state);
+				serialization.json_write_member(file, "uid", &write_state);
+				serialization.json_write_scalar(file, transform_hierarchy.uids[cursor-1], &write_state);
 				serialization.json_write_member(file, "level", &write_state);
 				level := transform_hierarchy.levels[cursor-1];
 				serialization.json_write_scalar(file, level, &write_state);
@@ -1167,10 +1173,7 @@ save_prefab_to_json :: proc(using editor_state: ^Prefab_Editor_State, path: stri
 
 json_write_metadata :: proc(file: os.Handle, metadata: objects.Type_Specific_Metadata, write_state: ^serialization.Json_Write_State)
 {
-	serialization.json_write_open_body(file, write_state);
-	serialization.json_write_struct(file, metadata.data, type_info_of(metadata.metadata_type_id), write_state);
-
-	serialization.json_write_close_body(file, write_state);
+	serialization.json_write_struct(file, metadata.data, type_info_of(metadata.metadata_type_id), write_state, true);
 }
 
 json_write_component_member :: proc(file: os.Handle, using editor_state: ^Prefab_Editor_State, component: objects.Component_Model_Data, type_info: ^runtime.Type_Info, offset: uintptr, write_state: ^serialization.Json_Write_State)
