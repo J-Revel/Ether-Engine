@@ -29,6 +29,12 @@ Rect_Draw_Command :: struct
 	color: [4]f32,
 }
 
+Layout_Draw_Command :: struct
+{
+	final_cmd: ^Rect_Draw_Command,
+	anchor: UI_Anchor,
+}
+
 Draw_Command :: union
 {
 	Rect_Draw_Command,
@@ -41,17 +47,12 @@ Element_State :: enum
 	Normal, Hovered, Clicked
 }
 
-Layout_Direction :: enum
-{
-	Horizontal,
-	Vertical,
-}
-
 Layout :: struct
 {
 	pos, size: [2]f32,
-	direction: Layout_Direction,
+	direction: [2]int,
 	cursor: [2]f32,
+	draw_commands: #soa [dynamic]Layout_Draw_Command,
 }
 
 Layout_Group :: struct

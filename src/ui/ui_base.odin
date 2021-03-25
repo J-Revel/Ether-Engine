@@ -3,6 +3,7 @@ package ui
 import "../render"
 import "core:log"
 import "core:hash"
+import "core:math/linalg"
 import "core:runtime"
 import "../input"
 
@@ -15,7 +16,7 @@ reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_s
 	clear(&layout_stack);
 	base_layout := Layout{
 		pos = {0, 0}, size = screen_size,
-		direction = .Down,
+		direction = [2]int{0, 1},
 		cursor = {0, 0},
 	};
 	push_layout_group(ui_ctx);
@@ -30,7 +31,15 @@ push_layout_group :: proc(using ui_ctx: ^UI_Context)
 
 pop_layout_group :: proc(using ui_ctx: ^UI_Context)
 {
-	pop(&layout_stack);
+	popped_layout_group := pop(&layout_stack);
+	for layout in popped_layout_group.layouts
+	{
+		for draw_command in layout.draw_commands
+		{
+			draw_command.final_cmd.pos = layout.pos;
+			draw_command.final_cmd.size = layout.size;
+		}
+	}
 }
 
 add_layout_to_group :: proc(using ui_ctx: ^UI_Context, layout: Layout)
@@ -64,7 +73,12 @@ rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 	}
 */
 
-ui_element :: proc(pos: [2]f32, size: [2]f32, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
+ui_element :: proc(
+	pos: [2]f32,
+	size: [2]f32,
+	ctx: ^UI_Context,
+	location := #caller_location
+) -> (state: Element_State)
 {
 	state = .Normal;
 	element_hash := uintptr(hash.djb2(transmute([]byte)location.file_path)) + uintptr(location.line);
@@ -95,7 +109,22 @@ element_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
 	append(&ctx.draw_list, Rect_Draw_Command{pos, size, color});
 }
 
-button :: proc(label: string, pos: [2]f32, size: [2]f32, ui_ctx: ^UI_Context, location := #caller_location) -> bool
+layout_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
+{
+	append(&ctx.draw_list, Rect_Draw_Command{{}, {}, color});
+	draw_cmd := &ctx.draw_list[len(ctx.draw_list)-1];
+	layout_draw_cmd := Layout_Draw_Command{draw_cmd, anchor};
+	append(&current_layout().draw_commands, layout_draw_cmd);
+}
+
+button :: proc(
+	label: 	string,
+	pos: 	[2]f32,
+	size: 	[2]f32,
+
+	ui_ctx: ^UI_Context,
+	location := #caller_location
+) -> bool
 {
 	#partial switch ui_element(pos, size, ui_ctx, location)
 	{
@@ -111,7 +140,13 @@ button :: proc(label: string, pos: [2]f32, size: [2]f32, ui_ctx: ^UI_Context, lo
 	return false;
 }
 
-layout_button :: proc(label: string, size: [2]f32, using ui_ctx: ^UI_Context, location := #caller_location) -> (clicked: bool)
+layout_button :: proc(
+	label: string,
+	size: [2]f32,
+	
+	using ui_ctx: ^UI_Context,
+	location := #caller_location
+) -> (clicked: bool)
 {
 	layout := current_layout(ui_ctx);
 	clicked = false;
@@ -126,7 +161,7 @@ layout_button :: proc(label: string, size: [2]f32, using ui_ctx: ^UI_Context, lo
 			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{0, 1, 0, 1}, ui_ctx);
 			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
-	layout.pos.y += size.y;
+	layout.pos += size * linalg.to_f32(layout.direction);
 	return;
 }
 

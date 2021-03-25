@@ -167,6 +167,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	}
 
 	ui.vsplit_layout(0.3, &ui_ctx);
+		ui.layout_draw_rect({}, ui.Color{1, 0, 0, 1}, &ui_ctx);
 
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
