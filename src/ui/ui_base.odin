@@ -15,7 +15,7 @@ reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_s
 	clear(&layout_stack);
 	base_layout := Layout{
 		pos = {0, 0}, size = screen_size,
-		direction = .Vertical,
+		direction = .Down,
 		cursor = {0, 0},
 	};
 	push_layout_group(ui_ctx);
@@ -45,10 +45,10 @@ next_layout :: proc(using ui_ctx: ^UI_Context)
 	current_group.cursor = (current_group.cursor + 1) % len(current_group.layouts);
 }
 
-current_layout :: proc(using ui_ctx: ^UI_Context) -> Layout
+current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 {
 	current_group := layout_stack[len(layout_stack)-1];
-	return current_group.layouts[current_group.cursor];
+	return &current_group.layouts[current_group.cursor];
 }
 
 rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
@@ -132,7 +132,7 @@ layout_button :: proc(label: string, size: [2]f32, using ui_ctx: ^UI_Context, lo
 
 vsplit_layout :: proc(split_ratio: f32, using ui_ctx: ^UI_Context)
 {
-	new_layout := current_layout(ui_ctx);
+	new_layout := current_layout(ui_ctx)^;
 	total_width := new_layout.size.x;
 	left_split_width := total_width * split_ratio;
 	new_layout.size.x -= left_split_width;
@@ -140,7 +140,7 @@ vsplit_layout :: proc(split_ratio: f32, using ui_ctx: ^UI_Context)
 	add_layout_to_group(ui_ctx, new_layout);
 	new_layout.pos.x += left_split_width;
 	new_layout.size.x = total_width * (1 - split_ratio);
-
+	add_layout_to_group(ui_ctx, new_layout);
 }
 
 render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Render_Buffer)
