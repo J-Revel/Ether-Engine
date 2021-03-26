@@ -52,7 +52,7 @@ Layout :: struct
 	pos, size: [2]f32,
 	direction: [2]int,
 	cursor: [2]f32,
-	draw_commands: #soa [dynamic]Layout_Draw_Command,
+	draw_commands: [dynamic]Layout_Draw_Command,
 }
 
 Layout_Group :: struct

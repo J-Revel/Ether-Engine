@@ -109,12 +109,28 @@ element_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
 	append(&ctx.draw_list, Rect_Draw_Command{pos, size, color});
 }
 
+append_and_get :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> ^E #no_bounds_check
+{
+    if array == nil do return nil;
+
+    n := len(array);
+    resize(array, n+1);
+
+    return len(array) == n+1 ? &array[len(array)-1] : nil;
+}
+
+add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
+{
+	added_cmd := append_and_get(array);
+	added_cmd^ = draw_cmd;
+	return cast(^T)added_cmd;
+}
+
 layout_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
 {
-	append(&ctx.draw_list, Rect_Draw_Command{{}, {}, color});
-	draw_cmd := &ctx.draw_list[len(ctx.draw_list)-1];
-	layout_draw_cmd := Layout_Draw_Command{draw_cmd, anchor};
-	append(&current_layout().draw_commands, layout_draw_cmd);
+	draw_cmd := add_and_get_draw_command(&ctx.draw_list, Rect_Draw_Command{color=color});
+	layout_cmd := Layout_Draw_Command{draw_cmd, anchor};
+	append(&current_layout(ctx).draw_commands, layout_cmd);
 }
 
 button :: proc(
@@ -170,7 +186,7 @@ vsplit_layout :: proc(split_ratio: f32, using ui_ctx: ^UI_Context)
 	new_layout := current_layout(ui_ctx)^;
 	total_width := new_layout.size.x;
 	left_split_width := total_width * split_ratio;
-	new_layout.size.x -= left_split_width;
+	new_layout.size.x = left_split_width;
 	push_layout_group(ui_ctx);
 	add_layout_to_group(ui_ctx, new_layout);
 	new_layout.pos.x += left_split_width;
