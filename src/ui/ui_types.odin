@@ -5,13 +5,13 @@ import "../input"
 UIID :: distinct string;
 Color :: [4]f32;
 
-UI_Element :: struct
+Rect :: struct
 {
 	pos: [2]f32,
 	size: [2]f32
 }
 
-UI_Anchor :: struct
+Anchor :: struct
 {
 	min, max: [2]f32,
 	left, top, right, bottom: f32,
@@ -32,7 +32,7 @@ Rect_Draw_Command :: struct
 Layout_Draw_Command :: struct
 {
 	final_cmd: ^Rect_Draw_Command,
-	anchor: UI_Anchor,
+	anchor: Anchor,
 }
 
 Draw_Command :: union
@@ -52,6 +52,7 @@ Layout :: struct
 	pos, size: [2]f32,
 	direction: [2]int,
 	cursor: [2]f32,
+	used_rect: Rect,
 	draw_commands: [dynamic]Layout_Draw_Command,
 }
 

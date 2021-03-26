@@ -4,8 +4,46 @@ import "../render"
 import "core:log"
 import "core:hash"
 import "core:math/linalg"
+import "core:math"
 import "core:runtime"
 import "../input"
+
+join_rects :: proc(A: Rect, B: Rect) -> (result: Rect)
+{
+	if A.size.x == 0
+	{
+		result.size.x = B.size.x;
+		result.pos.x = B.pos.x;
+	}
+	else if B.size.x == 0
+	{
+		result.size.x = A.size.x;
+		result.pos.x = B.pos.x;
+	}
+	else
+	{
+		result.pos.x = min(A.pos.x, B.pos.x);
+		max_x := max(A.pos.x + A.size.x, B.pos.x + B.size.x);
+		result.size.x = max_x - result.pos.x;
+	}
+	if A.size.y == 0
+	{
+		result.size.y = B.size.y;
+		result.pos.y = B.pos.y;
+	}
+	else if B.size.y == 0
+	{
+		result.size.y = A.size.y;
+		result.pos.y = B.pos.y;
+	}
+	else
+	{
+		result.pos.y = min(A.pos.y, B.pos.y);
+		max_y := max(A.pos.y + A.size.y, B.pos.y + B.size.y);
+		result.size.y = max_y - result.pos.y;
+	}
+	return result;
+}
 
 reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
 {
@@ -36,8 +74,8 @@ pop_layout_group :: proc(using ui_ctx: ^UI_Context)
 	{
 		for draw_command in layout.draw_commands
 		{
-			draw_command.final_cmd.pos = layout.pos;
-			draw_command.final_cmd.size = layout.size;
+			draw_command.final_cmd.pos = layout.used_rect.pos;
+			draw_command.final_cmd.size = layout.used_rect.size;
 		}
 	}
 }
@@ -99,10 +137,12 @@ ui_element :: proc(
 	{
 		ctx.next_hovered_element = element_hash;
 	}
+	layout := current_layout(ctx);
+	layout.used_rect = join_rects(layout.used_rect, Rect{ctx.current_element_pos, ctx.current_element_size});
 	return;
 }
 
-element_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
+element_draw_rect :: proc(anchor: Anchor, color: Color, ctx: ^UI_Context)
 {
 	pos := ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top};
 	size := ctx.current_element_size * (anchor.max - anchor.min) - [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
@@ -126,7 +166,7 @@ add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
 	return cast(^T)added_cmd;
 }
 
-layout_draw_rect :: proc(anchor: UI_Anchor, color: Color, ctx: ^UI_Context)
+layout_draw_rect :: proc(anchor: Anchor, color: Color, ctx: ^UI_Context)
 {
 	draw_cmd := add_and_get_draw_command(&ctx.draw_list, Rect_Draw_Command{color=color});
 	layout_cmd := Layout_Draw_Command{draw_cmd, anchor};
