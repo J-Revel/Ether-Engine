@@ -19,13 +19,13 @@ Anchor :: struct
 
 Padding :: struct
 {
-	left, top, right, bottom: f32
+	top_left: [2]f32,
+	bottom_right: [2]f32,
 }
 
 Rect_Draw_Command :: struct
 {
-	pos: [2]f32,
-	size: [2]f32,
+	using rect: Rect,
 	color: [4]f32,
 }
 
@@ -33,6 +33,7 @@ Layout_Draw_Command :: struct
 {
 	final_cmd: ^Rect_Draw_Command,
 	anchor: Anchor,
+	padding: Padding,
 }
 
 Draw_Command :: union
@@ -51,8 +52,8 @@ Layout :: struct
 {
 	pos, size: [2]f32,
 	direction: [2]int,
-	cursor: [2]f32,
 	used_rect: Rect,
+	padding: Padding,
 	draw_commands: [dynamic]Layout_Draw_Command,
 }
 

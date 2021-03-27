@@ -161,20 +161,24 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
 	
+	ui.layout_draw_rect({}, {}, ui.Color{0.5, 1, 0.5, 1}, &ui_ctx);
 	if ui.layout_button("test", {100, 100}, &ui_ctx)
 	{
 		log.info("BUTTON1");
 	}
-
-	ui.vsplit_layout(0.3 + 0.1 * math.sin(time), &ui_ctx);
-		ui.layout_draw_rect({}, ui.Color{0.5, 0.5, 0.5, 0.3}, &ui_ctx);
+	rect: ui.Rect;
+	rect.pos = linalg.to_f32(input_state.mouse_pos);
+	rect.size = [2]f32{300, 200};
+	ui.window(rect, 40, &ui_ctx);
+	//ui.vsplit_layout(0.3 + 0.1 * math.sin(time), ui.simple_padding(50), &ui_ctx);
+		ui.layout_draw_rect({}, {}, ui.Color{0.5, 0.5, 0.5, 0.3}, &ui_ctx);
 
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON2");
 		}
 	ui.next_layout(&ui_ctx);
-		ui.layout_draw_rect({}, ui.Color{1, 0, 0, 0.3}, &ui_ctx);
+		ui.layout_draw_rect({}, {}, ui.Color{1, 0, 0, 0.3}, &ui_ctx);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
@@ -188,6 +192,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 			log.info("BUTTON3");
 		}
 	ui.pop_layout_group(&ui_ctx);
+	ui.render_layout_commands(&ui_ctx);
 }
 
 do_render :: proc(using scene: ^Scene, viewport: render.Viewport)

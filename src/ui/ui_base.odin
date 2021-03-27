@@ -45,6 +45,11 @@ join_rects :: proc(A: Rect, B: Rect) -> (result: Rect)
 	return result;
 }
 
+simple_padding :: proc(value: f32) -> Padding
+{
+	return Padding{[2]f32{value, value}, [2]f32{value, value}};
+}
+
 reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
 {
 	mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
@@ -55,7 +60,6 @@ reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_s
 	base_layout := Layout{
 		pos = {0, 0}, size = screen_size,
 		direction = [2]int{0, 1},
-		cursor = {0, 0},
 	};
 	push_layout_group(ui_ctx);
 	add_layout_to_group(ui_ctx, base_layout);
@@ -67,18 +71,47 @@ push_layout_group :: proc(using ui_ctx: ^UI_Context)
 	append(&layout_stack, new_layout_group);
 }
 
+apply_anchor_padding :: proc(rect: Rect, anchor: Anchor, padding: Padding) -> (result: Rect)
+{
+	result.pos = rect.pos + rect.size * anchor.min + padding.top_left;
+	result.size = rect.size * (anchor.max - anchor.min) - padding.top_left - padding.bottom_right;
+	return result;
+}
+
 pop_layout_group :: proc(using ui_ctx: ^UI_Context)
 {
 	popped_layout_group := pop(&layout_stack);
+	parent_used_rect := &current_layout(ui_ctx).used_rect;
 	for layout in popped_layout_group.layouts
+	{
+		display_rect := Rect{
+			pos = layout.used_rect.pos - layout.padding.top_left,
+			size = layout.used_rect.size + layout.padding.top_left + layout.padding.bottom_right,
+		};
+		for draw_command in layout.draw_commands
+		{
+			draw_command.final_cmd.pos = display_rect.pos;
+			draw_command.final_cmd.size = display_rect.size;
+		}
+		parent_used_rect^ = join_rects(parent_used_rect^, display_rect);
+	}
+	
+}
+
+render_layout_commands :: proc(using ui_ctx: ^UI_Context)
+{
+	current_layout_group := layout_stack[len(layout_stack)-1];
+	for layout in current_layout_group.layouts
 	{
 		for draw_command in layout.draw_commands
 		{
-			draw_command.final_cmd.pos = layout.used_rect.pos;
-			draw_command.final_cmd.size = layout.used_rect.size;
+			draw_command.final_cmd.pos = layout.used_rect.pos - layout.padding.top_left;
+			draw_command.final_cmd.size = layout.used_rect.size + layout.padding.top_left + layout.padding.bottom_right;
 		}
 	}
 }
+
+
 
 add_layout_to_group :: proc(using ui_ctx: ^UI_Context, layout: Layout)
 {
@@ -100,7 +133,7 @@ current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 
 rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 {
-	append(draw_list, Rect_Draw_Command{pos, size, color});
+	append(draw_list, Rect_Draw_Command{Rect{pos, size}, color});
 }
 
 /*
@@ -111,21 +144,17 @@ rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 	}
 */
 
-ui_element :: proc(
-	pos: [2]f32,
-	size: [2]f32,
-	ctx: ^UI_Context,
-	location := #caller_location
-) -> (state: Element_State)
+ui_element :: proc(using rect: Rect, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
 {
+	log.info("RECEIVED", rect);
 	state = .Normal;
 	element_hash := uintptr(hash.djb2(transmute([]byte)location.file_path)) + uintptr(location.line);
 	ctx.current_element = element_hash;
 	ctx.current_element_pos = pos;
 	ctx.current_element_size = size;
-	mouse_over :=  ctx.mouse_pos.x > pos.x 
-			&& ctx.mouse_pos.y > pos.y
-			&& ctx.mouse_pos.x < pos.x + size.x
+	mouse_over :=  ctx.mouse_pos.x > pos.x 		\
+			&& ctx.mouse_pos.y > pos.y 			\
+			&& ctx.mouse_pos.x < pos.x + size.x	\
 			&& ctx.mouse_pos.y < pos.y + size.y;
 
 	if ctx.hovered_element == element_hash
@@ -142,11 +171,14 @@ ui_element :: proc(
 	return;
 }
 
-element_draw_rect :: proc(anchor: Anchor, color: Color, ctx: ^UI_Context)
+element_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^UI_Context)
 {
-	pos := ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top};
-	size := ctx.current_element_size * (anchor.max - anchor.min) - [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
-	append(&ctx.draw_list, Rect_Draw_Command{pos, size, color});
+	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	rect := Rect{
+		pos = ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top},
+		size = ctx.current_element_size * (anchor.max - anchor.min) - padding_sum,
+	};;
+	append(&ctx.draw_list, Rect_Draw_Command{rect, color});
 }
 
 append_and_get :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> ^E #no_bounds_check
@@ -166,72 +198,117 @@ add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
 	return cast(^T)added_cmd;
 }
 
-layout_draw_rect :: proc(anchor: Anchor, color: Color, ctx: ^UI_Context)
+layout_draw_used_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^UI_Context)
 {
 	draw_cmd := add_and_get_draw_command(&ctx.draw_list, Rect_Draw_Command{color=color});
-	layout_cmd := Layout_Draw_Command{draw_cmd, anchor};
+	layout_cmd := Layout_Draw_Command{draw_cmd, anchor, padding};
 	append(&current_layout(ctx).draw_commands, layout_cmd);
+}
+
+layout_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^UI_Context)
+{
+	layout := current_layout(ctx);
+	draw_cmd := Rect_Draw_Command{
+		rect = {
+			pos = layout.pos,
+			size = layout.size,
+		},
+		color = color,
+	};
+	append(&ctx.draw_list, draw_cmd);
 }
 
 button :: proc(
 	label: 	string,
-	pos: 	[2]f32,
-	size: 	[2]f32,
+	rect: Rect,
 
 	ui_ctx: ^UI_Context,
 	location := #caller_location
 ) -> bool
 {
-	#partial switch ui_element(pos, size, ui_ctx, location)
+	#partial switch ui_element(rect, ui_ctx, location)
 	{
 		case .Hovered:
-			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{1, 0, 0, 1}, ui_ctx);
-			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 			return ui_ctx.mouse_click;
 
 		case .Normal:
-			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{0, 1, 0, 1}, ui_ctx);
-			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
 	return false;
+}
+
+allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> Rect
+{
+	layout := current_layout(ui_ctx);
+
+	result := Rect{layout.pos + layout.padding.top_left, size};
+	return result;
 }
 
 layout_button :: proc(
 	label: string,
 	size: [2]f32,
-	
+
 	using ui_ctx: ^UI_Context,
 	location := #caller_location
 ) -> (clicked: bool)
 {
 	layout := current_layout(ui_ctx);
 	clicked = false;
-	#partial switch ui_element(layout.pos, size, ui_ctx, location)
+	allocated_space := allocate_element_space(ui_ctx, size);
+	element_state := ui_element(allocated_space, ui_ctx, location);
+
+	#partial switch element_state 
 	{
 		case .Hovered:
-			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{1, 0, 0, 1}, ui_ctx);
-			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 			clicked = ui_ctx.mouse_click;
 
 		case .Normal:
-			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, render.Color{0, 1, 0, 1}, ui_ctx);
-			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, render.Color{1, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1}, ui_ctx);
+			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
 	layout.pos += size * linalg.to_f32(layout.direction);
 	return;
 }
 
-vsplit_layout :: proc(split_ratio: f32, using ui_ctx: ^UI_Context)
+vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^UI_Context)
 {
-	new_layout := current_layout(ui_ctx)^;
-	total_width := new_layout.size.x;
-	left_split_width := total_width * split_ratio;
+	parent_layout := current_layout(ui_ctx)^;
+	left_split_width := parent_layout.size.x * split_ratio;
+	new_layout := Layout {
+		pos = parent_layout.pos,
+		size = [2]f32{left_split_width, parent_layout.size.y},
+		padding = inner_padding,
+	};
 	new_layout.size.x = left_split_width;
 	push_layout_group(ui_ctx);
 	add_layout_to_group(ui_ctx, new_layout);
 	new_layout.pos.x += left_split_width;
-	new_layout.size.x = total_width * (1 - split_ratio);
+	new_layout.size.x = parent_layout.size.x * (1 - split_ratio);
 	add_layout_to_group(ui_ctx, new_layout);
+}
+
+window :: proc(rect: Rect, header_height: f32, using ui_ctx: ^UI_Context)
+{ 
+	push_layout_group(ui_ctx);
+	header_layout := Layout {
+		pos = rect.pos,
+		size = [2]f32{rect.size.x, header_height},
+	};
+
+	add_layout_to_group(ui_ctx, header_layout);
+
+	body_layout := Layout {
+		pos = rect.pos + [2]f32{0, header_height},
+		size = [2]f32{rect.size.x, rect.size.y - header_height},
+	};
+	
+	add_layout_to_group(ui_ctx, body_layout);
 }
 
 render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Render_Buffer)
