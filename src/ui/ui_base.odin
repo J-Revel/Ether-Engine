@@ -52,10 +52,21 @@ simple_padding :: proc(value: f32) -> Padding
 
 reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
 {
-	mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
+	input_state.mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
 	hovered_element = ui_ctx.next_hovered_element;
 	next_hovered_element = 0;
 	mouse_click = input.get_mouse_state(input_state, 0) == input.Key_State.Pressed;
+	for i in 0..<3
+	{
+		mouse_state := input.get_mouse_state(input_state, i);
+		target_state : bit_set[Key_State] = Key_State.Down;
+		switch mouse_state
+		{
+			case .Down:
+				
+			case .
+		input_state.mouse_states[i] = 
+	}
 	mouse_down = mouse_click || input.get_mouse_state(input_state, 0) == input.Key_State.Down;
 	clear(&layout_stack);
 	base_layout := Layout{

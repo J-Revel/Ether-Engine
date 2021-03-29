@@ -66,14 +66,22 @@ Layout_Group :: struct
 
 Layout_Stack :: [dynamic]Layout_Group;
 
+Key_State :: enum
+{
+	Down,
+	Just_Updated,
+}
+
+Input_State :: struct
+{
+	mouse_states: [3]bit_set[Key_State],
+	cursor_pos: [2]f32,
+}
+
 UI_Context :: struct
 {
 	draw_list: Draw_List,
-	state_storage: map[UIID]int,
-
-	mouse_pos: [2]f32,
-	mouse_click: bool,
-	mouse_down: bool,
+	input_state: Input_State,
 	hovered_element: uintptr,
 	next_hovered_element: uintptr,
 	current_element: uintptr,
