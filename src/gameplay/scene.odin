@@ -143,6 +143,12 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 
 time : f32 = 0;
 ui_ctx: ui.UI_Context;
+window_state := ui.Window_State
+{
+	rect = ui.Rect{
+		size = [2]f32{300, 200},
+	},
+};
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
@@ -166,10 +172,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	{
 		log.info("BUTTON1");
 	}
-	rect: ui.Rect;
-	rect.pos = linalg.to_f32(input_state.mouse_pos);
-	rect.size = [2]f32{300, 200};
-	ui.window(rect, 40, &ui_ctx);
+	ui.window(&window_state, 40, &ui_ctx);
 	//ui.vsplit_layout(0.3 + 0.1 * math.sin(time), ui.simple_padding(50), &ui_ctx);
 		ui.layout_draw_rect({}, {}, ui.Color{0.5, 0.5, 0.5, 0.3}, &ui_ctx);
 
@@ -183,7 +186,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		{
 			log.info("BUTTON3");
 		}
-		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		if ui.layout_button("test", {150, 100}, &ui_ctx)
 		{
 			log.info("BUTTON2");
 		}

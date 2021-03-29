@@ -51,9 +51,10 @@ Element_State :: enum
 Layout :: struct
 {
 	pos, size: [2]f32,
-	direction: [2]int,
+	direction: [2]f32,
 	used_rect: Rect,
 	padding: Padding,
+	cursor: f32,
 	draw_commands: [dynamic]Layout_Draw_Command,
 }
 
@@ -72,10 +73,24 @@ UI_Context :: struct
 
 	mouse_pos: [2]f32,
 	mouse_click: bool,
+	mouse_down: bool,
 	hovered_element: uintptr,
 	next_hovered_element: uintptr,
 	current_element: uintptr,
 	current_element_pos: [2]f32,
 	current_element_size: [2]f32,
 	layout_stack: Layout_Stack,
+}
+
+Drag_State :: struct
+{
+	drag_last_pos: [2]f32,
+	dragging: bool,
+	drag_offset: [2]f32,
+}
+
+Window_State :: struct
+{
+	drag_state: Drag_State,
+	rect: Rect,
 }
