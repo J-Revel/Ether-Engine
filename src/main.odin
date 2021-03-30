@@ -17,6 +17,7 @@ import gl  "shared:odin-gl";
 import imgui "../libs/imgui";
 import imgl  "../libs/impl/opengl";
 import imsdl "../libs/impl/sdl";
+import freetype "../libs/freetype"
 
 import render "render";
 import "util";
@@ -79,6 +80,17 @@ main :: proc() {
         }
         gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
         
+		freetype_library: freetype.Library;
+		init_error := freetype.init(&freetype_library);
+		if init_error > 0 do log.error("freetype init error");
+
+		font_face: freetype.Face;
+		new_face_error := freetype.new_face(freetype_library, "resources/fonts/arial.ttf", 0, &font_face);
+
+		log.info(new_face_error);
+		freetype.set_pixel_sizes(font_face, 0, 20);
+
+
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
@@ -142,12 +154,12 @@ main :: proc() {
             gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport);
             gameplay.do_render(&sceneInstance, viewport);
 
-            if input.get_key_state(&input_state, sdl.Scancode.Tab) == .Pressed && !show_editor
+            if input.get_key_state(&input_state, sdl.Scancode.Tab) == input.Key_State_Pressed && !show_editor
             {
                 show_editor = true;
             }
 
-            if input.get_key_state(&input_state, sdl.Scancode.Escape) == .Pressed
+            if input.get_key_state(&input_state, sdl.Scancode.Escape) == input.Key_State_Pressed
             {
                 if show_editor do show_editor = false else do running = false;
             }
@@ -166,6 +178,7 @@ main :: proc() {
             time.sleep(max(0, time.Millisecond * 16 - frame_duration));
         }
         log.info("Shutting down...");
+		freetype.Done_FreeType(freetype_library);
         
     } else {
         log.debugf("Error during SDL init: (%d)%s", init_err, sdl.get_error());

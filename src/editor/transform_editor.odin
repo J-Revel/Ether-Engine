@@ -89,13 +89,13 @@ transform_hierarchy_editor :: proc(
 		imgui.separator();
 		imgui.input_string("", &names[selected_index-1]);
 
-		if input.get_key_state(input_state, .Kp_Plus) == .Pressed
+		if input.get_key_state(input_state, .Kp_Plus) == input.Key_State_Pressed
 		{
 			objects.transform_hierarchy_add_leaf(hierarchy, {scale = 1}, handles[selected_index-1], "leaf transform");
 		}
-		if input.get_key_state(input_state, .Up) == .Pressed
+		if input.get_key_state(input_state, .Up) == input.Key_State_Pressed
 		{
-			if input.get_key_state(input_state, .LCtrl) == .Down
+			if input.get_key_state(input_state, .LCtrl) == input.Key_State_Down
 			{
 				objects.transform_hierarchy_move_element_up(hierarchy, handles[selected_index-1]);
 			}
@@ -104,9 +104,9 @@ transform_hierarchy_editor :: proc(
 				selected_index = previous_elements[selected_index-1];
 			}
 		}
-		if input.get_key_state(input_state, .Down) == .Pressed
+		if input.get_key_state(input_state, .Down) == input.Key_State_Pressed
 		{
-			if input.get_key_state(input_state, .LCtrl) == .Down
+			if input.get_key_state(input_state, .LCtrl) == input.Key_State_Down
 			{
 				objects.transform_hierarchy_move_element_down(hierarchy, handles[selected_index-1]);
 			}
@@ -115,15 +115,15 @@ transform_hierarchy_editor :: proc(
 				selected_index = next_elements[selected_index-1];
 			}
 		}
-		if input.get_key_state(input_state, .Right) == .Pressed
+		if input.get_key_state(input_state, .Right) == input.Key_State_Pressed
 		{
 			objects.transform_hierarchy_add_level(hierarchy, handles[selected_index-1], 1);
 		}
-		if input.get_key_state(input_state, .Left) == .Pressed
+		if input.get_key_state(input_state, .Left) == input.Key_State_Pressed
 		{
 			objects.transform_hierarchy_add_level(hierarchy, handles[selected_index-1], -1);
 		}
-		if input.get_key_state(input_state, .Delete) == .Pressed
+		if input.get_key_state(input_state, .Delete) == input.Key_State_Pressed
 		{
 			to_remove := handles[selected_index-1];
 			selected_index = next_elements[selected_index-1];

@@ -6,6 +6,7 @@ import "../input"
 import "core:strconv"
 
 import imgui "../../libs/imgui"
+import freetype "../../libs/freetype"
 import "core:math/rand"
 import "core:math"
 import "core:math/linalg"
@@ -61,7 +62,14 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	camera.zoom = 1;
 }
 
-test_animation_keyframes : [4]animation.Keyframe(f32) = {animation.Keyframe(f32){0, 0}, animation.Keyframe(f32){0.5, 1}, animation.Keyframe(f32){0.75, 0.5}, animation.Keyframe(f32){1, 1} };
+test_animation_keyframes : [4]animation.Keyframe(f32) =
+{
+	animation.Keyframe(f32){0, 0},
+	animation.Keyframe(f32){0.5, 1},
+	animation.Keyframe(f32){0.75, 0.5},
+	animation.Keyframe(f32){1, 1}
+};
+
 init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 {
 	using container;
@@ -172,16 +180,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	{
 		log.info("BUTTON1");
 	}
-	ui.window(&window_state, 40, &ui_ctx);
-	//ui.vsplit_layout(0.3 + 0.1 * math.sin(time), ui.simple_padding(50), &ui_ctx);
-		ui.layout_draw_rect({}, {}, ui.Color{0.5, 0.5, 0.5, 0.3}, &ui_ctx);
-
-		if ui.layout_button("test", {100, 100}, &ui_ctx)
-		{
-			log.info("BUTTON2");
-		}
-	ui.next_layout(&ui_ctx);
-		ui.layout_draw_rect({}, {}, ui.Color{1, 0, 0, 0.3}, &ui_ctx);
+	if ui.window(&window_state, 40, &ui_ctx)
+	{
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
@@ -194,6 +194,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		{
 			log.info("BUTTON3");
 		}
+	}
 	ui.pop_layout_group(&ui_ctx);
 	ui.render_layout_commands(&ui_ctx);
 }

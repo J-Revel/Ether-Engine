@@ -11,9 +11,18 @@ ivec2 ::[2]int;
 
 current_frame: int = 1;
 
-Key_State :: enum {
-    Up, Down, Pressed, Released
+Key_State_Flags :: enum
+{
+	Down,
+	Just_Updated,
 }
+
+Key_State :: bit_set[Key_State_Flags];
+
+Key_State_Pressed :: Key_State{.Down, .Just_Updated};
+Key_State_Released :: Key_State{.Just_Updated};
+Key_State_Down :: Key_State{.Down};
+Key_State_Up :: Key_State{};
 
 State :: struct {
     time: u64,
@@ -74,18 +83,20 @@ new_frame :: proc(state: ^State) {
     
 }
 
-get_key_state :: proc(state: ^State, key: sdl.Scancode) -> Key_State
+get_key_state :: proc(state: ^State, key: sdl.Scancode) -> (result: Key_State)
 {
-    if state.key_states[key] == current_frame do return .Pressed;
-    if state.key_states[key] == -current_frame do return .Released;
-    return state.key_states[key] > 0 ? .Down : .Up;
+	key_state := state.key_states[key];
+	if key_state == current_frame || key_state == -current_frame do incl(&result, Key_State.Just_Updated);
+	if key_state > 0 do incl(&result, Key_State.Down);
+	return result;
 }
 
-get_mouse_state :: proc(state: ^State, button: int) -> Key_State
+get_mouse_state :: proc(state: ^State, button: int) -> (result: Key_State)
 {
-    if state.mouse_states[button] == current_frame do return .Pressed;
-    if state.mouse_states[button] == -current_frame do return .Released;
-    return (state.mouse_states[button] > 0 ? .Down : .Up);
+	mouse_state := state.mouse_states[button];
+	if mouse_state == current_frame || mouse_state == -current_frame do incl(&result, Key_State.Just_Updated);
+	if mouse_state > 0 do incl(&result, Key_State.Down);
+	return result;
 }
 
 process_events :: proc(state: ^State) {
@@ -148,30 +159,13 @@ update_dt :: proc(state: ^State) {
     state.time = curr_time;
 }
 
-get_state_values :: proc(state: Key_State) -> (down: bool, justChanged: bool)
-{
-    switch state
-    {
-        case .Up: return false, false;
-        case .Down: return true, false;
-        case .Pressed: return true, true;
-        case .Released: return false, true;
-    }
-    return false, false;
-}
-
-is_down :: proc(state: Key_State) -> bool
-{
-    return state == Key_State.Down || state == Key_State.Pressed;
-}
-
 update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     io := imgui.get_io();
     mx, my: i32;
     sdl.get_mouse_state(&mx, &my);
-    io.mouse_down[0] = is_down(get_mouse_state(state, 0));
-    io.mouse_down[1] = is_down(get_mouse_state(state, 2));
-    io.mouse_down[2] = is_down(get_mouse_state(state, 1));
+    io.mouse_down[0] = Key_State_Down <= get_mouse_state(state, 0);
+    io.mouse_down[1] = Key_State_Down <= get_mouse_state(state, 2);
+    io.mouse_down[2] = Key_State_Down <= get_mouse_state(state, 1);
     
     // Set mouse pos if window is focused
     io.mouse_pos = imgui.Vec2{min(f32), min(f32)};

@@ -66,15 +66,9 @@ Layout_Group :: struct
 
 Layout_Stack :: [dynamic]Layout_Group;
 
-Key_State :: enum
-{
-	Down,
-	Just_Updated,
-}
-
 Input_State :: struct
 {
-	mouse_states: [3]bit_set[Key_State],
+	mouse_states: [3]input.Key_State,
 	cursor_pos: [2]f32,
 }
 
@@ -101,4 +95,5 @@ Window_State :: struct
 {
 	drag_state: Drag_State,
 	rect: Rect,
+	folded: bool,
 }

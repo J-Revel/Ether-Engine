@@ -50,25 +50,16 @@ simple_padding :: proc(value: f32) -> Padding
 	return Padding{[2]f32{value, value}, [2]f32{value, value}};
 }
 
-reset_ctx :: proc(using ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
+reset_ctx :: proc(ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
 {
-	input_state.mouse_pos = {f32(input_state.mouse_pos.x), f32(input_state.mouse_pos.y)};
-	hovered_element = ui_ctx.next_hovered_element;
-	next_hovered_element = 0;
-	mouse_click = input.get_mouse_state(input_state, 0) == input.Key_State.Pressed;
+	ui_ctx.input_state.cursor_pos = linalg.to_f32(input_state.mouse_pos);
+	ui_ctx.hovered_element = ui_ctx.next_hovered_element;
+	ui_ctx.next_hovered_element = 0;
 	for i in 0..<3
 	{
-		mouse_state := input.get_mouse_state(input_state, i);
-		target_state : bit_set[Key_State] = Key_State.Down;
-		switch mouse_state
-		{
-			case .Down:
-				
-			case .
-		input_state.mouse_states[i] = 
+		ui_ctx.input_state.mouse_states[i] = input.get_mouse_state(input_state, i);
 	}
-	mouse_down = mouse_click || input.get_mouse_state(input_state, 0) == input.Key_State.Down;
-	clear(&layout_stack);
+	clear(&ui_ctx.layout_stack);
 	base_layout := Layout{
 		pos = {0, 0}, size = screen_size,
 		direction = [2]f32{0, 1},
@@ -155,10 +146,10 @@ ui_element :: proc(using rect: Rect, ctx: ^UI_Context, location := #caller_locat
 	ctx.current_element = element_hash;
 	ctx.current_element_pos = pos;
 	ctx.current_element_size = size;
-	mouse_over :=  ctx.mouse_pos.x > pos.x 		\
-			&& ctx.mouse_pos.y > pos.y 			\
-			&& ctx.mouse_pos.x < pos.x + size.x	\
-			&& ctx.mouse_pos.y < pos.y + size.y;
+	mouse_over :=  ctx.input_state.cursor_pos.x > pos.x 		\
+			&& ctx.input_state.cursor_pos.y > pos.y 			\
+			&& ctx.input_state.cursor_pos.x < pos.x + size.x	\
+			&& ctx.input_state.cursor_pos.y < pos.y + size.y;
 
 	if ctx.hovered_element == element_hash
 	{
@@ -234,7 +225,7 @@ button :: proc(
 		case .Hovered:
 			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
 			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
-			return ui_ctx.mouse_click;
+			return ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed;
 
 		case .Normal:
 			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1}, ui_ctx);
@@ -260,29 +251,27 @@ drag_box :: proc(
 ) -> (state_changed: bool)
 {
 	element_state := ui_element(rect, ui_ctx, location);
-	log.info(element_state, drag_state.dragging);
 	if drag_state.dragging
 	{
-		if !ui_ctx.mouse_down
+		if ui_ctx.input_state.mouse_states[0] < input.Key_State_Down
 		{
 			drag_state.dragging = false;
 			state_changed = true;
 		}
-		mouse_offset := ui_ctx.mouse_pos - drag_state.drag_last_pos;
+		mouse_offset := ui_ctx.input_state.cursor_pos - drag_state.drag_last_pos;
 		if mouse_offset.x != 0 || mouse_offset.y != 0
 		{
 			drag_state.drag_offset += mouse_offset;
-			drag_state.drag_last_pos = ui_ctx.mouse_pos;
+			drag_state.drag_last_pos = ui_ctx.input_state.cursor_pos;
 			state_changed = true;
 		}
 	}
 	else
 	{
-		if ui_ctx.mouse_down && element_state == .Hovered
+		if ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed && element_state == .Hovered
 		{
-			
 			drag_state.dragging = true;
-			drag_state.drag_last_pos = ui_ctx.mouse_pos;
+			drag_state.drag_last_pos = ui_ctx.input_state.cursor_pos;
 			state_changed = true;
 		}
 	}
@@ -323,7 +312,7 @@ layout_button :: proc(
 		case .Hovered:
 			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
 			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
-			clicked = ui_ctx.mouse_click;
+			clicked = ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed;
 
 		case .Normal:
 			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1}, ui_ctx);
@@ -351,7 +340,7 @@ vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^U
 	add_layout_to_group(ui_ctx, new_layout);
 }
 
-window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI_Context)
+window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI_Context) -> (draw_content: bool)
 { 
 	push_layout_group(ui_ctx);
 	header_size := [2]f32{rect.size.x, header_height};
@@ -368,15 +357,21 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 	header_layout.direction.x = 1;
 	add_layout_to_group(ui_ctx, header_layout);
 
-	// Body Layout
-	body_layout := Layout {
-		pos = rect.pos + [2]f32{0, header_height},
-		size = [2]f32{rect.size.x, rect.size.y - header_height},
-		direction = [2]f32{0, 1},
-	};
-	
-	add_layout_to_group(ui_ctx, body_layout);
+	draw_content = !state.folded;
 
+	if draw_content
+	{
+		// Body Layout
+		body_layout := Layout {
+			pos = rect.pos + [2]f32{0, header_height},
+			size = [2]f32{rect.size.x, rect.size.y - header_height},
+			direction = [2]f32{0, 1},
+		};
+		
+		add_layout_to_group(ui_ctx, body_layout);
+	}
+
+	layout_draw_rect({}, {}, Color{0.5, 0.5, 0.5, 0.3}, ui_ctx);
 	// Close button
 	if drag_box(Rect{rect.pos, header_size}, &drag_state, ui_ctx)
 	{
@@ -385,6 +380,13 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 	}
 	layout_button("close button", {header_height, header_height}, ui_ctx); 
 	next_layout(ui_ctx);
+	if layout_button("fold button", {header_height, header_height}, ui_ctx)
+	{
+		state.folded = !state.folded;
+	}
+	next_layout(ui_ctx);
+	if draw_content do layout_draw_rect({}, {}, Color{1, 0, 0, 0.8}, ui_ctx);
+	return;
 }
 
 render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Render_Buffer)
