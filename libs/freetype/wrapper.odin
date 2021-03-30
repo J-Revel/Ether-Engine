@@ -1,12 +1,13 @@
 package freetype
+import "core:strings"
 
 init :: proc(library: ^Library) -> Error { return Init_FreeType(library); }
 done :: proc(library: Library) -> Error { return Done_FreeType(library); }
 
 
-new_face :: #force_inline proc(library: Library, filepathname: cstring, face_index: Long, aface: ^Face) -> Error 
+new_face :: #force_inline proc(library: Library, filepathname: string, face_index: Long, aface: ^Face) -> Error 
 {
-	return New_Face(library, filepathname, face_index, aface);
+	return New_Face(library, strings.clone_to_cstring(filepathname, context.temp_allocator), face_index, aface);
 }
 
 new_memory_face :: #force_inline proc(library: Library, file_base: ^byte, file_size: Long, face_index: Long, aface: ^Face) -> Error
@@ -40,9 +41,9 @@ get_next_char :: #force_inline proc(face: Face, character: u32, index: ^u32) -> 
 	return Get_Next_Char(face, character, index);
 }
 
-get_char_index :: #force_inline proc(face: Face, charcode: ULong) -> u32
+get_char_index :: #force_inline proc(face: Face, character: rune) -> u32
 {
-	return Get_Char_Index(face, charcode);
+	return Get_Char_Index(face, ULong(character));
 }
 
 
