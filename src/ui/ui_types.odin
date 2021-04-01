@@ -1,6 +1,7 @@
 package ui
 
 import "../input"
+import "../render"
 
 UIID :: distinct string;
 Color :: [4]f32;
@@ -26,6 +27,8 @@ Padding :: struct
 Rect_Draw_Command :: struct
 {
 	using rect: Rect,
+	clip: Rect,
+	texture: render.Texture_Handle,
 	color: [4]f32,
 }
 

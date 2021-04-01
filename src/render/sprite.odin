@@ -51,7 +51,29 @@ void main()
     float zoom = camPosZoom.z;
     vec2 camPos = camPosZoom.xy;
     vec2 screenPos = (pos.xy - camPos) * 2 / screenSize * camPosZoom.z;
-    gl_Position = vec4(screenPos.x, screenPos.y,0,1);
+    gl_Position = vec4(screenPos.x, -screenPos.y,0,1);
+}
+`;
+
+@(private="package")
+ui_vertex_shader_src :: `
+#version 450
+layout (location = 0) in vec2 pos;
+layout(location = 1) in vec2 uv;
+layout (location = 2) in vec4 color;
+out vec4 frag_color;
+out vec2 frag_pos;
+out vec2 frag_uv;
+
+uniform vec2 screenSize;
+
+void main()
+{
+    frag_color = color;
+    frag_pos = pos;
+    frag_uv = uv;
+    vec2 screenPos = (pos.xy - vec2(0.5, 0.5)) * 2 / screenSize;
+    gl_Position = vec4(screenPos.x, -screenPos.y,0,1);
 }
 `;
 
@@ -552,6 +574,31 @@ render_sprite :: proc(
     append(&render_buffer.index, start_index + 1);
     append(&render_buffer.index, start_index + 2);
     append(&render_buffer.index, start_index + 3);
+}
+
+use_texture :: proc(
+    render_buffer: ^Sprite_Render_System, 
+	texture: Texture_Handle)
+{
+    if texture != render_buffer.current_texture
+    {
+        index_count := len(render_buffer.render_system.index);
+        if index_count > 0
+        {
+            pass_texture: Texture_Handle = {};
+            if container.is_valid(render_buffer.current_texture)
+            {
+                pass_texture = render_buffer.current_texture;
+            }
+            append(&render_buffer.passes, Sprite_Render_Pass {
+                    pass_texture, 
+                    index_count - render_buffer.current_pass_index
+            });
+            render_buffer.current_pass_index = index_count;
+        }
+
+        render_buffer.current_texture = texture;
+    }
 }
 
 render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, color: Color)

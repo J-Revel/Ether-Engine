@@ -1,12 +1,14 @@
 package render
 
+import "core:log"
 import "../../libs/freetype"
+import gl "shared:odin-gl"
 
 Glyph :: struct
 {
 	size: [2]int,
 	bearing: [2]int,
-	advance: int,
+	advance: [2]int,
 	uv_min: [2]f32,
 	uv_max: [2]f32,
 }
@@ -14,7 +16,7 @@ Glyph :: struct
 Font :: struct
 {
 	face: freetype.Face,
-	texture_id: u32,
+	glyphs: map[rune]Glyph,
 }
 
 lib: freetype.Library;
@@ -27,31 +29,32 @@ init_font_render :: proc()
 load_font :: proc(path: string, size: int, allocator := context.allocator) -> (font: Font, ok: bool)
 {
 	error := freetype.new_face(lib, path, 0, &font.face);
-	if error > 0 do return font, false;
-	freetype.set_pixel_sizes(font.face, 0, 16);
-	test_glyph_index := freetype.get_char_index(font.face, 'a');
-	error = freetype.load_glyph(font.face, test_glyph_index, freetype.LOAD_DEFAULT);
-	if error > 0 do return font, false;
-	error = freetype.render_glyph(font.face.glyph, freetype.RENDER_MODE_NORMAL);
-	if error > 0 do return font, false;
+	if error != .OK
+	{
+		log.error("Font load error", error);
+		return font, false;
+	}
+	freetype.set_pixel_sizes(font.face, 0, u32(size));
 	return font, true;
 }
 
-load_single_glyph :: proc(using font: Font) -> (glyph: Glyph, texture_id: uint)
+load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, texture_id: u32, ok: bool)
 {
+	error := freetype.load_glyph(font.face, u32(character), freetype.LOAD_DEFAULT);
+	if error != .OK do return {}, 0, false;
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
-	texture_id: uint;
 	gl.GenTextures(1, &texture_id);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);
 	glyph.size = [2]int {
-		face.glyph.bitmap.width,
-		face.glyph.bitmap.rows,
+		int(face.glyph.bitmap.width),
+		int(face.glyph.bitmap.rows),
 	};
+	bitmap := &face.glyph.bitmap;
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
 		gl.RED,
-		glyph.size.x, glyph.size.y,
+		i32(glyph.size.x), i32(glyph.size.y),
 		0,
 		gl.RED,
 		gl.UNSIGNED_BYTE,
@@ -60,7 +63,14 @@ load_single_glyph :: proc(using font: Font) -> (glyph: Glyph, texture_id: uint)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_FILTER, gl.LINEAR);
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-	return glyph, texture_id;
+	glyph = Glyph{
+		size = [2]int{int(bitmap.width), int(bitmap.rows)},
+		bearing = [2]int{int(face.glyph.bitmap_left), int(face.glyph.bitmap_top)},
+		advance = [2]int{int(face.glyph.advance.x), int(face.glyph.advance.y)},
+		uv_min = [2]f32{0, 0},
+		uv_max = [2]f32{1, 1},
+	};
+	return glyph, texture_id, true;
 }

@@ -29,6 +29,8 @@ import "core:reflect"
 
 import "../ui"
 
+import "../geometry"
+
 Scene :: struct
 {
 	camera: render.Camera,
@@ -42,6 +44,9 @@ Scene :: struct
     using animation_database: animation.Animation_Database,
 
     scene_database: container.Database,
+	font: render.Font,
+	test_glyph: render.Glyph,
+	test_texture_id: u32,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
@@ -60,6 +65,27 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;
+
+	loaded_font, ok := render.load_font("resources/fonts/arial.ttf", 40);
+	assert(ok);
+	font = loaded_font;
+	test_glyph, test_texture_id, ok = render.load_single_glyph(font, 'a');
+	assert(ok);
+	test_texture_handle, _ := container.table_add(&sprite_database.textures, render.Texture{"resources/fonts/arial.ttf", test_texture_id, test_glyph.size});
+	test_sprite, _ := container.table_add(&sprite_database.sprites, render.Sprite{
+		test_texture_handle,
+		"test",
+		render.Sprite_Data {
+			anchor = [2]f32{0, 0},
+			clip = geometry.Rect(f32){ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
+		},
+	});
+	test_transform := objects.transform_hierarchy_add_root(&transform_hierarchy, objects.Transform{
+		pos = [2]f32{0, 0},
+		scale = 10,
+		angle = 0,
+	}, "test");
+	container.table_add(&sprite_components, Sprite_Component{test_transform, test_sprite});
 }
 
 test_animation_keyframes : [4]animation.Keyframe(f32) =
@@ -176,9 +202,9 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 
 	
 	ui.layout_draw_rect({}, {}, ui.Color{0.5, 1, 0.5, 1}, &ui_ctx);
-	if ui.layout_button("test", {100, 100}, &ui_ctx)
+	//if ui.layout_button("test", {100, 100}, &ui_ctx)
 	{
-		log.info("BUTTON1");
+		//log.info("BUTTON1");
 	}
 	if ui.window(&window_state, 40, &ui_ctx)
 	{
@@ -205,7 +231,7 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	gl.Viewport(i32(viewport.top_left.x), i32(viewport.top_left.y), i32(viewport.size.x), i32(viewport.size.y));
 
-	ui.render_draw_list(&ui_ctx.draw_list, &scene.color_renderer);
+	ui.render_draw_list(&ui_ctx.draw_list, &scene.sprite_renderer);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	

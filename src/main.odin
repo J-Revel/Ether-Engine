@@ -50,7 +50,13 @@ main :: proc() {
     defer sdl.quit();
     if init_err == 0 
     {
+		log.info("load SDL_IMAGE");
         sdl_image.init(.PNG);
+		freetype_library: freetype.Library;
+		log.info("load Freetype");
+
+		render.init_font_render();
+
         log.info("Setting up the window...");
         window := sdl.create_window("Ether", 100, 100, 1280, 720, .Open_GL|.Mouse_Focus|.Shown|.Resizable);
         if window == nil {
@@ -80,15 +86,6 @@ main :: proc() {
         }
         gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
         
-		freetype_library: freetype.Library;
-		init_error := freetype.init(&freetype_library);
-		if init_error > 0 do log.error("freetype init error");
-
-		font_face: freetype.Face;
-		new_face_error := freetype.new_face(freetype_library, "resources/fonts/arial.ttf", 0, &font_face);
-
-		log.info(new_face_error);
-		freetype.set_pixel_sizes(font_face, 0, 20);
 
 
         gl.ClearColor(0.25, 0.25, 0.25, 1);

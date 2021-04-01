@@ -136,7 +136,8 @@ current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 
 rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 {
-	append(draw_list, Rect_Draw_Command{Rect{pos, size}, color});
+	clip_rect := Rect { size = [2]f32{1, 1}};
+	append(draw_list, Rect_Draw_Command{rect = Rect{pos, size}, clip = clip_rect, color = color});
 }
 
 ui_element :: proc(using rect: Rect, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
@@ -171,8 +172,9 @@ element_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^
 	rect := Rect{
 		pos = ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top},
 		size = ctx.current_element_size * (anchor.max - anchor.min) - padding_sum,
-	};;
-	append(&ctx.draw_list, Rect_Draw_Command{rect, color});
+	};
+	clip := Rect{ size = [2]f32{1, 1} };
+	append(&ctx.draw_list, Rect_Draw_Command{rect = rect, clip = clip, color = color});
 }
 
 append_and_get :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> ^E #no_bounds_check
@@ -389,9 +391,9 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 	return;
 }
 
-render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Render_Buffer)
+render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Render_System)
 {
-	vertices: [dynamic]render.Color_Vertex_Data;
+	vertices: [dynamic]render.Sprite_Vertex_Data;
 	indices: [dynamic]u32;
 	quad_index_list := [?]u32{0, 1, 2, 0, 2, 3};
 	for draw_cmd in draw_list
@@ -400,20 +402,25 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_buffer: ^render.Color_Ren
 		{
 			case Rect_Draw_Command:
 				start_index := u32(len(vertices));
-				vertice: render.Color_Vertex_Data = {cmd_data.pos, cmd_data.color};
+				vertice: render.Sprite_Vertex_Data = {cmd_data.pos, cmd_data.clip.pos, cmd_data.color};
 				append(&vertices, vertice);
 				vertice.pos.x = cmd_data.pos.x + cmd_data.size.x;
+				vertice.uv.x = cmd_data.clip.pos.x + cmd_data.clip.size.x;
 				append(&vertices, vertice);
 				vertice.pos.y = cmd_data.pos.y + cmd_data.size.y;
+				vertice.uv.y = cmd_data.clip.pos.y + cmd_data.clip.size.y;
 				append(&vertices, vertice);
 				vertice.pos.x = cmd_data.pos.x;
+				vertice.uv.x = cmd_data.clip.pos.x;
 				append(&vertices, vertice);
 				for index_offset in quad_index_list
 				{
 					append(&indices, start_index + index_offset);
 				}
+				
 		}
 	}
 	clear(draw_list);
-	render.push_mesh_data(render_buffer, vertices[:], indices[:]);
+	render.use_texture(render_system, {});
+	render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
 }

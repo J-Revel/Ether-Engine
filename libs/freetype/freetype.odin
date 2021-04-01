@@ -13,30 +13,30 @@ when os.OS == "windows" {
 
 @(link_prefix="FT_", default_calling_convention="c")
 foreign freetype {
-	Init_FreeType   :: proc(library: ^Library) -> Error ---
-	Done_FreeType   :: proc(library: Library) -> Error ---
+	Init_FreeType   :: proc(library: ^Library) -> Error_Code ---
+	Done_FreeType   :: proc(library: Library) -> Error_Code ---
 
-	New_Face        :: proc(library: Library, filepathname: cstring, face_index: Long, aface: ^Face) -> Error ---
-	New_Memory_Face :: proc(library: Library, file_base: ^byte, file_size: Long, face_index: Long, aface: ^Face) -> Error ---
-	Done_Face       :: proc(face: Face) -> Error ---
+	New_Face        :: proc(library: Library, filepathname: cstring, face_index: Long, aface: ^Face) -> Error_Code ---
+	New_Memory_Face :: proc(library: Library, file_base: ^byte, file_size: Long, face_index: Long, aface: ^Face) -> Error_Code ---
+	Done_Face       :: proc(face: Face) -> Error_Code ---
 
-	Set_Char_Size   :: proc(face: Face, char_width, char_height: F26Dot6, horz_resolution, vert_resolution: u32) -> Error ---
-	Set_Pixel_Sizes :: proc(face: Face, pixel_width, pixel_height: u32) -> Error ---
+	Set_Char_Size   :: proc(face: Face, char_width, char_height: F26Dot6, horz_resolution, vert_resolution: u32) -> Error_Code ---
+	Set_Pixel_Sizes :: proc(face: Face, pixel_width, pixel_height: u32) -> Error_Code ---
 
 	Get_First_Char  :: proc(face: Face, index: ^u32) -> c.ulong ---;
 	Get_Next_Char   :: proc(face: Face, character: c.ulong, index: ^u32) -> c.ulong ---;
 	Get_Char_Index  :: proc(face: Face, charcode: ULong) -> u32 ---
 
-	Get_Kerning     :: proc(face: Face, left_glyph, right_glyph: u32, kern_mode: u32, akerning: ^Vector) -> Error ---
+	Get_Kerning     :: proc(face: Face, left_glyph, right_glyph: u32, kern_mode: u32, akerning: ^Vector) -> Error_Code ---
 
-	Load_Char       :: proc(face: Face, char_code: u32, load_flags: i32) -> Error ---
-	Load_Glyph      :: proc(face: Face, glyph_index: u32, load_flags: i32) -> Error ---
+	Load_Char       :: proc(face: Face, char_code: u32, load_flags: i32) -> Error_Code ---
+	Load_Glyph      :: proc(face: Face, glyph_index: u32, load_flags: i32) -> Error_Code ---
 
-	Select_Charmap  :: proc(face: Face, encoding: Encoding) -> Error ---
+	Select_Charmap  :: proc(face: Face, encoding: Encoding) -> Error_Code ---
 
 	Set_Transform   :: proc(face: Face, matrix: ^Matrix, delta: ^Vector) ---
 
-	Load_Sfnt_Table :: proc(face: Face, tag: ULong, offset: Long, buffer: ^byte, length: ^ULong) -> Error ---
+	Load_Sfnt_Table :: proc(face: Face, tag: ULong, offset: Long, buffer: ^byte, length: ^ULong) -> Error_Code ---
 }
 
 HAS_KERNING :: #force_inline proc(face: Face) -> bool {
