@@ -1,14 +1,17 @@
 package ui
 
-import "../render"
 import "core:log"
 import "core:hash"
 import "core:math/linalg"
 import "core:math"
 import "core:runtime"
-import "../input"
 
-join_rects :: proc(A: Rect, B: Rect) -> (result: Rect)
+import "../input"
+import "../container"
+import "../render"
+import "../util"
+
+join_rects :: proc(A: util.Rect, B: util.Rect) -> (result: util.Rect)
 {
 	if A.size.x == 0
 	{
@@ -74,7 +77,7 @@ push_layout_group :: proc(using ui_ctx: ^UI_Context)
 	append(&layout_stack, new_layout_group);
 }
 
-apply_anchor_padding :: proc(rect: Rect, anchor: Anchor, padding: Padding) -> (result: Rect)
+apply_anchor_padding :: proc(rect: util.Rect, anchor: Anchor, padding: Padding) -> (result: util.Rect)
 {
 	result.pos = rect.pos + rect.size * anchor.min + padding.top_left;
 	result.size = rect.size * (anchor.max - anchor.min) - padding.top_left - padding.bottom_right;
@@ -87,7 +90,7 @@ pop_layout_group :: proc(using ui_ctx: ^UI_Context)
 	parent_used_rect := &current_layout(ui_ctx).used_rect;
 	for layout in popped_layout_group.layouts
 	{
-		display_rect := Rect{
+		display_rect := util.Rect{
 			pos = layout.used_rect.pos - layout.padding.top_left,
 			size = layout.used_rect.size + layout.padding.top_left + layout.padding.bottom_right,
 		};
@@ -114,8 +117,6 @@ render_layout_commands :: proc(using ui_ctx: ^UI_Context)
 	}
 }
 
-
-
 add_layout_to_group :: proc(using ui_ctx: ^UI_Context, layout: Layout)
 {
 	current_layout_group := &layout_stack[len(layout_stack)-1];
@@ -136,11 +137,11 @@ current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 
 rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 {
-	clip_rect := Rect { size = [2]f32{1, 1}};
-	append(draw_list, Rect_Draw_Command{rect = Rect{pos, size}, clip = clip_rect, color = color});
+	clip_rect := util.Rect { size = [2]f32{1, 1}};
+	append(draw_list, Rect_Draw_Command{rect = util.Rect{pos, size}, clip = clip_rect, color = color});
 }
 
-ui_element :: proc(using rect: Rect, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
+ui_element :: proc(using rect: util.Rect, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
 {
 	state = .Normal;
 	element_hash := uintptr(hash.djb2(transmute([]byte)location.file_path)) + uintptr(location.line);
@@ -162,34 +163,49 @@ ui_element :: proc(using rect: Rect, ctx: ^UI_Context, location := #caller_locat
 		ctx.next_hovered_element = element_hash;
 	}
 	layout := current_layout(ctx);
-	layout.used_rect = join_rects(layout.used_rect, Rect{ctx.current_element_pos, ctx.current_element_size});
+	layout.used_rect = join_rects(layout.used_rect, util.Rect{ctx.current_element_pos, ctx.current_element_size});
 	return;
 }
 
 element_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^UI_Context)
 {
 	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
-	rect := Rect{
+	rect := util.Rect{
 		pos = ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top},
 		size = ctx.current_element_size * (anchor.max - anchor.min) - padding_sum,
 	};
-	clip := Rect{ size = [2]f32{1, 1} };
+	clip := util.Rect{ size = [2]f32{1, 1} };
 	append(&ctx.draw_list, Rect_Draw_Command{rect = rect, clip = clip, color = color});
 }
 
-append_and_get :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> ^E #no_bounds_check
+element_draw_textured_rect :: proc(
+	anchor: Anchor,
+	padding: Padding,
+	color: Color,
+	sprite: render.Sprite_Handle,
+	ctx: ^UI_Context
+)
 {
-    if array == nil do return nil;
-
-    n := len(array);
-    resize(array, n+1);
-
-    return len(array) == n+1 ? &array[len(array)-1] : nil;
+	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	rect := util.Rect{
+		pos = ctx.current_element_pos + anchor.min * ctx.current_element_size + [2]f32{anchor.left, anchor.top},
+		size = ctx.current_element_size * (anchor.max - anchor.min) - padding_sum,
+	};
+	sprite_data: ^render.Sprite = container.handle_get(sprite);
+	texture_handle := sprite_data.texture;
+	log.info(texture_handle);
+	append(&ctx.draw_list, Rect_Draw_Command{
+		rect = rect,
+		clip = sprite_data.clip,
+		color = color,
+		texture = texture_handle
+	});
 }
+
 
 add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
 {
-	added_cmd := append_and_get(array);
+	added_cmd := util.append_and_get(array);
 	added_cmd^ = draw_cmd;
 	return cast(^T)added_cmd;
 }
@@ -214,9 +230,11 @@ layout_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^U
 	append(&ctx.draw_list, draw_cmd);
 }
 
+default_anchor :: Anchor{{0, 0}, {1, 1}, 0, 0, 0, 0};
+
 button :: proc(
 	label: 	string,
-	rect: Rect,
+	rect: util.Rect,
 
 	ui_ctx: ^UI_Context,
 	location := #caller_location
@@ -225,7 +243,7 @@ button :: proc(
 	#partial switch ui_element(rect, ui_ctx, location)
 	{
 		case .Hovered:
-			element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
+			element_draw_rect(default_anchor, {}, render.Color{1, 0, 0, 1}, ui_ctx);
 			element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 			return ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed;
 
@@ -245,7 +263,7 @@ button :: proc(
 	}
 */
 drag_box :: proc(
-	rect: Rect,
+	rect: util.Rect,
 	drag_state: ^Drag_State,
 
 	ui_ctx: ^UI_Context,
@@ -280,10 +298,10 @@ drag_box :: proc(
 	return;
 }
 
-allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> Rect
+allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
 {
 	layout := current_layout(ui_ctx);
-	result := Rect{layout.pos + layout.padding.top_left + layout.cursor * layout.direction, size};
+	result := util.Rect{layout.pos + layout.padding.top_left + layout.cursor * layout.direction, size};
 	if layout.direction.x < 0
 	{
 		result.pos.x = layout.pos.x + layout.size.x - layout.padding.bottom_right.x - layout.cursor - size.x;
@@ -375,7 +393,7 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 
 	layout_draw_rect({}, {}, Color{0.5, 0.5, 0.5, 0.3}, ui_ctx);
 	// Close button
-	if drag_box(Rect{rect.pos, header_size}, &drag_state, ui_ctx)
+	if drag_box(util.Rect{rect.pos, header_size}, &drag_state, ui_ctx)
 	{
 		rect.pos += drag_state.drag_offset;
 		drag_state.drag_offset = [2]f32{0, 0};
@@ -417,10 +435,12 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 				{
 					append(&indices, start_index + index_offset);
 				}
+				render.use_texture(render_system, cmd_data.texture);
+				render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
+				clear(&vertices);
+				clear(&indices);
 				
 		}
 	}
 	clear(draw_list);
-	render.use_texture(render_system, {});
-	render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
 }

@@ -2,15 +2,10 @@ package ui
 
 import "../input"
 import "../render"
+import "../util"
 
 UIID :: distinct string;
 Color :: [4]f32;
-
-Rect :: struct
-{
-	pos: [2]f32,
-	size: [2]f32
-}
 
 Anchor :: struct
 {
@@ -26,8 +21,8 @@ Padding :: struct
 
 Rect_Draw_Command :: struct
 {
-	using rect: Rect,
-	clip: Rect,
+	using rect: util.Rect,
+	clip: util.Rect,
 	texture: render.Texture_Handle,
 	color: [4]f32,
 }
@@ -55,7 +50,7 @@ Layout :: struct
 {
 	pos, size: [2]f32,
 	direction: [2]f32,
-	used_rect: Rect,
+	used_rect: util.Rect,
 	padding: Padding,
 	cursor: f32,
 	draw_commands: [dynamic]Layout_Draw_Command,
@@ -97,6 +92,6 @@ Drag_State :: struct
 Window_State :: struct
 {
 	drag_state: Drag_State,
-	rect: Rect,
+	rect: util.Rect,
 	folded: bool,
 }

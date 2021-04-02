@@ -14,7 +14,7 @@ import "core:encoding/json"
 import sdl "shared:odin-sdl2"
 import gl "shared:odin-gl";
 
-import "../geometry"
+import "../util"
 import "../gameplay"
 import "../render"
 import "../container"

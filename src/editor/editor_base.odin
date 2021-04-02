@@ -10,7 +10,7 @@ import "core:runtime"
 import "core:fmt"
 import "core:math/linalg"
 
-import "../geometry"
+import "../util"
 import "../animation"
 import "../input"
 
@@ -318,7 +318,7 @@ update_scroll_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, usin
 	draw_list := imgui.get_window_draw_list();
 	for sprite_data in sprites_data
 	{
-		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 		render_sprite_rect(draw_list, sprite_rect, theme.sprite_normal);
 	}
 	if mouse_offset.x != 0 || mouse_offset.y != 0
@@ -333,7 +333,7 @@ update_scroll_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, usin
 		{
 			for sprite_data, index in sprites_data
 			{
-				clip_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+				clip_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 				sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners(clip_rect, mouse_pos, 5);
 				if sprite_hovered
 				{
@@ -350,10 +350,10 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 {
 	io := imgui.get_io();
 	draw_list := imgui.get_window_draw_list();
-	editor_hovered := geometry.is_in_rect(editor_rect, mouse_pos);
+	editor_hovered := util.is_in_rect(editor_rect, mouse_pos);
 	for sprite_data, index in sprites_data
 	{
-		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 		sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners(sprite_rect, mouse_pos, 5);
 		
 
@@ -376,7 +376,7 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 			tool_data.edit_sprite_h_corner = .Max;
 			tool_data.edit_sprite_v_corner = .Max;
 
-			relative_mouse_pos := geometry.get_relative_pos(texture_rect, mouse_pos);
+			relative_mouse_pos := util.get_relative_pos(texture_rect, mouse_pos);
 			drag_start_pos = relative_mouse_pos;
 			drag_rect := render.Sprite_Data{{0.5, 0.5}, {drag_start_pos, relative_mouse_pos - drag_start_pos}};
 			default_sprite_name := "default";
@@ -392,11 +392,11 @@ update_none_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 update_selected_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using render_data: Sprite_Editor_Render_Data)
 {
 	io := imgui.get_io();
-	editor_hovered := geometry.is_in_rect(editor_rect, mouse_pos);
+	editor_hovered := util.is_in_rect(editor_rect, mouse_pos);
 	selected_sprite_index := tool_data.edited_sprite_index;
 	selected_sprite_data := sprites_data[selected_sprite_index];
-	selected_sprite_rect := geometry.get_sub_rect(texture_rect, selected_sprite_data.clip);
-	anchor_pos := geometry.relative_to_world(selected_sprite_rect, selected_sprite_data.anchor);
+	selected_sprite_rect := util.get_sub_rect(texture_rect, selected_sprite_data.clip);
+	anchor_pos := util.relative_to_world(selected_sprite_rect, selected_sprite_data.anchor);
 
 	sprite_hovered, h_edit, v_edit := compute_sprite_edit_corners(selected_sprite_rect, mouse_pos, 5);
 	anchor_hovered := linalg.length(anchor_pos - mouse_pos) < 5;
@@ -406,7 +406,7 @@ update_selected_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, us
 
 	for sprite_data, index in sprites_data
 	{
-		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 		render_color := index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal;
 		render_sprite_rect(draw_list, sprite_rect, render_color);
 		render_sprite_point(draw_list, sprite_rect, sprite_data.anchor, render_color);
@@ -499,7 +499,7 @@ update_move_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, using 
 	selected_sprite_index := tool_data.edited_sprite_index;
 	for sprite_data, index in sprites_data
 	{
-		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 		render_sprite_rect(draw_list, sprite_rect, index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal);
 	}
 }
@@ -513,13 +513,13 @@ update_resize_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State, usin
 	selected_sprite_index := tool_data.edited_sprite_index;
 
 	draw_list := imgui.get_window_draw_list();
-	sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+	sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 	relative_offset := offset / texture_rect.size;
 	log.info(relative_offset);
 
 	for sprite_data, index in sprites_data
 	{
-		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 		render_sprite_rect(draw_list, sprite_rect, index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal);
 	}
 
@@ -574,14 +574,14 @@ update_move_anchor_sprite_tool :: proc(using editor_state: ^Sprite_Editor_State,
 	draw_list := imgui.get_window_draw_list();
 	for sprite_data, index in sprites_data
 	{
-		sprite_rect := geometry.get_sub_rect(texture_rect, sprite_data.clip);
+		sprite_rect := util.get_sub_rect(texture_rect, sprite_data.clip);
 		render_color := index == selected_sprite_index ? theme.sprite_selected : theme.sprite_normal;
 		render_sprite_rect(draw_list, sprite_rect, render_color);
 		render_sprite_point(draw_list, sprite_rect, sprite_data.anchor, render_color);
 	}
 }
 
-compute_sprite_edit_corners :: proc(sprite_rect: geometry.Rect(f32), mouse_pos: [2]f32, precision: f32) -> (out_hovered: bool, out_h: Sprite_Edit_Corner, out_v: Sprite_Edit_Corner)
+compute_sprite_edit_corners :: proc(sprite_rect: util.Rect, mouse_pos: [2]f32, precision: f32) -> (out_hovered: bool, out_h: Sprite_Edit_Corner, out_v: Sprite_Edit_Corner)
 {
 	out_hovered = (mouse_pos.x > sprite_rect.pos.x - precision && mouse_pos.y > sprite_rect.pos.y - precision
 		&& mouse_pos.x < sprite_rect.pos.x + sprite_rect.size.x + precision && mouse_pos.y < sprite_rect.pos.y + sprite_rect.size.y + precision);
@@ -612,7 +612,7 @@ draw_sprite_gizmos :: proc(using editor_state: ^Sprite_Editor_State, draw_list: 
 	texture_size : [2]f32 = {f32(texture.size.x), f32(texture.size.y)};
 	for sprite_data, index in sprites_data
 	{
-		clip_rect := geometry.get_sub_rect(render_data.texture_rect, sprite_data.clip);
+		clip_rect := util.get_sub_rect(render_data.texture_rect, sprite_data.clip);
 		clip_top_left := clip_rect.pos;
 		clip_bottom_right := clip_rect.pos + clip_rect.size;
 	}
@@ -636,18 +636,18 @@ load_sprites_for_texture :: proc(using editor_state: ^Sprite_Editor_State, path:
 	}
 }
 
-render_sprite_point :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect(f32), relative_point: [2]f32, color: u32)
+render_sprite_point :: proc(draw_list: ^imgui.Draw_List, rect: util.Rect, relative_point: [2]f32, color: u32)
 {
 	imgui.draw_list_add_circle(draw_list, rect.pos + rect.size * relative_point, 2, color);
 }
 
-render_sprite_rect :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect(f32), color: u32)
+render_sprite_rect :: proc(draw_list: ^imgui.Draw_List, rect: util.Rect, color: u32)
 {
 	imgui.draw_list_add_rect(draw_list, rect.pos, rect.pos + rect.size, color);
 	imgui.draw_list_add_rect_filled(draw_list, rect.pos, rect.pos + rect.size, render.color_replace_alpha(color, 50));
 }
 
-render_sprite_corner :: proc(draw_list: ^imgui.Draw_List, rect: geometry.Rect(f32), side: Sprite_Side, color: u32)
+render_sprite_corner :: proc(draw_list: ^imgui.Draw_List, rect: util.Rect, side: Sprite_Side, color: u32)
 {
 	top_left := rect.pos;
 	bottom_right := rect.pos + rect.size;

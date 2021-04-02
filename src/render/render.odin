@@ -160,20 +160,29 @@ upload_buffer_data :: proc(render_buffer: ^Render_System($T))
     gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(T), &render_buffer.vertex[0]);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
     gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int)index_count * size_of(u32), &render_buffer.index[0]);
-    gl.BindVertexArray(0);
 }
 
-render_buffer_content_part :: proc(render_buffer : ^Render_System($T), camera: ^Camera, viewport: Viewport, start_index: int, index_count: int)
+prepare_buffer_render :: proc(render_state: ^Render_State, viewport: Viewport)
 {
-    gl.BindVertexArray(render_buffer.render_state.vao);
-    gl.UseProgram(render_buffer.render_state.shader);
-    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
-    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, f32(viewport.size.x), f32(viewport.size.y));
+    gl.BindVertexArray(render_state.vao);
+    gl.UseProgram(render_state.shader);
+    gl.Uniform2f(render_state.screenSizeAttrib, f32(viewport.size.x), f32(viewport.size.y));
+}
 
-    gl.BindVertexArray(render_buffer.render_state.vao);
-    gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, rawptr(uintptr(size_of(u32) * start_index)));
-    gl.BindVertexArray(0);
+cleanup_buffer_render :: proc()
+{
     gl.UseProgram(0);
+	gl.BindVertexArray(0);
+}
+
+use_camera :: proc(render_buffer: ^Render_System($T), camera: ^Camera)
+{
+    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
+}
+
+render_buffer_content_part :: proc(render_state: ^Render_State, start_index: int, index_count: int)
+{
+    gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, rawptr(uintptr(size_of(u32) * start_index)));
 }
 
 hex_char_val :: proc(r: rune) -> (u32, bool)

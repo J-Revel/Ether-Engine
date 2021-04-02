@@ -28,15 +28,22 @@ import "../objects"
 import "core:reflect"
 
 import "../ui"
+import "../util"
 
-import "../geometry"
+
+Rect :: struct
+{
+	pos: [2]f32,
+	size: [2]f32,
+}
 
 Scene :: struct
 {
 	camera: render.Camera,
 	prefab_tables: objects.Named_Table_List,
-    color_renderer: render.Color_Render_System,
+    //color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
+    ui_renderer: render.Sprite_Render_System,
     transforms: objects.Transform_Table,
     transform_hierarchy: objects.Transform_Hierarchy,
     sprite_components: container.Table(Sprite_Component),
@@ -47,6 +54,7 @@ Scene :: struct
 	font: render.Font,
 	test_glyph: render.Glyph,
 	test_texture_id: u32,
+	test_sprite: render.Sprite_Handle,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
@@ -61,25 +69,28 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	container.database_add(&scene_database, &animation_database);
 	container.database_add(&scene_database, &transform_hierarchy);
 
-	render.init_sprite_renderer(&sprite_renderer.render_state);
-	render.init_color_renderer(&color_renderer.render_state);
+	render.init_sprite_renderer(&sprite_renderer.render_state, .World);
+	render.init_sprite_renderer(&ui_renderer.render_state, .UI);
+	//render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;
 
-	loaded_font, ok := render.load_font("resources/fonts/arial.ttf", 40);
+	loaded_font, ok := render.load_font("resources/fonts/arial.ttf", 200);
 	assert(ok);
 	font = loaded_font;
-	test_glyph, test_texture_id, ok = render.load_single_glyph(font, 'a');
+	test_glyph, test_texture_id, ok = render.load_single_glyph(font, '@');
+	log.info(u32('1'));
 	assert(ok);
 	test_texture_handle, _ := container.table_add(&sprite_database.textures, render.Texture{"resources/fonts/arial.ttf", test_texture_id, test_glyph.size});
-	test_sprite, _ := container.table_add(&sprite_database.sprites, render.Sprite{
+	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
 		test_texture_handle,
 		"test",
 		render.Sprite_Data {
 			anchor = [2]f32{0, 0},
-			clip = geometry.Rect(f32){ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
+			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
 		},
 	});
+	log.info("TEST SPRITE 1");
 	test_transform := objects.transform_hierarchy_add_root(&transform_hierarchy, objects.Transform{
 		pos = [2]f32{0, 0},
 		scale = 10,
@@ -102,9 +113,7 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	init_empty_scene(scene, sprite_db);
 
 
-	render.load_sprites_from_file("test.sprites", &textures, &sprites);
 	/*
-	spaceship_sprite, sprite_found := render.get_sprite_any_texture(sprite_database, "spaceship");
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
 	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;
 
@@ -121,7 +130,8 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 		test_input,
 		{},
 		&scene.scene_database);
-	it := container.table_iterator(&transforms);
+	it := container.table_iterator(&transforms);*/
+	/*
 	for transform in container.table_iterate(&it)
 	{
 		log.info(transform);
@@ -179,7 +189,7 @@ time : f32 = 0;
 ui_ctx: ui.UI_Context;
 window_state := ui.Window_State
 {
-	rect = ui.Rect{
+	rect = util.Rect{
 		size = [2]f32{300, 200},
 	},
 };
@@ -208,6 +218,9 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	}
 	if ui.window(&window_state, 40, &ui_ctx)
 	{
+		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{200, 200});
+		ui.ui_element(allocated_space, &ui_ctx);
+		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, test_sprite, &ui_ctx);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
@@ -231,7 +244,7 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	gl.Viewport(i32(viewport.top_left.x), i32(viewport.top_left.y), i32(viewport.size.x), i32(viewport.size.y));
 
-	ui.render_draw_list(&ui_ctx.draw_list, &scene.sprite_renderer);
+	ui.render_draw_list(&ui_ctx.draw_list, &scene.ui_renderer);
 
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
@@ -239,12 +252,14 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	// texture_id := container.table_get(&textures, spaceship_sprite_data.texture).texture_id;
 	
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
+	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
 
 	ui_camera := render.Camera{
 		world_pos = linalg.to_f32(viewport.size / 2),
 		zoom = 1,
 	};
-    render.render_buffer_content(&scene.color_renderer, &ui_camera, viewport);
-    render.clear_render_buffer(&color_renderer.buffer);
+    //render.render_buffer_content(&scene.color_renderer, &ui_camera, viewport);
+    //render.clear_render_buffer(&color_renderer.buffer);
     render.clear_sprite_render_buffer(&scene.sprite_renderer);
+    render.clear_sprite_render_buffer(&scene.ui_renderer);
 }

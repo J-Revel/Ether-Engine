@@ -3,7 +3,7 @@ import "../container"
 import "../render"
 import win32 "core:sys/windows"
 import "core:os"
-import "../geometry"
+import "../util"
 import "../objects"
 import "../gameplay"
 import "../animation"
@@ -82,8 +82,8 @@ Sprite_Side :: enum
 
 Sprite_Editor_Render_Data :: struct
 {
-	editor_rect: geometry.Rect(f32),
-	texture_rect: geometry.Rect(f32),
+	editor_rect: util.Rect,
+	texture_rect: util.Rect,
 	mouse_pos: [2]f32,
 }
 

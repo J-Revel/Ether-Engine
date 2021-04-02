@@ -15,7 +15,7 @@ import "core:path"
 import "../animation"
 import "../gameplay"
 
-import "../geometry"
+import "../util"
 import "../objects"
 
 Sprite_Selection_Data :: struct

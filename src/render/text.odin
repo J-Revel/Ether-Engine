@@ -4,20 +4,6 @@ import "core:log"
 import "../../libs/freetype"
 import gl "shared:odin-gl"
 
-Glyph :: struct
-{
-	size: [2]int,
-	bearing: [2]int,
-	advance: [2]int,
-	uv_min: [2]f32,
-	uv_max: [2]f32,
-}
-
-Font :: struct
-{
-	face: freetype.Face,
-	glyphs: map[rune]Glyph,
-}
 
 lib: freetype.Library;
 
@@ -40,7 +26,8 @@ load_font :: proc(path: string, size: int, allocator := context.allocator) -> (f
 
 load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, texture_id: u32, ok: bool)
 {
-	error := freetype.load_glyph(font.face, u32(character), freetype.LOAD_DEFAULT);
+	log.info(u32(character));
+	error := freetype.load_char(font.face, u32(character), freetype.LOAD_RENDER);
 	if error != .OK do return {}, 0, false;
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
 	gl.GenTextures(1, &texture_id);
@@ -50,6 +37,7 @@ load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, t
 		int(face.glyph.bitmap.rows),
 	};
 	bitmap := &face.glyph.bitmap;
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -64,6 +52,7 @@ load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, t
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.BindTexture(gl.TEXTURE_2D, 0);
 
 	glyph = Glyph{
 		size = [2]int{int(bitmap.width), int(bitmap.rows)},

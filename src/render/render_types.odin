@@ -1,7 +1,8 @@
 package render
 
 import "../container"
-import "../geometry"
+import "../util"
+import "../../libs/freetype"
 
 vec2 :: [2]f32;
 Color :: [4]f32;
@@ -65,7 +66,7 @@ Texture_Handle :: container.Handle(Texture);
 Sprite_Data :: struct
 {
     anchor: [2]f32,
-    clip: geometry.Rect(f32),
+    clip: util.Rect,
 }
 
 Sprite :: struct
@@ -88,6 +89,12 @@ Sprite_Render_Pass :: struct
     index_count: int,
 }
 
+Sprite_Render_Type :: enum
+{
+	World,
+	UI,
+}
+
 Sprite_Render_Buffer :: Render_Buffer(Sprite_Vertex_Data);
 Sprite_Render_System :: struct
 {
@@ -95,6 +102,7 @@ Sprite_Render_System :: struct
     passes: [dynamic]Sprite_Render_Pass,
     current_texture: Texture_Handle,
     current_pass_index: int,
+	render_type: Sprite_Render_Type,
 }
 
 Sprite_Asset :: struct
@@ -108,4 +116,47 @@ Sprite_Database :: struct
 {
     textures: container.Table(Texture),
     sprites: container.Table(Sprite),
+}
+
+/*-------------------------
+		Text
+---------------------------*/
+
+
+Glyph :: struct
+{
+	size: [2]int,
+	bearing: [2]int,
+	advance: [2]int,
+	uv_min: [2]f32,
+	uv_max: [2]f32,
+}
+
+Font :: struct
+{
+	face: freetype.Face,
+	glyphs: map[rune]Glyph,
+}
+
+/*-------------------------
+		Atlas
+---------------------------*/
+
+Atlas :: struct
+{
+	texture_size: [2]int,
+	texture_handle: Texture_Handle, 
+}
+
+Bin_Pack_Node :: struct
+{
+	size: [2]int,
+	rect: util.Rect,
+	left_child: int,
+	right_child: int,
+}
+
+Bin_Pack_Tree :: struct
+{
+	nodes: [dynamic]Bin_Pack_Node,
 }

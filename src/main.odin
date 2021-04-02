@@ -21,7 +21,6 @@ import freetype "../libs/freetype"
 
 import render "render";
 import "util";
-import "geometry"
 import "input"
 import "gameplay"
 import "editor"

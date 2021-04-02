@@ -12,7 +12,6 @@ import "core:math/linalg"
 import "core:reflect"
 import "../animation"
 
-import "../geometry"
 import "../objects"
 
 init_anim_editor :: proc(using editor_state: ^Anim_Editor_State)

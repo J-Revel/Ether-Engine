@@ -72,7 +72,7 @@ void main()
     frag_color = color;
     frag_pos = pos;
     frag_uv = uv;
-    vec2 screenPos = (pos.xy - vec2(0.5, 0.5)) * 2 / screenSize;
+    vec2 screenPos = pos.xy * 2 / screenSize - vec2(1, 1);
     gl_Position = vec4(screenPos.x, -screenPos.y,0,1);
 }
 `;
@@ -430,11 +430,20 @@ generate_default_white_texture :: proc() -> (texture_id: u32)
     return texture_id;
 }
 
-init_sprite_renderer :: proc (result: ^Render_State) -> bool
+init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_Type) -> bool
 {
     vertex_shader := gl.CreateShader(gl.VERTEX_SHADER);
     fragment_shader := gl.CreateShader(gl.FRAGMENT_SHADER);
-    vertex_shader_cstring := cast(^u8)strings.clone_to_cstring(sprite_vertex_shader_src, context.temp_allocator);
+	vertex_shader_src: string;
+	switch render_type
+	{
+		case .World:
+			vertex_shader_src = sprite_vertex_shader_src;
+		case .UI:
+			vertex_shader_src = ui_vertex_shader_src;
+	}
+
+    vertex_shader_cstring := cast(^u8)strings.clone_to_cstring(vertex_shader_src, context.temp_allocator);
     fragment_shader_cstring := cast(^u8)strings.clone_to_cstring(sprite_fragment_shader_src, context.temp_allocator);
     gl.ShaderSource(vertex_shader, 1, &vertex_shader_cstring, nil);
     gl.ShaderSource(fragment_shader, 1, &fragment_shader_cstring, nil);
@@ -646,7 +655,14 @@ render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]
     append(&render_buffer.index, start_index + 3);
 }
 
-render_rotated_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, angle: f32, pivot: [2]f32, color: Color)
+render_rotated_quad :: proc(
+	render_buffer: ^Sprite_Render_System,
+	pos: [2]f32,
+	size: [2]f32,
+	angle: f32,
+	pivot: [2]f32,
+	color: Color,
+)
 {
     imgui.text_unformatted(fmt.tprint("render_rotated_quad", render_buffer.current_texture.id, render_buffer.current_pass_index));
     start_index := cast(u32) len(render_buffer.vertex);
@@ -704,14 +720,52 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
     {
         if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
         gl.BindTexture(gl.TEXTURE_2D, texture_id);
-        render_buffer_content_part(&render_system.render_system, camera, viewport, index_cursor, pass.index_count);
+		prepare_buffer_render(&render_system.render_system.render_state, viewport);
+		use_camera(&render_system.render_system, camera);
+        render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
+		cleanup_buffer_render();
         index_cursor += pass.index_count;
-        imgui.text_unformatted(fmt.tprint(index, pass.texture.id, pass.index_count));
     }
     texture_id = render_system.render_state.default_texture;
     if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
-    render_buffer_content_part(&render_system.render_system, camera, viewport, index_cursor, len(render_system.render_system.index) - index_cursor);
+	prepare_buffer_render(&render_system.render_system.render_state, viewport);
+	use_camera(&render_system.render_system, camera);
+	render_buffer_content_part(
+		&render_system.render_system.render_state, 
+		index_cursor, 
+		len(render_system.render_system.index) - index_cursor
+	);
+	cleanup_buffer_render();
+    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.render_system.index) - index_cursor));
+
+}
+
+render_ui_buffer_content :: proc(render_system: ^Sprite_Render_System, viewport: Viewport)
+{
+    upload_buffer_data(&render_system.render_system);
+    index_cursor := 0;
+
+    texture_id: u32 = render_system.render_state.default_texture;
+    for pass, index in render_system.passes
+    {
+        if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
+        gl.BindTexture(gl.TEXTURE_2D, texture_id);
+		prepare_buffer_render(&render_system.render_system.render_state, viewport);
+        render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
+		cleanup_buffer_render();
+        index_cursor += pass.index_count;
+    }
+    texture_id = render_system.render_state.default_texture;
+    if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
+    gl.BindTexture(gl.TEXTURE_2D, texture_id);
+	prepare_buffer_render(&render_system.render_system.render_state, viewport);
+	render_buffer_content_part(
+		&render_system.render_system.render_state, 
+		index_cursor, 
+		len(render_system.render_system.index) - index_cursor
+	);
+	cleanup_buffer_render();
     imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.render_system.index) - index_cursor));
 
 }

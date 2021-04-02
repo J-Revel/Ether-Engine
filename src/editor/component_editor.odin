@@ -13,7 +13,6 @@ import "core:os"
 import "core:encoding/json"
 import sdl "shared:odin-sdl2"
 
-import "../geometry"
 import "../gameplay"
 import "../render"
 import "../container"
