@@ -55,6 +55,7 @@ Scene :: struct
 	test_glyph: render.Glyph,
 	test_texture_id: u32,
 	test_sprite: render.Sprite_Handle,
+	font_atlas: render.Font_Atlas,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
@@ -81,9 +82,16 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	test_glyph, test_texture_id, ok = render.load_single_glyph(font, '@');
 	log.info(u32('1'));
 	assert(ok);
+
+	render.init_font_atlas(&textures, &font_atlas); 
+	for r in "123456789abcdefghijklmnopqrstuvwxyz"
+	{
+		render.load_glyph(&font_atlas, font, r);
+	}
+
 	test_texture_handle, _ := container.table_add(&sprite_database.textures, render.Texture{"resources/fonts/arial.ttf", test_texture_id, test_glyph.size});
 	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
-		test_texture_handle,
+		font_atlas.texture_handle,
 		"test",
 		render.Sprite_Data {
 			anchor = [2]f32{0, 0},
@@ -218,7 +226,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	}
 	if ui.window(&window_state, 40, &ui_ctx)
 	{
-		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{200, 200});
+		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{2048, 2048});
 		ui.ui_element(allocated_space, &ui_ctx);
 		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, test_sprite, &ui_ctx);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)

@@ -50,3 +50,13 @@ append_and_get :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> ^E #n
 
     return len(array) == n+1 ? &array[len(array)-1] : nil;
 }
+
+append_and_get_index :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> int #no_bounds_check
+{
+    if array == nil do return -1;
+
+    n := len(array);
+    resize(array, n+1);
+
+    return len(array) == n+1 ? len(array)-1 : -1;
+}

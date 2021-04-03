@@ -138,25 +138,28 @@ Font :: struct
 	glyphs: map[rune]Glyph,
 }
 
+Font_Atlas :: struct
+{
+	texture_size: [2]int,
+	texture_handle: Texture_Handle, 
+	pack_tree: Atlas_Tree,
+}
+
 /*-------------------------
 		Atlas
 ---------------------------*/
 
-Atlas :: struct
+Atlas_Tree_Node :: struct
 {
-	texture_size: [2]int,
-	texture_handle: Texture_Handle, 
-}
-
-Bin_Pack_Node :: struct
-{
-	size: [2]int,
 	rect: util.Rect,
-	left_child: int,
-	right_child: int,
+	level: int,
+	left_child_index: int,
+	right_child_index: int,
 }
 
-Bin_Pack_Tree :: struct
+Atlas_Tree :: struct
 {
-	nodes: [dynamic]Bin_Pack_Node,
+
+	nodes: [dynamic]Atlas_Tree_Node,
+	available_spaces: [dynamic]int,
 }
