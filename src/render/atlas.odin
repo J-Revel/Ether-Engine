@@ -15,7 +15,6 @@ allocate_rect :: proc(using atlas: ^Atlas_Tree, size: [2]f32) -> (rect: util.Rec
 {
 	for index, available_space_index in available_spaces
 	{
-		log.info(size, nodes[index].rect.size);
 		if size.x <= nodes[index].rect.size.x && size.y <= nodes[index].rect.size.y
 		{
 			split_pack_node(atlas, index, size);

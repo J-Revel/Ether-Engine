@@ -71,6 +71,7 @@ table_init_cap :: proc(table: ^$A/Table($V), cap: uint, allocator := context.all
 table_add :: proc(table: ^$A/Table($T), value: T) -> (Handle(T), bool)
 {
 	index, ok := bit_array_allocate(table.allocation);
+	assert(ok);
 	if ok
 	{
 		mem.ptr_offset(cast(^T)table.data, index)^ = value;

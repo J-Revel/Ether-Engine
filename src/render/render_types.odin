@@ -128,8 +128,7 @@ Glyph :: struct
 	size: [2]int,
 	bearing: [2]int,
 	advance: [2]int,
-	uv_min: [2]f32,
-	uv_max: [2]f32,
+	sprite: Sprite_Handle,
 }
 
 Font :: struct

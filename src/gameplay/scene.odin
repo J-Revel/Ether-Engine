@@ -10,6 +10,7 @@ import freetype "../../libs/freetype"
 import "core:math/rand"
 import "core:math"
 import "core:math/linalg"
+import "core:fmt"
 
 import sdl "shared:odin-sdl2"
 
@@ -56,12 +57,15 @@ Scene :: struct
 	test_texture_id: u32,
 	test_sprite: render.Sprite_Handle,
 	font_atlas: render.Font_Atlas,
+	rune_sprites: map[rune]render.Sprite_Handle,
+	arial_font: render.Font,
+	roboto_font: render.Font,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 {
 	sprite_database = sprite_db;
-	objects.table_database_add_init(&prefab_tables, "sprite_component", &sprite_components, 500);
+	objects.table_database_add_init(&prefab_tables, "sprite_component", &sprite_components, 5000);
 	objects.transform_hierarchy_init(&transform_hierarchy, 5000);
 
 	animation.init_animation_database(&prefab_tables, &animation_database);
@@ -75,21 +79,15 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	//render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;
-
-	loaded_font, ok := render.load_font("resources/fonts/arial.ttf", 200);
-	assert(ok);
-	font = loaded_font;
-	test_glyph, test_texture_id, ok = render.load_single_glyph(font, '@');
-	log.info(u32('1'));
-	assert(ok);
+	font_load_ok: bool;
+	arial_font, font_load_ok = render.load_font("resources/fonts/arial.ttf", 12);
+	assert(font_load_ok);
+	roboto_font, font_load_ok = render.load_font("resources/fonts/RobotoMono-Regular.ttf", 16);
+	assert(font_load_ok);
 
 	render.init_font_atlas(&textures, &font_atlas); 
-	for r in "123456789abcdefghijklmnopqrstuvwxyz"
-	{
-		render.load_glyph(&font_atlas, font, r);
-	}
 
-	test_texture_handle, _ := container.table_add(&sprite_database.textures, render.Texture{"resources/fonts/arial.ttf", test_texture_id, test_glyph.size});
+	test_texture_handle, _ := container.table_add(&sprite_database.textures, render.Texture{"Font Texture", test_texture_id, test_glyph.size});
 	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
 		font_atlas.texture_handle,
 		"test",
@@ -105,6 +103,12 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 		angle = 0,
 	}, "test");
 	container.table_add(&sprite_components, Sprite_Component{test_transform, test_sprite});
+	for r in "123456789abcde"
+	{
+		glyph, ok := render.load_glyph(&font_atlas, arial_font, r, &sprite_database.sprites);
+		assert(ok);
+		rune_sprites[r] = glyph.sprite;
+	}
 }
 
 test_animation_keyframes : [4]animation.Keyframe(f32) =
@@ -204,6 +208,8 @@ window_state := ui.Window_State
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
+	render.load_glyph(&font_atlas, arial_font, 'x', &sprite_database.sprites);
+
 	time += delta_time;
 	animation.update_animations(&animation_players, delta_time);
 
@@ -226,7 +232,14 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	}
 	if ui.window(&window_state, 40, &ui_ctx)
 	{
-		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{2048, 2048});
+		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
+		ui.ui_element(allocated_space, &ui_ctx);
+		log.info(container.handle_get(rune_sprites['a']));
+		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
+		allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
+		ui.ui_element(allocated_space, &ui_ctx);
+		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
+		allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{2048, 2048});
 		ui.ui_element(allocated_space, &ui_ctx);
 		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, test_sprite, &ui_ctx);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)

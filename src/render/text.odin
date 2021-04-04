@@ -1,6 +1,9 @@
 package render
 
 import "core:log"
+import "core:math/linalg"
+import "core:fmt"
+
 import gl "shared:odin-gl"
 
 import "../../libs/freetype"
@@ -61,8 +64,6 @@ load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, t
 		size = [2]int{int(bitmap.width), int(bitmap.rows)},
 		bearing = [2]int{int(face.glyph.bitmap_left), int(face.glyph.bitmap_top)},
 		advance = [2]int{int(face.glyph.advance.x), int(face.glyph.advance.y)},
-		uv_min = [2]f32{0, 0},
-		uv_max = [2]f32{1, 1},
 	};
 	return glyph, texture_id, true;
 }
@@ -93,13 +94,13 @@ init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_A
 	atlas.texture_handle, ok = container.table_add(texture_table, Texture{texture_id = texture_id, size = [2]int{texture_size, texture_size}});
 	assert(ok);
 	init_atlas(&atlas.pack_tree, [2]f32{f32(texture_size), f32(texture_size)});
+	atlas.texture_size = [2]int{texture_size, texture_size};
 }
 
-load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune) -> (ok: bool)
+load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune, sprite_table: ^container.Table(Sprite)) -> (glyph: Glyph, ok: bool)
 {
 	error := freetype.load_char(font.face, u32(character), freetype.LOAD_RENDER);
-	if error != .OK do return false;
-	glyph: Glyph;
+	if error != .OK do return {}, false;
 	glyph.size = [2]int {
 		int(font.face.glyph.bitmap.width),
 		int(font.face.glyph.bitmap.rows),
@@ -110,11 +111,21 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune) -
 		size = [2]int{int(bitmap.width), int(bitmap.rows)},
 		bearing = [2]int{int(font.face.glyph.bitmap_left), int(font.face.glyph.bitmap_top)},
 		advance = [2]int{int(font.face.glyph.advance.x), int(font.face.glyph.advance.y)},
-		uv_min = [2]f32{0, 0},
-		uv_max = [2]f32{1, 1},
 	};
 	allocated_rect, alloc_ok := allocate_rect(&font_atlas.pack_tree, [2]f32{f32(bitmap.width), f32(bitmap.rows)});
 	assert(alloc_ok);
+	uv_rect := util.Rect{allocated_rect.pos / linalg.to_f32(texture_size), allocated_rect.size / linalg.to_f32(texture_size)};
+	add_ok: bool;
+	sprite :=  Sprite {
+		texture = font_atlas.texture_handle,
+		id = fmt.aprint("char", character),
+		data = {
+			clip = uv_rect
+		}
+	};
+	glyph.sprite, add_ok = container.table_add(sprite_table, sprite);
+	log.info(add_ok, sprite);
+	assert(add_ok);
 	if alloc_ok
 	{
 		texture_data := container.handle_get(texture_handle);
@@ -130,7 +141,7 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune) -
 			font.face.glyph.bitmap.buffer
 		);
 		gl.BindTexture(gl.TEXTURE_2D, 0);
-		return true;
+		return glyph, true;
 	}
-	return false;
+	return {}, false;
 }

@@ -98,7 +98,7 @@ main :: proc() {
         screen_size: [2]int;
 
         sprite_database: render.Sprite_Database;
-        render.init_sprite_database(&sprite_database, 200, 200);
+        render.init_sprite_database(&sprite_database, 5000, 5000);
 
         sceneInstance : gameplay.Scene;
         gameplay.init_main_scene(&sceneInstance, &sprite_database);
