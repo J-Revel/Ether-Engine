@@ -3,6 +3,7 @@ package ui
 import "../input"
 import "../render"
 import "../util"
+import "../container"
 
 UIID :: distinct string;
 Color :: [4]f32;
@@ -80,6 +81,8 @@ UI_Context :: struct
 	current_element_pos: [2]f32,
 	current_element_size: [2]f32,
 	layout_stack: Layout_Stack,
+	font_atlas: render.Font_Atlas,
+	sprite_table: ^container.Table(render.Sprite),
 }
 
 Drag_State :: struct

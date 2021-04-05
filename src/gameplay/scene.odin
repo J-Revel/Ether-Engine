@@ -53,10 +53,7 @@ Scene :: struct
 
     scene_database: container.Database,
 	font: render.Font,
-	test_glyph: render.Glyph,
-	test_texture_id: u32,
 	test_sprite: render.Sprite_Handle,
-	font_atlas: render.Font_Atlas,
 	rune_sprites: map[rune]render.Sprite_Handle,
 	arial_font: render.Font,
 	roboto_font: render.Font,
@@ -80,35 +77,12 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 
 	camera.zoom = 1;
 	font_load_ok: bool;
-	arial_font, font_load_ok = render.load_font("resources/fonts/arial.ttf", 12);
+	arial_font, font_load_ok = render.load_font("resources/fonts/arial.ttf", 50);
 	assert(font_load_ok);
 	roboto_font, font_load_ok = render.load_font("resources/fonts/RobotoMono-Regular.ttf", 16);
 	assert(font_load_ok);
 
-	render.init_font_atlas(&textures, &font_atlas); 
 
-	test_texture_handle, _ := container.table_add(&sprite_database.textures, render.Texture{"Font Texture", test_texture_id, test_glyph.size});
-	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
-		font_atlas.texture_handle,
-		"test",
-		render.Sprite_Data {
-			anchor = [2]f32{0, 0},
-			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
-		},
-	});
-	log.info("TEST SPRITE 1");
-	test_transform := objects.transform_hierarchy_add_root(&transform_hierarchy, objects.Transform{
-		pos = [2]f32{0, 0},
-		scale = 10,
-		angle = 0,
-	}, "test");
-	container.table_add(&sprite_components, Sprite_Component{test_transform, test_sprite});
-	for r in "123456789abcde"
-	{
-		glyph, ok := render.load_glyph(&font_atlas, arial_font, r, &sprite_database.sprites);
-		assert(ok);
-		rune_sprites[r] = glyph.sprite;
-	}
 }
 
 test_animation_keyframes : [4]animation.Keyframe(f32) =
@@ -124,6 +98,15 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	using container;
 	init_empty_scene(scene, sprite_db);
 
+	ui.init_ctx(&ui_ctx, sprite_database);
+	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
+		ui_ctx.font_atlas.texture_handle,
+		"test",
+		render.Sprite_Data {
+			anchor = [2]f32{0, 0},
+			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
+		},
+	});
 
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
@@ -195,6 +178,7 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	};
 	table_add(&animation_players, animation_player);
 	*/
+
 }
 
 time : f32 = 0;
@@ -208,8 +192,6 @@ window_state := ui.Window_State
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
-	render.load_glyph(&font_atlas, arial_font, 'x', &sprite_database.sprites);
-
 	time += delta_time;
 	animation.update_animations(&animation_players, delta_time);
 
@@ -232,16 +214,20 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	}
 	if ui.window(&window_state, 40, &ui_ctx)
 	{
-		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
-		ui.ui_element(allocated_space, &ui_ctx);
-		log.info(container.handle_get(rune_sprites['a']));
-		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
-		allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
-		ui.ui_element(allocated_space, &ui_ctx);
-		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
-		allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{2048, 2048});
+		//allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
+		//ui.ui_element(allocated_space, &ui_ctx);
+		//log.info(container.handle_get(rune_sprites['a']));
+		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
+		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
+		//ui.ui_element(allocated_space, &ui_ctx);
+		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
+		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{2048, 2048});
 		ui.ui_element(allocated_space, &ui_ctx);
 		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, test_sprite, &ui_ctx);
+		text := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		ui.text(text, {1, 1, 1, 1}, {100, 50}, &roboto_font, &ui_ctx);
+		ui.text("Ceci est un test avec des caractères spéciaux, en français.", {1, 1, 1, 1}, {100, 100}, &roboto_font, &ui_ctx);
+		ui.text("Encore un autre test !", {1, 1, 1, 1}, {100, 150}, &arial_font, &ui_ctx);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

@@ -30,6 +30,7 @@ split_pack_node :: proc(using atlas: ^Atlas_Tree, index: int, size: [2]f32)
 	to_split_node := &atlas.nodes[index];
 	to_split_rect := to_split_node.rect;
 
+	log.info("split", to_split_rect);
 	left_child_index := util.append_and_get_index(&nodes);
 	right_child_index := util.append_and_get_index(&nodes);
 
@@ -48,6 +49,7 @@ split_pack_node :: proc(using atlas: ^Atlas_Tree, index: int, size: [2]f32)
 	switch to_split_node.level % 2
 	{
 		case 0:
+			log.info("V");
 			left_child_node.rect = to_split_node.rect;
 			left_child_node.rect.size.x = size.x;
 			left_child_node.rect.size.y = to_split_node.rect.size.y - size.y;
@@ -58,6 +60,7 @@ split_pack_node :: proc(using atlas: ^Atlas_Tree, index: int, size: [2]f32)
 			right_child_node.rect.pos.x += size.x;
 			
 		case 1:
+			log.info("H");
 			left_child_node.rect = to_split_node.rect;
 			left_child_node.rect.size.x = to_split_node.rect.size.x - size.x;
 			left_child_node.rect.size.y = size.y;
@@ -67,5 +70,10 @@ split_pack_node :: proc(using atlas: ^Atlas_Tree, index: int, size: [2]f32)
 			right_child_node.rect.size.y = to_split_node.rect.size.y - size.y;
 			right_child_node.rect.pos.y += size.y;
 	}
-	to_split_node.rect.size = size;
+	atlas.nodes[index].rect.size = size;
+	for node, index in atlas.nodes
+	{
+		log.info(index, node.rect);
+	}
+	log.info(index, size);
 }

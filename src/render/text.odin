@@ -32,7 +32,6 @@ load_font :: proc(path: string, size: int, allocator := context.allocator) -> (f
 
 load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, texture_id: u32, ok: bool)
 {
-	log.info(u32(character));
 	error := freetype.load_char(font.face, u32(character), freetype.LOAD_RENDER);
 	if error != .OK do return {}, 0, false;
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -75,6 +74,11 @@ init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_A
 	gl.GenTextures(1, &texture_id);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
+	pixels := make([]u8, texture_size * texture_size, context.temp_allocator);
+	for i in 0..<texture_size * texture_size
+	{
+		pixels[i] = 255;
+	}
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -83,7 +87,7 @@ init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_A
 		0,
 		gl.RED,
 		gl.UNSIGNED_BYTE,
-		nil,
+		&pixels[0],
 	);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -97,7 +101,7 @@ init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_A
 	atlas.texture_size = [2]int{texture_size, texture_size};
 }
 
-load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune, sprite_table: ^container.Table(Sprite)) -> (glyph: Glyph, ok: bool)
+load_glyph :: proc(using font_atlas: ^Font_Atlas, font: ^Font, character: rune, sprite_table: ^container.Table(Sprite)) -> (glyph: Glyph, ok: bool)
 {
 	error := freetype.load_char(font.face, u32(character), freetype.LOAD_RENDER);
 	if error != .OK do return {}, false;
@@ -109,9 +113,10 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune, s
 
 	glyph = Glyph{
 		size = [2]int{int(bitmap.width), int(bitmap.rows)},
-		bearing = [2]int{int(font.face.glyph.bitmap_left), int(font.face.glyph.bitmap_top)},
-		advance = [2]int{int(font.face.glyph.advance.x), int(font.face.glyph.advance.y)},
+		bearing = [2]int{int(font.face.glyph.bitmap_left), int(-font.face.glyph.bitmap_top)},
+		advance = [2]int{int(font.face.glyph.advance.x), 0},
 	};
+	log.info(font.face.glyph.advance);
 	allocated_rect, alloc_ok := allocate_rect(&font_atlas.pack_tree, [2]f32{f32(bitmap.width), f32(bitmap.rows)});
 	assert(alloc_ok);
 	uv_rect := util.Rect{allocated_rect.pos / linalg.to_f32(texture_size), allocated_rect.size / linalg.to_f32(texture_size)};
@@ -124,7 +129,6 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune, s
 		}
 	};
 	glyph.sprite, add_ok = container.table_add(sprite_table, sprite);
-	log.info(add_ok, sprite);
 	assert(add_ok);
 	if alloc_ok
 	{
@@ -141,6 +145,7 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: Font, character: rune, s
 			font.face.glyph.bitmap.buffer
 		);
 		gl.BindTexture(gl.TEXTURE_2D, 0);
+		font.glyphs[character] = glyph;
 		return glyph, true;
 	}
 	return {}, false;

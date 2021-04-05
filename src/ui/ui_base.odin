@@ -53,6 +53,12 @@ simple_padding :: proc(value: f32) -> Padding
 	return Padding{[2]f32{value, value}, [2]f32{value, value}};
 }
 
+init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
+{
+	ui_ctx.sprite_table = &sprite_database.sprites;
+	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
+}
+
 reset_ctx :: proc(ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
 {
 	ui_ctx.input_state.cursor_pos = linalg.to_f32(input_state.mouse_pos);
@@ -141,6 +147,23 @@ rect :: proc(draw_list: ^Draw_List, pos: [2]f32, size: [2]f32, color: Color)
 	append(draw_list, Rect_Draw_Command{rect = util.Rect{pos, size}, clip = clip_rect, color = color});
 }
 
+textured_rect :: proc(
+	rect: util.Rect,
+	color: Color,
+	sprite: render.Sprite_Handle,
+	draw_list: ^Draw_List, 
+)
+{
+	sprite_data: ^render.Sprite = container.handle_get(sprite);
+	texture_handle := sprite_data.texture;
+	append(draw_list, Rect_Draw_Command{
+		rect = rect,
+		clip = sprite_data.clip,
+		color = color,
+		texture = texture_handle
+	});
+}
+
 ui_element :: proc(using rect: util.Rect, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
 {
 	state = .Normal;
@@ -193,7 +216,6 @@ element_draw_textured_rect :: proc(
 	};
 	sprite_data: ^render.Sprite = container.handle_get(sprite);
 	texture_handle := sprite_data.texture;
-	log.info(texture_handle);
 	append(&ctx.draw_list, Rect_Draw_Command{
 		rect = rect,
 		clip = sprite_data.clip,
@@ -202,6 +224,29 @@ element_draw_textured_rect :: proc(
 	});
 }
 
+text :: proc(
+	text: string,
+	color: Color,
+	pos: [2]f32,
+	font: ^render.Font,
+	ctx: ^UI_Context
+)
+{
+	pos_cursor := linalg.to_int(pos);
+	for char in text
+	{
+		glyph, glyph_found := font.glyphs[char]; 
+		if !glyph_found
+		{
+			glyph, glyph_found = render.load_glyph(&ctx.font_atlas, font, char, ctx.sprite_table);
+			log.info(char, container.handle_get(glyph.sprite));
+		}
+		rect := util.Rect{ pos = linalg.to_f32(pos_cursor + glyph.bearing), size = linalg.to_f32(glyph.size) };
+		textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
+		pos_cursor += glyph.advance / 64;
+	}
+	
+}
 
 add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
 {
