@@ -3,6 +3,7 @@ package render
 import "core:log"
 import "core:math/linalg"
 import "core:fmt"
+import "core:runtime"
 
 import gl "shared:odin-gl"
 
@@ -27,6 +28,7 @@ load_font :: proc(path: string, size: int, allocator := context.allocator) -> (f
 		return font, false;
 	}
 	freetype.set_pixel_sizes(font.face, 0, u32(size));
+	font.line_height = f32(font.face.size.metrics.height)/64;
 	return font, true;
 }
 
@@ -70,22 +72,20 @@ load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, t
 init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_Atlas, texture_size := 2048)
 {
 	texture_id: u32;
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
 	gl.GenTextures(1, &texture_id);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
-	pixels := make([]u8, texture_size * texture_size, context.temp_allocator);
+	pixels := make([]u8, texture_size * texture_size * 4, context.temp_allocator);
 	for i in 0..<texture_size * texture_size
 	{
-		pixels[i] = 255;
+		pixels[i] = i % 4 == 3 ? 0:255;
 	}
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
-		gl.RED,
+		gl.RGBA,
 		i32(texture_size), i32(texture_size),
 		0,
-		gl.RED,
+		gl.RGBA,
 		gl.UNSIGNED_BYTE,
 		&pixels[0],
 	);
@@ -133,20 +133,84 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: ^Font, character: rune, 
 	if alloc_ok
 	{
 		texture_data := container.handle_get(texture_handle);
+		pixels := make([]u8, glyph.size.x * glyph.size.y * 4, context.temp_allocator);
+		bitmap_data := transmute([]u8)runtime.Raw_Slice{font.face.glyph.bitmap.buffer, glyph.size.x * glyph.size.y};
+		for i in 0..<glyph.size.x * glyph.size.y
+		{
+			pixels[i * 4] = 255;
+			pixels[i * 4 + 1] = 255;
+			pixels[i * 4 + 2] = 255;
+			pixels[i * 4 + 3] = bitmap_data[i];
+		}
 		gl.BindTexture(gl.TEXTURE_2D, texture_data.texture_id);
-		gl.TexSubImage2D(
-			gl.TEXTURE_2D,
-			0,
-			i32(allocated_rect.pos.x),
-			i32(allocated_rect.pos.y),
-			i32(glyph.size.x), i32(glyph.size.y),
-			gl.RED,
-			gl.UNSIGNED_BYTE,
-			font.face.glyph.bitmap.buffer
-		);
+		if glyph.size.x * glyph.size.y > 0
+		{
+			gl.TexSubImage2D(
+				gl.TEXTURE_2D,
+				0,
+				i32(allocated_rect.pos.x),
+				i32(allocated_rect.pos.y),
+				i32(glyph.size.x), i32(glyph.size.y),
+				gl.RGBA,
+				gl.UNSIGNED_BYTE,
+				&pixels[0],
+			);
+		}
 		gl.BindTexture(gl.TEXTURE_2D, 0);
 		font.glyphs[character] = glyph;
 		return glyph, true;
 	}
 	return {}, false;
+}
+
+load_glyphs :: proc(atlas: ^Font_Atlas, sprite_table: ^container.Table(Sprite), font: ^Font, text: string)
+{
+	for char in text
+	{
+		if char not_in font.glyphs
+		{
+			glyph, glyph_ok := load_glyph(atlas, font, char, sprite_table);
+			assert(glyph_ok);
+
+		}
+	}
+
+}
+
+get_text_render_size :: proc(font: ^Font, text: string) -> (out_size: int)
+{
+	for char in text
+	{
+		glyph, glyph_found := font.glyphs[char]; 
+		if glyph_found
+		{
+			out_size += glyph.advance.x / 64;
+		}
+	}
+	return out_size;
+}
+
+split_text_for_render :: proc(font: ^Font, text: string, line_size: int, allocator := context.temp_allocator) -> []string
+{
+	substring_size : int = 0;
+	substring_start : int = 0;
+	substrings: [dynamic]string;
+	for char, index in text
+	{
+		glyph, glyph_found := font.glyphs[char];
+		substring_size += glyph.advance.x / 64;
+		if substring_size >= line_size
+		{
+			append(&substrings, text[substring_start:index]);
+			substring_start = index;
+			substring_size = 0;
+		}
+	}
+	out_substrings := make([]string, len(substrings) + 1, allocator);
+	for substring, index in substrings
+	{
+		out_substrings[index] = substring;
+	}
+	out_substrings[len(substrings)] = text[substring_start:len(text)];
+	return out_substrings;
 }

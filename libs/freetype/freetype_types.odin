@@ -13,9 +13,11 @@ Handle :: struct{rawptr};
 
 Library       :: distinct Handle;
 CharMap       :: ^CharMapRec;
-Size          :: distinct Handle;
 Face          :: ^FaceRec;
 GlyphSlot     :: ^GlyphSlotRec;
+Size		  :: ^SizeRec;
+
+Size_Internal :: distinct Handle;
 Face_Internal :: distinct Handle;
 Driver        :: distinct Handle;
 Memory        :: distinct Handle;
@@ -99,6 +101,29 @@ Glyph_Metrics :: struct {
 	vertBearingY: Pos,
 	vertAdvance:  Pos,
 }
+
+Size_Metrics :: struct
+{
+	x_ppem: u16,
+	y_ppem: u16,
+
+	x_scale: Fixed,
+	y_scale: Fixed,
+
+	ascender: Pos,
+	descender: Pos,
+	height: Pos,
+	max_advance: Pos,
+}
+
+SizeRec :: struct
+{
+	face: Face,
+	generic: Generic,
+	metrics: Size_Metrics,
+	internal: Size_Internal,
+}
+
 
 GlyphSlotRec :: struct {
 	library:  Library,

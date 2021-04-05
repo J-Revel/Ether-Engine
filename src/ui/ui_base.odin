@@ -229,23 +229,44 @@ text :: proc(
 	color: Color,
 	pos: [2]f32,
 	font: ^render.Font,
-	ctx: ^UI_Context
-)
-{
+	ctx: ^UI_Context,
+) {
 	pos_cursor := linalg.to_int(pos);
+	render.load_glyphs(&ctx.font_atlas, ctx.sprite_table, font, text);
 	for char in text
 	{
 		glyph, glyph_found := font.glyphs[char]; 
-		if !glyph_found
-		{
-			glyph, glyph_found = render.load_glyph(&ctx.font_atlas, font, char, ctx.sprite_table);
-			log.info(char, container.handle_get(glyph.sprite));
-		}
+		assert(glyph_found);
 		rect := util.Rect{ pos = linalg.to_f32(pos_cursor + glyph.bearing), size = linalg.to_f32(glyph.size) };
 		textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
 		pos_cursor += glyph.advance / 64;
 	}
-	
+}
+
+multiline_text :: proc(
+	str: string,
+	color: Color,
+	pos: [2]f32,
+	line_size: int,
+	font: ^render.Font,
+	ctx: ^UI_Context,
+) {
+	for substring, index in render.split_text_for_render(font, str, line_size)
+	{
+		text(substring, color, pos + [2]f32{0, f32(font.line_height) * f32(index)}, font, ctx);
+	}
+}
+
+element_draw_text :: proc(
+	padding: Padding,
+	text: string,
+	color: Color,
+	font: ^render.Font,
+	ctx: ^UI_Context
+) {
+	pos_cursor := ctx.current_element_pos + padding.top_left + [2]f32{0, font.line_height};
+	line_size := int(ctx.current_element_pos.x + ctx.current_element_size.x - pos_cursor.x - padding.bottom_right.x);
+	multiline_text(text, color, pos_cursor, line_size, font, ctx);
 }
 
 add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
@@ -354,6 +375,14 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
 	if layout.direction.y < 0
 	{
 		result.pos.y = layout.pos.y + layout.size.y - layout.padding.bottom_right.y - layout.cursor - size.y;
+	}
+	if size.x == 0
+	{
+		result.size.x = layout.size.x;
+	}
+	if size.y == 0
+	{
+		result.size.y = layout.size.y;
 	}
 	layout.cursor += linalg.vector_dot(size, linalg.to_f32(layout.direction));
 	return result;
