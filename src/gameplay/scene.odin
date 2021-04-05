@@ -55,8 +55,7 @@ Scene :: struct
 	font: render.Font,
 	test_sprite: render.Sprite_Handle,
 	rune_sprites: map[rune]render.Sprite_Handle,
-	arial_font: render.Font,
-	roboto_font: render.Font,
+	editor_font: render.Font,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
@@ -77,9 +76,7 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 
 	camera.zoom = 1;
 	font_load_ok: bool;
-	arial_font, font_load_ok = render.load_font("resources/fonts/arial.ttf", 50);
-	assert(font_load_ok);
-	roboto_font, font_load_ok = render.load_font("resources/fonts/RobotoMono-Regular.ttf", 16);
+	editor_font, font_load_ok = render.load_font("resources/fonts/Roboto-Regular.ttf", 12);
 	assert(font_load_ok);
 
 
@@ -216,7 +213,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	{
 		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{0, 50});
 		ui.ui_element(allocated_space, &ui_ctx);
-		ui.element_draw_text({}, "tjos os malzke lkqsji siqdluqis kajkazjekjazlek jazke iqsuod iqd @àazlekj-qlk", {1, 1, 1, 1}, &roboto_font, &ui_ctx);
+		ui.element_draw_text({}, "tjos os malzke lkqsji siqdluqis kajkazjekjazlek jazke iqsuod iqd @àazlekj-qlk", {1, 1, 1, 1}, &editor_font, &ui_ctx);
 		//log.info(container.handle_get(rune_sprites['a']));
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
 		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
@@ -226,9 +223,9 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.ui_element(allocated_space, &ui_ctx);
 		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, test_sprite, &ui_ctx);
 		text := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		ui.text(text, {1, 1, 1, 1}, {100, 50}, &roboto_font, &ui_ctx);
-		ui.multiline_text("Ceci est un test avec des caractères spéciaux, en français.", {1, 1, 1, 1}, {100, 100}, 500, &roboto_font, &ui_ctx);
-		ui.text("Encore un autre test !", {1, 1, 1, 1}, {100, 150}, &arial_font, &ui_ctx);
+		ui.text(text, {1, 1, 1, 1}, {100, 50}, &editor_font, &ui_ctx);
+		ui.multiline_text("Ceci est un test avec des caractères spéciaux, en français.", {1, 1, 1, 1}, {100, 100}, 500, &editor_font, &ui_ctx);
+		ui.text("Encore un autre test !", {1, 1, 1, 1}, {100, 150}, &editor_font, &ui_ctx);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
