@@ -53,10 +53,12 @@ simple_padding :: proc(value: f32) -> Padding
 	return Padding{[2]f32{value, value}, [2]f32{value, value}};
 }
 
-init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
+init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, font: ^render.Font)
 {
 	ui_ctx.sprite_table = &sprite_database.sprites;
+	ui_ctx.current_font = font;
 	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
+	ui_ctx.editor_config.line_height = 50;
 }
 
 reset_ctx :: proc(ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
@@ -384,7 +386,7 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
 	{
 		result.size.y = layout.size.y;
 	}
-	layout.cursor += linalg.vector_dot(size, linalg.to_f32(layout.direction));
+	layout.cursor += linalg.vector_dot(result.size, linalg.to_f32(layout.direction));
 	return result;
 }
 

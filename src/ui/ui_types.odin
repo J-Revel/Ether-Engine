@@ -80,9 +80,11 @@ UI_Context :: struct
 	current_element: uintptr,
 	current_element_pos: [2]f32,
 	current_element_size: [2]f32,
+	current_font: ^render.Font,
 	layout_stack: Layout_Stack,
 	font_atlas: render.Font_Atlas,
 	sprite_table: ^container.Table(render.Sprite),
+	editor_config: Editor_Config,
 }
 
 Drag_State :: struct
@@ -97,4 +99,10 @@ Window_State :: struct
 	drag_state: Drag_State,
 	rect: util.Rect,
 	folded: bool,
+}
+
+Editor_Config :: struct
+{
+	line_height: int,
+	
 }

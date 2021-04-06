@@ -75,9 +75,6 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	//render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;
-	font_load_ok: bool;
-	editor_font, font_load_ok = render.load_font("resources/fonts/Roboto-Regular.ttf", 12);
-	assert(font_load_ok);
 
 
 }
@@ -95,7 +92,11 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	using container;
 	init_empty_scene(scene, sprite_db);
 
-	ui.init_ctx(&ui_ctx, sprite_database);
+	font_load_ok: bool;
+	editor_font, font_load_ok = render.load_font("resources/fonts/Roboto-Regular.ttf", 12);
+	assert(font_load_ok);
+
+	ui.init_ctx(&ui_ctx, sprite_database, &editor_font);
 	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
 		ui_ctx.font_atlas.texture_handle,
 		"test",
@@ -104,7 +105,6 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
 		},
 	});
-
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
 	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;
@@ -187,6 +187,8 @@ window_state := ui.Window_State
 	},
 };
 
+test_value := 503;
+
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
 	time += delta_time;
@@ -211,21 +213,14 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	}
 	if ui.window(&window_state, 40, &ui_ctx)
 	{
-		allocated_space := ui.allocate_element_space(&ui_ctx, [2]f32{0, 50});
-		ui.ui_element(allocated_space, &ui_ctx);
-		ui.element_draw_text({}, "tjos os malzke lkqsji siqdluqis kajkazjekjazlek jazke iqsuod iqd @àazlekj-qlk", {1, 1, 1, 1}, &editor_font, &ui_ctx);
 		//log.info(container.handle_get(rune_sprites['a']));
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
 		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
 		//ui.ui_element(allocated_space, &ui_ctx);
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
-		allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{2048, 2048});
-		ui.ui_element(allocated_space, &ui_ctx);
-		ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, test_sprite, &ui_ctx);
-		text := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		ui.text(text, {1, 1, 1, 1}, {100, 50}, &editor_font, &ui_ctx);
-		ui.multiline_text("Ceci est un test avec des caractères spéciaux, en français.", {1, 1, 1, 1}, {100, 100}, 500, &editor_font, &ui_ctx);
-		ui.text("Encore un autre test !", {1, 1, 1, 1}, {100, 150}, &editor_font, &ui_ctx);
+		ui.label(&ui_ctx, "Ceci est un test avec des caractères spéciaux, en français.");
+		drag_cache: ui.Drag_Cache;
+		ui.drag_int(&ui_ctx, &drag_cache, &test_value);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

@@ -194,16 +194,24 @@ split_text_for_render :: proc(font: ^Font, text: string, line_size: int, allocat
 {
 	substring_size : int = 0;
 	substring_start : int = 0;
+	last_splittable_index: int = 0;
+	last_split_size: int = 0;
 	substrings: [dynamic]string;
 	for char, index in text
 	{
 		glyph, glyph_found := font.glyphs[char];
 		substring_size += glyph.advance.x / 64;
+		last_split_size += glyph.advance.x / 64;
+		if char == ' '
+		{
+			last_splittable_index = index;
+			last_split_size = 0;
+		}
 		if substring_size >= line_size
 		{
-			append(&substrings, text[substring_start:index]);
-			substring_start = index;
-			substring_size = 0;
+			append(&substrings, text[substring_start:last_splittable_index]);
+			substring_start = last_splittable_index + 1;
+			substring_size = last_split_size;
 		}
 	}
 	out_substrings := make([]string, len(substrings) + 1, allocator);

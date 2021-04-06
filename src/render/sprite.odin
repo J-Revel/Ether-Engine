@@ -77,6 +77,16 @@ void main()
 }
 `;
 
+@(private="package")
+text_vertex_shader_src :: `
+#version 450
+struct Rect
+{
+	vec4 pos_size;
+	vec4 color;
+}
+`;
+
 load_texture :: proc(path: string) -> (Texture, bool)
 {
 	cstring_path := strings.clone_to_cstring(path, context.temp_allocator);
