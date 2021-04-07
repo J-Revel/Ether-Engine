@@ -5,6 +5,8 @@ import "core:hash"
 import "core:math/linalg"
 import "core:math"
 import "core:runtime"
+import "core:mem"
+import "core:strings"
 
 import "../input"
 import "../container"
@@ -166,10 +168,16 @@ textured_rect :: proc(
 	});
 }
 
-ui_element :: proc(using rect: util.Rect, ctx: ^UI_Context, location := #caller_location) -> (state: Element_State)
+ui_element :: proc(using rect: util.Rect, ctx: ^UI_Context, location := #caller_location, additional_element_index: i32 = 0) -> (state: Element_State)
 {
 	state = .Normal;
-	element_hash := uintptr(hash.djb2(transmute([]byte)location.file_path)) + uintptr(location.line);
+	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
+	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
+	location_line := location.line;
+	additional_element_index := additional_element_index;
+	mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32));
+	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_element_index, size_of(i32));
+	element_hash := uintptr(hash.djb2(to_hash));
 	ctx.current_element = element_hash;
 	ctx.current_element_pos = pos;
 	ctx.current_element_size = size;

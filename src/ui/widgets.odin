@@ -24,11 +24,6 @@ label :: proc(ctx: ^UI_Context, str: string, color: Color = {1, 1, 1, 1}, locati
 }
 
 
-Drag_State:: struct
-{
-	
-}
-
 drag_int :: proc(ctx: ^UI_Context, drag_cache: ^Drag_State, value: ^int, location := #caller_location)
 {
 	parent_layout := current_layout(ctx)^;
@@ -40,13 +35,11 @@ drag_int :: proc(ctx: ^UI_Context, drag_cache: ^Drag_State, value: ^int, locatio
 	push_layout_group(ctx);
 	add_layout_to_group(ctx, new_layout);
 	label(ctx, "drag editor ", {1, 1, 1, 1});
-	switch label(ctx, fmt.tprint(value^), {1, 1, 1, 1}, location)
+	#partial switch label(ctx, fmt.tprint(value^), {1, 1, 1, 1}, location)
 	{
 		case .Hovered:
 			element_draw_rect(default_anchor, {}, render.Color{1, 1, 0, 1}, ctx);
 		case .Normal:
-		case .Clicked:
-			value^ += 1;
 	}
 	pop_layout_group(ctx);
 }

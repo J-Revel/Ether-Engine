@@ -75,8 +75,6 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	//render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;
-
-
 }
 
 test_animation_keyframes : [4]animation.Keyframe(f32) =
@@ -219,7 +217,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		//ui.ui_element(allocated_space, &ui_ctx);
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
 		ui.label(&ui_ctx, "Ceci est un test avec des caractères spéciaux, en français.");
-		drag_cache: ui.Drag_Cache;
+		drag_cache: ui.Drag_State;
 		ui.drag_int(&ui_ctx, &drag_cache, &test_value);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
