@@ -14,8 +14,8 @@ label :: proc(ctx: ^UI_Context, str: string, color: Color = {1, 1, 1, 1}, locati
 		allocated_length = f32(render.get_text_render_size(ctx.current_font, str));
 	}
 	allocated_space := allocate_element_space(ctx, [2]f32{allocated_length, f32(len(lines)) * line_height});
-	state = ui_element(allocated_space, ctx, location);
-	first_line_pos := ctx.current_element_pos + [2]f32{0, line_height};
+	state = ui_element(ctx, allocated_space, {.Hover}, location);
+	first_line_pos := ctx.current_element.rect.pos + [2]f32{0, line_height};
 	for line, index in lines
 	{
 		text(line, color, first_line_pos + [2]f32{0, f32(line_height) * f32(index)}, ctx.current_font, ctx);
@@ -35,11 +35,9 @@ drag_int :: proc(ctx: ^UI_Context, drag_cache: ^Drag_State, value: ^int, locatio
 	push_layout_group(ctx);
 	add_layout_to_group(ctx, new_layout);
 	label(ctx, "drag editor ", {1, 1, 1, 1});
-	#partial switch label(ctx, fmt.tprint(value^), {1, 1, 1, 1}, location)
+	if Interaction_Type.Hover in label(ctx, fmt.tprint(value^), {1, 1, 1, 1}, location)
 	{
-		case .Hovered:
-			element_draw_rect(default_anchor, {}, render.Color{1, 1, 0, 1}, ctx);
-		case .Normal:
+		element_draw_rect(default_anchor, {}, render.Color{1, 1, 0, 1}, ctx);
 	}
 	pop_layout_group(ctx);
 }

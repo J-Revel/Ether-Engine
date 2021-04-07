@@ -42,10 +42,7 @@ Draw_Command :: union
 
 Draw_List :: [dynamic]Draw_Command;
 
-Element_State :: enum
-{
-	Normal, Hovered, Clicked
-}
+Element_State :: bit_set[Interaction_Type];
 
 Layout :: struct
 {
@@ -71,15 +68,30 @@ Input_State :: struct
 	cursor_pos: [2]f32,
 }
 
+Interaction_Type :: enum u8
+{
+	Hover,
+	Click,
+	Drag,
+}
+
+Interactions :: bit_set[Interaction_Type];
+
+UI_ID :: distinct uint;
+
+UI_Element :: struct
+{
+	using rect: util.Rect,
+	id: UI_ID,
+}
+
 UI_Context :: struct
 {
 	draw_list: Draw_List,
 	input_state: Input_State,
-	hovered_element: uintptr,
-	next_hovered_element: uintptr,
-	current_element: uintptr,
-	current_element_pos: [2]f32,
-	current_element_size: [2]f32,
+	elements_under_cursor: map[Interaction_Type]UI_ID,
+	next_elements_under_cursor: map[Interaction_Type]UI_ID,
+	current_element: UI_Element,
 	current_font: ^render.Font,
 	layout_stack: Layout_Stack,
 	font_atlas: render.Font_Atlas,
