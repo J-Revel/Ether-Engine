@@ -199,7 +199,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&transform_hierarchy, &sprite_renderer, &sprite_components);
 
-	ui.reset_ctx(&ui_ctx, input_state, linalg.to_f32(viewport.size));
+	ui.reset_ctx(&ui_ctx, linalg.to_f32(viewport.size));
+	ui.update_input_state(&ui_ctx, input_state);
 	
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
@@ -216,9 +217,9 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
 		//ui.ui_element(allocated_space, &ui_ctx);
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
-		ui.label(&ui_ctx, "Ceci est un test avec des caractères spéciaux, en français.");
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state));
 		drag_cache: ui.Drag_State;
-		ui.drag_int(&ui_ctx, &drag_cache, &test_value);
+		ui.drag_int(&ui_ctx, &test_value);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

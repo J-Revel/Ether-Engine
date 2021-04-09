@@ -7,6 +7,7 @@ import "core:math"
 import "core:runtime"
 import "core:mem"
 import "core:strings"
+import "core:fmt"
 
 import "../input"
 import "../container"
@@ -61,21 +62,68 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	ui_ctx.current_font = font;
 	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
 	ui_ctx.editor_config.line_height = 50;
+
 }
 
-reset_ctx :: proc(ui_ctx: ^UI_Context, input_state: ^input.State, screen_size: [2]f32)
+update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 {
-	ui_ctx.input_state.cursor_pos = linalg.to_f32(input_state.mouse_pos);
+	using ui_ctx.input_state;
+	last_cursor_pos = cursor_pos;
+	cursor_pos = linalg.to_f32(input_state.mouse_pos);
+	cursor_offset := cursor_pos - last_cursor_pos; 
+	log.info(cursor_state);
+	switch cursor_state 
+	{
+		case .Normal:
+			if input.Key_State_Flags.Down in input.get_mouse_state(input_state, 0)
+			{
+				cursor_state = Cursor_Input_State.Press;
+			}
+		case .Press:
+			cursor_state = Cursor_Input_State.Down;
+			drag_amount = {};
+			delta_drag = {};
+		case .Down:
+			drag_amount += cursor_offset;
+			delta_drag = cursor_offset;
+			max_down_distance: f32 = 10;
+			if linalg.vector_length2(drag_amount) > max_down_distance * max_down_distance
+			{
+				cursor_state = Cursor_Input_State.Drag;
+				drag_amount = {};
+				delta_drag = {};
+				drag_target = ui_ctx.elements_under_cursor[Interaction_Type.Drag];
+			}
+			else if input.Key_State_Flags.Down not_in input.get_mouse_state(input_state, 0)
+			{
+				cursor_state = Cursor_Input_State.Click_Release;
+			}
+		case .Drag:
+			drag_amount += cursor_offset;
+			delta_drag = cursor_offset;
+			if input.Key_State_Flags.Down not_in input.get_mouse_state(input_state, 0)
+			{
+				cursor_state = Cursor_Input_State.Drag_Release;
+			}
+		case .Click_Release:
+			cursor_state = Cursor_Input_State.Normal;
+			drag_amount = {};
+			delta_drag= {};
+		case .Drag_Release:
+			cursor_state = Cursor_Input_State.Normal;
+			drag_amount = {};
+			delta_drag= {};
+	}
+}
+
+reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
+{
 	clear(&ui_ctx.elements_under_cursor);
 	for interaction_type, ui_id in ui_ctx.next_elements_under_cursor
 	{
 		ui_ctx.elements_under_cursor[interaction_type] = ui_id;
 	}
 	clear(&ui_ctx.next_elements_under_cursor);
-	for i in 0..<3
-	{
-		ui_ctx.input_state.mouse_states[i] = input.get_mouse_state(input_state, i);
-	}
 	clear(&ui_ctx.layout_stack);
 	base_layout := Layout{
 		pos = {0, 0}, size = screen_size,
@@ -171,7 +219,13 @@ textured_rect :: proc(
 	});
 }
 
-ui_element :: proc(ctx: ^UI_Context, rect: util.Rect, interactions: Interactions, location := #caller_location, additional_element_index: i32 = 0) -> (state: Element_State)
+ui_element :: proc(
+	ctx: ^UI_Context,
+	rect: util.Rect,
+	interactions: Interactions,
+	location := #caller_location,
+	additional_element_index: i32 = 0
+) -> (out_state: Element_State)
 {
 	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
 	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
@@ -181,19 +235,40 @@ ui_element :: proc(ctx: ^UI_Context, rect: util.Rect, interactions: Interactions
 	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_element_index, size_of(i32));
 	element_id:= UI_ID(hash.djb2(to_hash));
 	ctx.current_element = UI_Element{rect, element_id};
-	mouse_over :=  ctx.input_state.cursor_pos.x > rect.pos.x 		\
-			&& ctx.input_state.cursor_pos.y > rect.pos.y 			\
+	mouse_over :=  ctx.input_state.cursor_pos.x > rect.pos.x 			\
+			&& ctx.input_state.cursor_pos.y > rect.pos.y 				\
 			&& ctx.input_state.cursor_pos.x < rect.pos.x + rect.size.x	\
 			&& ctx.input_state.cursor_pos.y < rect.pos.y + rect.size.y;
+	
+	available_interactions: Interactions;
+	switch ctx.input_state.cursor_state
+	{
+		case .Normal:
+			available_interactions = {.Hover};
+		case .Press:
+			available_interactions = {.Press};
+		case .Down:
+			available_interactions = {.Press};
+		case .Drag:
+			available_interactions = {.Hover};
+			if element_id == ctx.input_state.drag_target do incl(&out_state, Interaction_Type.Drag);
+		case .Click_Release:
+			available_interactions = {.Click, .Hover};
+		case .Drag_Release:
+			available_interactions = {.Hover};
+	}
 
-	for interaction_type in Interaction_Type
+	for interaction_type in Interaction_Type 
 	{
 		if interaction_type in interactions
 		{
 			under_cursor, has_under_cursor := ctx.elements_under_cursor[interaction_type];
 			if has_under_cursor && under_cursor == element_id
 			{
-				state += {.Hover};
+				if interaction_type in available_interactions
+				{
+					incl(&out_state, interaction_type);
+				}
 				if !mouse_over do ctx.next_elements_under_cursor[interaction_type] = 0;
 			}
 			if mouse_over
@@ -316,26 +391,30 @@ layout_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^U
 default_anchor :: Anchor{{0, 0}, {1, 1}, 0, 0, 0, 0};
 
 button :: proc(
-	label: 	string,
+	txt: 	string,
 	rect: util.Rect,
 
 	ui_ctx: ^UI_Context,
 	location := #caller_location
 ) -> bool
 {
-	state := ui_element(ui_ctx, rect, {.Hover, .Click}, location);
-	if Interaction_Type.Hover in state
+	state := ui_element(ui_ctx, rect, {.Hover, .Press, .Click}, location);
+	if Interaction_Type.Press in state
+	{
+		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 1, 1}, ui_ctx);
+		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{0.5, 0.5, 0.5, 1}, ui_ctx);
+	}
+	else if Interaction_Type.Hover in state
 	{
 		element_draw_rect(default_anchor, {}, render.Color{1, 0, 0, 1}, ui_ctx);
 		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
-		return ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed;
 	}
 	else
 	{
 		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1}, ui_ctx);
 		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
-	return false;
+	return Interaction_Type.Click in state;
 }
 
 drag_box :: proc(
@@ -347,31 +426,13 @@ drag_box :: proc(
 ) -> (state_changed: bool)
 {
 	element_state := ui_element(ui_ctx, rect, {.Drag}, location);
-	if drag_state.dragging
+	if Interaction_Type.Drag in element_state
 	{
-		if ui_ctx.input_state.mouse_states[0] < input.Key_State_Down
-		{
-			drag_state.dragging = false;
-			state_changed = true;
-		}
-		mouse_offset := ui_ctx.input_state.cursor_pos - drag_state.drag_last_pos;
-		if mouse_offset.x != 0 || mouse_offset.y != 0
-		{
-			drag_state.drag_offset += mouse_offset;
-			drag_state.drag_last_pos = ui_ctx.input_state.cursor_pos;
-			state_changed = true;
-		}
+		drag_state.drag_offset += ui_ctx.input_state.delta_drag;
+		drag_state.drag_last_pos = ui_ctx.input_state.cursor_pos;
+		return true;
 	}
-	else
-	{
-		if ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed && Interaction_Type.Hover in element_state 
-		{
-			drag_state.dragging = true;
-			drag_state.drag_last_pos = ui_ctx.input_state.cursor_pos;
-			state_changed = true;
-		}
-	}
-	return;
+	return false;
 }
 
 allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
@@ -407,23 +468,26 @@ layout_button :: proc(
 ) -> (clicked: bool)
 {
 	layout := current_layout(ui_ctx);
-	clicked = false;
 	allocated_space := allocate_element_space(ui_ctx, size);
 	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Click}, location);
 
-	if Interaction_Type.Hover in element_state 
+	if Interaction_Type.Press in element_state
 	{
 		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
 		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
-		clicked = ui_ctx.input_state.mouse_states[0] == input.Key_State_Pressed;
+	}
+	else if Interaction_Type.Hover in element_state 
+	{
+		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
+		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
 	else
 	{
 		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1}, ui_ctx);
 		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
-
-	return;
+	
+	return Interaction_Type.Click in element_state;
 }
 
 vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^UI_Context)

@@ -42,8 +42,6 @@ Draw_Command :: union
 
 Draw_List :: [dynamic]Draw_Command;
 
-Element_State :: bit_set[Interaction_Type];
-
 Layout :: struct
 {
 	pos, size: [2]f32,
@@ -62,17 +60,34 @@ Layout_Group :: struct
 
 Layout_Stack :: [dynamic]Layout_Group;
 
-Input_State :: struct
+Input_State_Data :: struct
 {
-	mouse_states: [3]input.Key_State,
+	drag_target: UI_ID,
 	cursor_pos: [2]f32,
+	last_cursor_pos: [2]f32,
+	drag_amount: [2]f32,
+	delta_drag: [2]f32,
+	cursor_state: Cursor_Input_State,
 }
+
+Element_State :: bit_set[Interaction_Type];
 
 Interaction_Type :: enum u8
 {
 	Hover,
+	Press,
 	Click,
 	Drag,
+}
+
+Cursor_Input_State :: enum u8
+{
+	Normal,
+	Press,
+	Down,
+	Drag,
+	Click_Release,
+	Drag_Release,
 }
 
 Interactions :: bit_set[Interaction_Type];
@@ -87,10 +102,10 @@ UI_Element :: struct
 
 UI_Context :: struct
 {
-	draw_list: Draw_List,
-	input_state: Input_State,
 	elements_under_cursor: map[Interaction_Type]UI_ID,
 	next_elements_under_cursor: map[Interaction_Type]UI_ID,
+	draw_list: Draw_List,
+	input_state: Input_State_Data,
 	current_element: UI_Element,
 	current_font: ^render.Font,
 	layout_stack: Layout_Stack,
