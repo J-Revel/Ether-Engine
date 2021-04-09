@@ -35,6 +35,11 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	{
 		value^ += int(ctx.input_state.delta_drag.x);
 	}
+	if Interaction_Type.Hover in state 
+	{
+		text_color.r = 0;
+		element_draw_rect(default_anchor, {}, render.Color{1, 1, 0, 1}, ctx);
+	}
 	new_layout := Layout {
 		pos = widget_rect.pos, size = widget_rect.size,
 		direction = {1, 0}
@@ -42,11 +47,6 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	push_layout_group(ctx);
 	add_layout_to_group(ctx, new_layout);
 	label(ctx, "drag editor ", text_color, location, additional_location_index + 1);
-	label(ctx, fmt.tprint(value^), {1, 1, 1, 1}, location, additional_location_index + 2);
-	if Interaction_Type.Hover in state 
-	{
-		text_color.r = 0;
-		element_draw_rect(default_anchor, {}, render.Color{1, 1, 0, 1}, ctx);
-	}
+	label(ctx, fmt.tprint(value^), text_color, location, additional_location_index + 2);
 	pop_layout_group(ctx);
 }

@@ -1,4 +1,8 @@
 package render
+else
+{
+	pass_texture = render_buffer.default_texture;
+}
 
 import "../container"
 import "../util"

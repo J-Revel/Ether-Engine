@@ -562,6 +562,7 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 	vertices: [dynamic]render.Sprite_Vertex_Data;
 	indices: [dynamic]u32;
 	quad_index_list := [?]u32{0, 1, 2, 0, 2, 3};
+	log.info("RENDER DRAW LIST");
 	for draw_cmd in draw_list
 	{
 		switch cmd_data in draw_cmd
@@ -583,6 +584,7 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 				{
 					append(&indices, start_index + index_offset);
 				}
+				log.info("use_texture", cmd_data.texture.id);
 				render.use_texture(render_system, cmd_data.texture);
 				render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
 				clear(&vertices);

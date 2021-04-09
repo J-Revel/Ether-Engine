@@ -601,6 +601,7 @@ use_texture :: proc(
 {
     if texture != render_buffer.current_texture
     {
+		log.info("change texture");
         index_count := len(render_buffer.render_system.index);
         if index_count > 0
         {
@@ -728,13 +729,13 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
     texture_id: u32 = render_system.render_state.default_texture;
     for pass, index in render_system.passes
     {
-        if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
-        gl.BindTexture(gl.TEXTURE_2D, texture_id);
+		if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
+		gl.BindTexture(gl.TEXTURE_2D, texture_id);
 		prepare_buffer_render(&render_system.render_system.render_state, viewport);
 		use_camera(&render_system.render_system, camera);
-        render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
+		render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
 		cleanup_buffer_render();
-        index_cursor += pass.index_count;
+		index_cursor += pass.index_count;
     }
     texture_id = render_system.render_state.default_texture;
     if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
@@ -756,18 +757,18 @@ render_ui_buffer_content :: proc(render_system: ^Sprite_Render_System, viewport:
     upload_buffer_data(&render_system.render_system);
     index_cursor := 0;
 
-    texture_id: u32 = render_system.render_state.default_texture;
     for pass, index in render_system.passes
     {
-        if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
+		texture_id := container.is_valid(pass.texture) ? 
+						container.handle_get(pass.texture).texture_id : render_system.render_state.default_texture;
         gl.BindTexture(gl.TEXTURE_2D, texture_id);
 		prepare_buffer_render(&render_system.render_system.render_state, viewport);
         render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
 		cleanup_buffer_render();
         index_cursor += pass.index_count;
     }
-    texture_id = render_system.render_state.default_texture;
-    if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
+	texture_id := container.is_valid(render_system.current_texture) ? 
+					container.handle_get(render_system.current_texture).texture_id : render_system.render_state.default_texture;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
 	prepare_buffer_render(&render_system.render_system.render_state, viewport);
 	render_buffer_content_part(
