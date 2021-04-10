@@ -4,6 +4,7 @@ import "core:log"
 
 import "core:fmt"
 import "../render"
+import "../util"
 
 label :: proc(ctx: ^UI_Context, str: string, color: Color = {1, 1, 1, 1}, location := #caller_location, additional_location_index: i32 = 0) -> (state: Element_State)
 {
@@ -29,16 +30,21 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 {
 	parent_layout := current_layout(ctx)^;
 	widget_rect := allocate_element_space(ctx, {0, f32(ctx.editor_config.line_height)});
-	state := ui_element(ctx, widget_rect, {.Hover, .Drag}, location, 0);
+	state := ui_element(ctx, widget_rect, {.Hover, .Press, .Drag}, location, 0);
 	text_color := render.Color{1, 1, 1, 1};
 	if Interaction_Type.Drag in state
 	{
 		value^ += int(ctx.input_state.delta_drag.x);
 	}
-	if Interaction_Type.Hover in state 
+	if Interaction_Type.Drag in state || Interaction_Type.Press in state
 	{
 		text_color.r = 0;
-		element_draw_rect(default_anchor, {}, render.Color{1, 1, 0, 1}, ctx);
+		element_draw_rect(ctx, default_anchor, {}, render.Color{0.8, 0.8, 0, 1}, 5);
+	}
+	else if Interaction_Type.Hover in state 
+	{
+		text_color.r = 0;
+		element_draw_rect(ctx, default_anchor, {}, render.Color{1, 1, 0, 1}, 5);
 	}
 	new_layout := Layout {
 		pos = widget_rect.pos, size = widget_rect.size,
@@ -49,4 +55,18 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	label(ctx, "drag editor ", text_color, location, additional_location_index + 1);
 	label(ctx, fmt.tprint(value^), text_color, location, additional_location_index + 2);
 	pop_layout_group(ctx);
+}
+
+slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller_location, additional_location_index: i32 = 0)
+{
+	parent_layout := current_layout(ctx)^;
+	widget_rect := allocate_element_space(ctx, {0, f32(ctx.editor_config.line_height)});
+	rect(&ctx.draw_list, widget_rect, render.Color{1, 1, 1, 1}, 5);
+	value_ratio := f32(value^ - min) / f32(max - min);
+	cursor_size : f32 = 20;
+	cursor_rect := util.Rect {
+		pos = widget_rect.pos + [2]f32{cursor_size / 2 + (widget_rect.size.x - cursor_size) * value_ratio - cursor_size / 2, 0},
+		size = [2]f32{cursor_size, widget_rect.size.y},
+	};
+	rect(&ctx.draw_list, cursor_rect, Color{0.5, 0.5, 0.5, 1}, 5);
 }
