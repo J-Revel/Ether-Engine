@@ -61,7 +61,7 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	ui_ctx.sprite_table = &sprite_database.sprites;
 	ui_ctx.current_font = font;
 	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
-	ui_ctx.editor_config.line_height = 50;
+	ui_ctx.editor_config.line_height = int(ui_ctx.current_font.line_height) + 4;
 
 }
 
@@ -71,7 +71,6 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 	last_cursor_pos = cursor_pos;
 	cursor_pos = linalg.to_f32(input_state.mouse_pos);
 	cursor_offset := cursor_pos - last_cursor_pos; 
-	log.info(cursor_state);
 	switch cursor_state 
 	{
 		case .Normal:
@@ -375,7 +374,7 @@ layout_draw_used_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ct
 	append(&current_layout(ctx).draw_commands, layout_cmd);
 }
 
-layout_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^UI_Context)
+layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32)
 {
 	layout := current_layout(ctx);
 	draw_cmd := Rect_Draw_Command{
@@ -384,6 +383,7 @@ layout_draw_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^U
 			size = layout.size,
 		},
 		color = color,
+		corner_radius = corner_radius,
 	};
 	append(&ctx.draw_list, draw_cmd);
 }
@@ -469,11 +469,11 @@ layout_button :: proc(
 {
 	layout := current_layout(ui_ctx);
 	allocated_space := allocate_element_space(ui_ctx, size);
-	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Click}, location);
+	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Press, .Click}, location);
 
 	if Interaction_Type.Press in element_state
 	{
-		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1}, ui_ctx);
+		element_draw_rect({{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 1, 1}, ui_ctx);
 		element_draw_rect({{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1}, ui_ctx);
 	}
 	else if Interaction_Type.Hover in element_state 
@@ -539,7 +539,7 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 		add_layout_to_group(ui_ctx, body_layout);
 	}
 
-	layout_draw_rect({}, {}, Color{0.5, 0.5, 0.5, 0.3}, ui_ctx);
+	layout_draw_rect(ui_ctx, {}, {}, Color{0.5, 0.5, 0.5, 0.3}, 0);
 	// Close button
 	if drag_box(util.Rect{rect.pos, header_size}, &drag_state, ui_ctx)
 	{
@@ -553,43 +553,129 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 		state.folded = !state.folded;
 	}
 	next_layout(ui_ctx);
-	if draw_content do layout_draw_rect({}, {}, Color{1, 0, 0, 0.8}, ui_ctx);
+	if draw_content do layout_draw_rect(ui_ctx, {}, {}, Color{1, 0, 0, 0.8}, 0);
 	return;
 }
 
+round_corner_subdivisions :: 3;
+
 render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Render_System)
 {
-	vertices: [dynamic]render.Sprite_Vertex_Data;
-	indices: [dynamic]u32;
-	quad_index_list := [?]u32{0, 1, 2, 0, 2, 3};
-	log.info("RENDER DRAW LIST");
+
+	push_rect_data :: proc(render_system: ^render.Sprite_Render_System, using rect: util.Rect, clip: util.Rect, color: render.Color)
+	{
+		vertices: [dynamic]render.Sprite_Vertex_Data;
+		indices: [dynamic]u32;
+		quad_index_list := [?]u32{0, 1, 2, 0, 2, 3};
+		start_index := u32(len(vertices));
+		vertice: render.Sprite_Vertex_Data = {pos, clip.pos, color};
+		append(&vertices, vertice);
+		vertice.pos.x = pos.x + size.x;
+		vertice.uv.x = clip.pos.x + clip.size.x;
+		append(&vertices, vertice);
+		vertice.pos.y = pos.y + size.y;
+		vertice.uv.y = clip.pos.y + clip.size.y;
+		append(&vertices, vertice);
+		vertice.pos.x = pos.x;
+		vertice.uv.x = clip.pos.x;
+		append(&vertices, vertice);
+		for index_offset in quad_index_list
+		{
+			append(&indices, start_index + index_offset);
+		}
+		render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
+		clear(&vertices);
+		clear(&indices);
+	}
+
+	push_corner_data :: proc(render_system: ^render.Sprite_Render_System, pos: [2]f32, dir: [2]f32, color: Color)
+	{
+		vertices: [dynamic]render.Sprite_Vertex_Data;
+		indices: [dynamic]u32;
+		vertice: render.Sprite_Vertex_Data = {pos, {}, color};
+		append(&vertices, vertice);
+		for i in 0..round_corner_subdivisions
+		{
+			angle := f32(i) / f32(round_corner_subdivisions) * math.PI / 2;
+			vertice.pos = pos + [2]f32{dir.x * math.cos(angle), dir.y * math.sin(angle)};
+			append(&vertices, vertice);
+		}
+		for i in 0..<round_corner_subdivisions
+		{
+			append(&indices, 0);
+			append(&indices, u32(i) + 1);
+			append(&indices, u32(i) + 2);
+		}
+		render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
+		clear(&vertices);
+		clear(&indices);
+	}
+
 	for draw_cmd in draw_list
 	{
 		switch cmd_data in draw_cmd
 		{
 			case Rect_Draw_Command:
-				start_index := u32(len(vertices));
-				vertice: render.Sprite_Vertex_Data = {cmd_data.pos, cmd_data.clip.pos, cmd_data.color};
-				append(&vertices, vertice);
-				vertice.pos.x = cmd_data.pos.x + cmd_data.size.x;
-				vertice.uv.x = cmd_data.clip.pos.x + cmd_data.clip.size.x;
-				append(&vertices, vertice);
-				vertice.pos.y = cmd_data.pos.y + cmd_data.size.y;
-				vertice.uv.y = cmd_data.clip.pos.y + cmd_data.clip.size.y;
-				append(&vertices, vertice);
-				vertice.pos.x = cmd_data.pos.x;
-				vertice.uv.x = cmd_data.clip.pos.x;
-				append(&vertices, vertice);
-				for index_offset in quad_index_list
-				{
-					append(&indices, start_index + index_offset);
-				}
-				log.info("use_texture", cmd_data.texture.id);
 				render.use_texture(render_system, cmd_data.texture);
-				render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
-				clear(&vertices);
-				clear(&indices);
-				
+				if cmd_data.corner_radius > 0
+				{
+					using cmd_data;
+					push_rect_data(
+						render_system, 
+						{
+							pos + [2]f32{0, corner_radius},
+							[2]f32{corner_radius, size.y - 2 * corner_radius}
+						}, 
+						cmd_data.clip, 
+						cmd_data.color
+					);
+					push_rect_data(
+						render_system, 
+						{
+							pos + [2]f32{corner_radius, 0},
+							[2]f32{size.x - corner_radius * 2, size.y}
+						}, 
+						clip, 
+						cmd_data.color
+					);
+					push_rect_data(
+						render_system, 
+						{
+							pos + [2]f32{size.x - corner_radius, corner_radius}, 
+							[2]f32{corner_radius, size.y - 2 * corner_radius}
+						}, 
+						cmd_data.clip, 
+						cmd_data.color
+					);
+					push_corner_data(
+						render_system,
+						pos + [2]f32{corner_radius, corner_radius},
+						[2]f32{-corner_radius, -corner_radius},
+						cmd_data.color
+					);
+					push_corner_data(
+						render_system,
+						pos + [2]f32{cmd_data.size.x - corner_radius, corner_radius},
+						[2]f32{corner_radius, -corner_radius},
+						cmd_data.color
+					);
+					push_corner_data(
+						render_system,
+						pos + [2]f32{corner_radius, cmd_data.size.y - corner_radius},
+						[2]f32{-corner_radius, corner_radius},
+						cmd_data.color
+					);
+					push_corner_data(
+						render_system,
+						pos + cmd_data.size - [2]f32{corner_radius, corner_radius},
+						[2]f32{corner_radius, corner_radius},
+						cmd_data.color
+					);
+				}
+				else
+				{
+					push_rect_data(render_system, {cmd_data.pos, cmd_data.size}, cmd_data.clip, cmd_data.color);
+				}
 		}
 	}
 	clear(draw_list);

@@ -26,6 +26,7 @@ Rect_Draw_Command :: struct
 	clip: util.Rect,
 	texture: render.Texture_Handle,
 	color: [4]f32,
+	corner_radius: f32,
 }
 
 Layout_Draw_Command :: struct

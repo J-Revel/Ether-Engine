@@ -205,7 +205,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
 	
-	ui.layout_draw_rect({}, {}, ui.Color{0.5, 1, 0.5, 1}, &ui_ctx);
+	ui.layout_draw_rect(&ui_ctx, {}, {}, ui.Color{0.5, 1, 0.5, 1}, 20);
 	//if ui.layout_button("test", {100, 100}, &ui_ctx)
 	{
 		//log.info("BUTTON1");

@@ -14,6 +14,7 @@ import "core:math"
 import "../container"
 import "../../libs/imgui"
 import "../objects"
+import "../util"
 
 @(private="package")
 sprite_fragment_shader_src :: `
@@ -195,7 +196,6 @@ get_or_load_sprite :: proc(using db: ^Sprite_Database, asset: Sprite_Asset) -> (
             }
 
         }
-        log.info(result, result_found);
         return result, result_found;
     }
     return {}, false;
@@ -280,7 +280,6 @@ save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.E
             texture := container.handle_get(sprite.texture);
             str := fmt.bprintf(write_buf, "\"%s\": [", texture.path);
             
-            log.info(string(write_buf[0:len(str)]));
             os.write(file_handle, write_buf[0:len(str)]);
             current_texture = sprite.texture;
         }
@@ -319,14 +318,10 @@ save_sprites_to_file_editor :: proc(path: string, sprite_names: []string, sprite
             os.write(file_handle, write_buf[0:1]);
         }
 
-
-        log.info(sprite_data);
         encoded, marshal_error := json.marshal(sprite_data, context.temp_allocator);
-        log.info(encoded);
         if marshal_error == .None
         {
             str := fmt.tprintf("\"%s\": %s", sprite_names[index], encoded);
-            log.info(str);
             os.write_string(file_handle, str);
         }
         else
@@ -386,7 +381,6 @@ load_sprites_data :: proc (path: string, allocator := context.temp_allocator) ->
     if ok
     {
         parsed, ok := json.parse(file, .JSON, false, context.temp_allocator);
-        log.info(path);
         parsed_object := parsed.value.(json.Object);
 
         sprite := Sprite_Data{};
@@ -395,11 +389,9 @@ load_sprites_data :: proc (path: string, allocator := context.temp_allocator) ->
         out_data := make([]Sprite_Data, sprite_count, allocator);
         out_names := make([]string, sprite_count, allocator);
         cursor := 0;
-        log.info(sprite_count);
 
         for sprite_name, sprite_data in parsed_object
         {
-            log.info(sprite_name);
             sprite_data_root := sprite_data.value.(json.Object);
             anchor_data := sprite_data_root["anchor"].value.(json.Array);
             clip_data := sprite_data_root["clip"].value.(json.Object);
@@ -601,7 +593,6 @@ use_texture :: proc(
 {
     if texture != render_buffer.current_texture
     {
-		log.info("change texture");
         index_count := len(render_buffer.render_system.index);
         if index_count > 0
         {
@@ -719,6 +710,57 @@ render_rotated_quad :: proc(
     append(&render_buffer.index, start_index + 0);
     append(&render_buffer.index, start_index + 2);
     append(&render_buffer.index, start_index + 3);
+}
+
+push_quad_vertices :: proc(render_buffer: ^Sprite_Render_System, using rect: util.Rect, color: Color)
+{
+    start_index := cast(u32) len(render_buffer.vertex);
+    vertex_data : Sprite_Vertex_Data;
+    left_pos := pos.x;
+    right_pos := pos.x + size.x;
+    top_pos := pos.y;
+    bottom_pos := pos.y - size.y;
+
+    vertex_data.pos = [2]f32{left_pos, top_pos};
+    vertex_data.color = color;
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{right_pos, top_pos};
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{left_pos, bottom_pos};
+    append(&render_buffer.vertex, vertex_data);
+
+    vertex_data.pos = [2]f32{right_pos, bottom_pos};
+
+    append(&render_buffer.vertex, vertex_data);
+
+    append(&render_buffer.index, start_index);
+    append(&render_buffer.index, start_index + 1);
+    append(&render_buffer.index, start_index + 2);
+    append(&render_buffer.index, start_index + 1);
+    append(&render_buffer.index, start_index + 2);
+    append(&render_buffer.index, start_index + 3);
+}
+
+render_rounded_quad :: proc(render_buffer: ^Sprite_Render_System, using rect: util.Rect, corner_radius: f32, color: Color, corner_subdivisions: int = 3)
+{
+    imgui.text_unformatted(fmt.tprint("render_quad"));
+    
+    if container.is_valid(render_buffer.current_texture)
+    {
+        index_count := len(render_buffer.render_system.index);
+        append(&render_buffer.passes, Sprite_Render_Pass {
+                render_buffer.current_texture, 
+                index_count - render_buffer.current_pass_index
+        });
+        render_buffer.current_pass_index = index_count;
+        imgui.text_unformatted(fmt.tprint("set pass_index", render_buffer.current_pass_index));
+        render_buffer.current_texture = {};
+    }
+	push_quad_vertices(render_buffer, util.Rect{pos + [2]f32{0, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);
+	push_quad_vertices(render_buffer, util.Rect{pos + [2]f32{size.x - corner_radius, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);
+	push_quad_vertices(render_buffer, util.Rect{pos + [2]f32{corner_radius, 0}, [2]f32{size.x - 2 * corner_radius, size.y}}, color);
 }
 
 render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera, viewport: Viewport)
