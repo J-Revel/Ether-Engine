@@ -105,7 +105,7 @@ init_color_renderer :: proc (result: ^Render_State) -> bool
     return true;
 }
 
-push_mesh_data :: proc(render_buffer: ^Render_Buffer($T), vertex: []T, index: []u32)
+push_mesh_data :: proc(render_buffer: ^Sprite_Render_Buffer, vertex: []Sprite_Vertex_Data, index: []u32)
 {
     start_index := cast(u32) len(render_buffer.vertex);
     for v in vertex
@@ -119,47 +119,47 @@ push_mesh_data :: proc(render_buffer: ^Render_Buffer($T), vertex: []T, index: []
     }
 }
 
-clear_render_buffer :: proc(render_buffer: ^Render_Buffer($T))
+clear_render_buffer :: proc(render_buffer: ^Sprite_Render_Buffer)
 {
     clear(&render_buffer.index);
     clear(&render_buffer.vertex);
 }
 
-render_buffer_content :: proc(render_buffer : ^Render_System($T), camera: ^Camera, viewport: Viewport)
+render_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera, viewport: Viewport)
 {
-    vertex_count := len(render_buffer.vertex);
-    index_count := len(render_buffer.index);
+    vertex_count := len(render_system.buffer.vertex);
+    index_count := len(render_system.buffer.index);
     if(vertex_count == 0) do return;
-    gl.BindVertexArray(render_buffer.render_state.vao);
-    gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
+    gl.BindVertexArray(render_system.render_state.vao);
+    gl.BindBuffer(gl.ARRAY_BUFFER, render_system.render_state.vbo);
     
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(T), &render_buffer.vertex[0]);
-    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
-    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) index_count * size_of(u32), &render_buffer.index[0]);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(Sprite_Vertex_Data), &render_system.buffer.vertex[0]);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.render_state.elementBuffer);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) index_count * size_of(u32), &render_system.buffer.index[0]);
     gl.BindVertexArray(0);
 
-    gl.UseProgram(render_buffer.render_state.shader);
-    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
-    gl.Uniform2f(render_buffer.render_state.screenSizeAttrib, f32(viewport.size.x), f32(viewport.size.y));
+    gl.UseProgram(render_system.render_state.shader);
+    gl.Uniform3f(render_system.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
+    gl.Uniform2f(render_system.render_state.screenSizeAttrib, f32(viewport.size.x), f32(viewport.size.y));
 
-    gl.BindVertexArray(render_buffer.render_state.vao);
+    gl.BindVertexArray(render_system.render_state.vao);
     gl.DrawElements(gl.TRIANGLES, cast(i32) index_count, gl.UNSIGNED_INT, nil);
     gl.BindVertexArray(0);
     gl.UseProgram(0);
 }
 
-upload_buffer_data :: proc(render_buffer: ^Render_System($T))
+upload_buffer_data :: proc(render_system: ^Sprite_Render_System)
 {
-    index_count := len(render_buffer.index);
-    vertex_count := len(render_buffer.vertex);
+    index_count := len(render_system.buffer.index);
+    vertex_count := len(render_system.buffer.vertex);
     if(vertex_count == 0) do return;
 
-    gl.BindVertexArray(render_buffer.render_state.vao);
-    gl.BindBuffer(gl.ARRAY_BUFFER, render_buffer.render_state.vbo);
+    gl.BindVertexArray(render_system.render_state.vao);
+    gl.BindBuffer(gl.ARRAY_BUFFER, render_system.render_state.vbo);
     
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(T), &render_buffer.vertex[0]);
-    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_buffer.render_state.elementBuffer);
-    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int)index_count * size_of(u32), &render_buffer.index[0]);
+    gl.BufferSubData(gl.ARRAY_BUFFER, 0, cast(int) vertex_count * size_of(Sprite_Vertex_Data), &render_system.buffer.vertex[0]);
+    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.render_state.elementBuffer);
+    gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int)index_count * size_of(u32), &render_system.buffer.index[0]);
 }
 
 prepare_buffer_render :: proc(render_state: ^Render_State, viewport: Viewport)
@@ -175,9 +175,9 @@ cleanup_buffer_render :: proc()
 	gl.BindVertexArray(0);
 }
 
-use_camera :: proc(render_buffer: ^Render_System($T), camera: ^Camera)
+use_camera :: proc(render_system: ^Sprite_Render_System, camera: ^Camera)
 {
-    gl.Uniform3f(render_buffer.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
+    gl.Uniform3f(render_system.render_state.camPosZoomAttrib, camera.world_pos.x, camera.world_pos.y, camera.zoom);
 }
 
 render_buffer_content_part :: proc(render_state: ^Render_State, start_index: int, index_count: int)

@@ -76,7 +76,17 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 		case .Normal:
 			if input.Key_State_Flags.Down in input.get_mouse_state(input_state, 0)
 			{
-				cursor_state = Cursor_Input_State.Press;
+				if ui_ctx.elements_under_cursor[.Press] == 0 && ui_ctx.elements_under_cursor[.Drag] != 0
+				{
+					cursor_state = Cursor_Input_State.Drag;
+					drag_amount = {};
+					delta_drag = {};
+					drag_target = ui_ctx.elements_under_cursor[Interaction_Type.Drag];
+				}
+				else
+				{
+					cursor_state = Cursor_Input_State.Press;
+				}
 			}
 		case .Press:
 			cursor_state = Cursor_Input_State.Down;
@@ -125,7 +135,11 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
 	clear(&ui_ctx.next_elements_under_cursor);
 	clear(&ui_ctx.layout_stack);
 	base_layout := Layout{
-		pos = {0, 0}, size = screen_size,
+		rect = util.Rect
+		{
+			pos = {0, 0},
+			size = screen_size,
+		},
 		direction = [2]f32{0, 1},
 	};
 	push_layout_group(ui_ctx);
@@ -195,10 +209,40 @@ current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 	return &current_group.layouts[current_group.cursor];
 }
 
-rect :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, corner_radius : f32 = 0)
+rect :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, corner_radius: f32 = 0)
 {
 	clip_rect := util.Rect { size = [2]f32{1, 1}};
 	append(draw_list, Rect_Draw_Command{rect = rect, clip = clip_rect, color = color, corner_radius = corner_radius});
+}
+
+rect_border :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, thickness: f32 = 1)
+{
+	clip_rect := util.Rect { size = [2]f32{1, 1}};
+	append(draw_list, Rect_Draw_Command{
+		rect = util.Rect{rect.pos, [2]f32{rect.size.x, thickness}},
+		clip = clip_rect,
+		color = color,
+		corner_radius = 0,
+	});
+
+	append(draw_list, Rect_Draw_Command{
+		rect = util.Rect{rect.pos, [2]f32{thickness, rect.size.y}},
+		clip = clip_rect,
+		color = color,
+		corner_radius = 0,
+	});
+	append(draw_list, Rect_Draw_Command{
+		rect = util.Rect{rect.pos + [2]f32{rect.size.x - thickness, 0}, [2]f32{thickness, rect.size.y}},
+		clip = clip_rect,
+		color = color,
+		corner_radius = 0,
+	});
+	append(draw_list, Rect_Draw_Command{
+		rect = util.Rect{rect.pos + [2]f32{0, rect.size.y - thickness}, [2]f32{rect.size.x, thickness}},
+		clip = clip_rect,
+		color = color,
+		corner_radius = 0,
+	});
 }
 
 textured_rect :: proc(
@@ -495,8 +539,11 @@ vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^U
 	parent_layout := current_layout(ui_ctx)^;
 	left_split_width := parent_layout.size.x * split_ratio;
 	new_layout := Layout {
-		pos = parent_layout.pos,
-		size = [2]f32{left_split_width, parent_layout.size.y},
+		rect = util.Rect
+		{
+			pos = parent_layout.pos,
+			size = [2]f32{left_split_width, parent_layout.size.y},
+		},
 		padding = inner_padding,
 		direction = [2]f32{0, 1},
 	};
@@ -506,55 +553,6 @@ vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^U
 	new_layout.pos.x += left_split_width;
 	new_layout.size.x = parent_layout.size.x * (1 - split_ratio);
 	add_layout_to_group(ui_ctx, new_layout);
-}
-
-window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI_Context) -> (draw_content: bool)
-{ 
-	push_layout_group(ui_ctx);
-	header_size := [2]f32{rect.size.x, header_height};
-	header_layout := Layout {
-		pos = rect.pos,
-		size = header_size,
-		direction = [2]f32{-1, 0},
-	};
-
-	// Close button layout
-	add_layout_to_group(ui_ctx, header_layout);
-
-	// Main Header Layout
-	header_layout.direction.x = 1;
-	add_layout_to_group(ui_ctx, header_layout);
-
-	draw_content = !state.folded;
-
-	if draw_content
-	{
-		// Body Layout
-		body_layout := Layout {
-			pos = rect.pos + [2]f32{0, header_height},
-			size = [2]f32{rect.size.x, rect.size.y - header_height},
-			direction = [2]f32{0, 1},
-		};
-		
-		add_layout_to_group(ui_ctx, body_layout);
-	}
-
-	layout_draw_rect(ui_ctx, {}, {}, Color{0.5, 0.5, 0.5, 0.3}, 0);
-	// Close button
-	if drag_box(util.Rect{rect.pos, header_size}, &drag_state, ui_ctx)
-	{
-		rect.pos += drag_state.drag_offset;
-		drag_state.drag_offset = [2]f32{0, 0};
-	}
-	layout_button("close button", {header_height, header_height}, ui_ctx); 
-	next_layout(ui_ctx);
-	if layout_button("fold button", {header_height, header_height}, ui_ctx)
-	{
-		state.folded = !state.folded;
-	}
-	next_layout(ui_ctx);
-	if draw_content do layout_draw_rect(ui_ctx, {}, {}, Color{1, 0, 0, 0.8}, 0);
-	return;
 }
 
 round_corner_subdivisions :: 3;

@@ -37,21 +37,6 @@ Camera :: struct
     zoom: f32,
 }
 
-Render_Buffer :: struct(T: typeid)
-{
-    vertex: [dynamic]T,
-    index: [dynamic]u32,
-}
-
-Render_System :: struct(T: typeid)
-{
-    using buffer: Render_Buffer(T),
-    render_state: Render_State,
-}
-
-Color_Render_Buffer :: Render_Buffer(Color_Vertex_Data);
-Color_Render_System :: Render_System(Color_Vertex_Data);
-
 Texture :: struct
 {
     path: string,
@@ -94,10 +79,16 @@ Sprite_Render_Type :: enum
 	UI,
 }
 
-Sprite_Render_Buffer :: Render_Buffer(Sprite_Vertex_Data);
+Sprite_Render_Buffer :: struct
+{
+    vertex: [dynamic]Sprite_Vertex_Data,
+    index: [dynamic]u32,
+}
+
 Sprite_Render_System :: struct
 {
-    using render_system: Render_System(Sprite_Vertex_Data),
+    buffer: Sprite_Render_Buffer,
+    render_state: Render_State,
     passes: [dynamic]Sprite_Render_Pass,
     current_texture: Texture_Handle,
     current_pass_index: int,

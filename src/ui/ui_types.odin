@@ -45,7 +45,7 @@ Draw_List :: [dynamic]Draw_Command;
 
 Layout :: struct
 {
-	pos, size: [2]f32,
+	using rect: util.Rect,
 	direction: [2]f32,
 	used_rect: util.Rect,
 	padding: Padding,
@@ -133,4 +133,16 @@ Editor_Config :: struct
 {
 	line_height: int,
 	
+}
+
+UI_Render_State :: struct
+{
+    shader: u32,
+
+    screenSizeAttrib: i32,
+
+    vao: u32,
+	ssbo: u32,
+    elementBuffer: u32,
+    default_texture: u32,
 }

@@ -508,37 +508,37 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
 }
 
 render_sprite :: proc(
-    render_buffer: ^Sprite_Render_System, 
+    render_system: ^Sprite_Render_System, 
     using sprite: ^Sprite, 
     using absolute_transform: objects.Transform, 
     color: Color)
 {
     imgui.text_unformatted(fmt.tprint("render_sprite", sprite.texture));
-    start_index := cast(u32) len(render_buffer.vertex);
+    start_index := cast(u32) len(render_system.buffer.vertex);
     texture_data := container.handle_get(texture);
     texture_size_i := texture_data.size;
-    if texture != render_buffer.current_texture
+    if texture != render_system.current_texture
     {
-        index_count := len(render_buffer.render_system.index);
+        index_count := len(render_system.buffer.index);
         if index_count > 0
         {
             imgui.text_unformatted(fmt.tprint(index_count));
             
             pass_texture: Texture_Handle = {};
-            if container.is_valid(render_buffer.current_texture)
+            if container.is_valid(render_system.current_texture)
             {
-                pass_texture = render_buffer.current_texture;
+                pass_texture = render_system.current_texture;
             }
-            append(&render_buffer.passes, Sprite_Render_Pass {
+            append(&render_system.passes, Sprite_Render_Pass {
                     pass_texture, 
-                    index_count - render_buffer.current_pass_index
+                    index_count - render_system.current_pass_index
             });
-            render_buffer.current_pass_index = index_count;
-            imgui.text_unformatted(fmt.tprint("set pass_index", render_buffer.current_pass_index));
+            render_system.current_pass_index = index_count;
+            imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
 
         }
 
-        render_buffer.current_texture = texture;
+        render_system.current_texture = texture;
     }
 
     texture_size: [2]f32 = {f32(texture_size_i.x), f32(texture_size_i.y)};
@@ -565,68 +565,68 @@ render_sprite :: proc(
     vertex_data.pos = pos - right * anchor.x * scale - up * (1-anchor.y) * scale;
     vertex_data.color = color;
     vertex_data.uv = clip.pos + {0, clip_size.y};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = pos + right * (1 - anchor.x) * scale - up * (1-anchor.y) * scale;
     vertex_data.uv = clip.pos + {clip_size.x, clip_size.y};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = pos - right * anchor.x * scale + up * anchor.y * scale;
     vertex_data.uv = clip.pos + {0, 0};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = pos + right * (1 - anchor.x) * scale + up * anchor.y * scale; 
     vertex_data.uv = clip.pos + {clip_size.x, 0};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
-    append(&render_buffer.index, start_index);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 3);
+    append(&render_system.buffer.index, start_index);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 3);
 }
 
 use_texture :: proc(
-    render_buffer: ^Sprite_Render_System, 
+    render_system: ^Sprite_Render_System, 
 	texture: Texture_Handle)
 {
-    if texture != render_buffer.current_texture
+    if texture != render_system.current_texture
     {
-        index_count := len(render_buffer.render_system.index);
+        index_count := len(render_system.buffer.index);
         if index_count > 0
         {
             pass_texture: Texture_Handle = {};
-            if container.is_valid(render_buffer.current_texture)
+            if container.is_valid(render_system.current_texture)
             {
-                pass_texture = render_buffer.current_texture;
+                pass_texture = render_system.current_texture;
             }
-            append(&render_buffer.passes, Sprite_Render_Pass {
+            append(&render_system.passes, Sprite_Render_Pass {
                     pass_texture, 
-                    index_count - render_buffer.current_pass_index
+                    index_count - render_system.current_pass_index
             });
-            render_buffer.current_pass_index = index_count;
+            render_system.current_pass_index = index_count;
         }
 
-        render_buffer.current_texture = texture;
+        render_system.current_texture = texture;
     }
 }
 
-render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, color: Color)
+render_quad :: proc(render_system: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, color: Color)
 {
     imgui.text_unformatted(fmt.tprint("render_quad"));
-    start_index := cast(u32) len(render_buffer.vertex);
+    start_index := cast(u32) len(render_system.buffer.vertex);
     
-    if container.is_valid(render_buffer.current_texture)
+    if container.is_valid(render_system.current_texture)
     {
-        index_count := len(render_buffer.render_system.index);
-        append(&render_buffer.passes, Sprite_Render_Pass {
-                render_buffer.current_texture, 
-                index_count - render_buffer.current_pass_index
+        index_count := len(render_system.buffer.index);
+        append(&render_system.passes, Sprite_Render_Pass {
+                render_system.current_texture, 
+                index_count - render_system.current_pass_index
         });
-        render_buffer.current_pass_index = index_count;
-        imgui.text_unformatted(fmt.tprint("set pass_index", render_buffer.current_pass_index));
-        render_buffer.current_texture = {};
+        render_system.current_pass_index = index_count;
+        imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
+        render_system.current_texture = {};
     }
 
     vertex_data : Sprite_Vertex_Data;
@@ -637,28 +637,28 @@ render_quad :: proc(render_buffer: ^Sprite_Render_System, pos: [2]f32, size: [2]
 
     vertex_data.pos = [2]f32{left_pos, top_pos};
     vertex_data.color = color;
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{right_pos, top_pos};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{left_pos, bottom_pos};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{right_pos, bottom_pos};
 
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
-    append(&render_buffer.index, start_index);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 3);
+    append(&render_system.buffer.index, start_index);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 3);
 }
 
 render_rotated_quad :: proc(
-	render_buffer: ^Sprite_Render_System,
+	render_system: ^Sprite_Render_System,
 	pos: [2]f32,
 	size: [2]f32,
 	angle: f32,
@@ -666,21 +666,21 @@ render_rotated_quad :: proc(
 	color: Color,
 )
 {
-    imgui.text_unformatted(fmt.tprint("render_rotated_quad", render_buffer.current_texture.id, render_buffer.current_pass_index));
-    start_index := cast(u32) len(render_buffer.vertex);
+    imgui.text_unformatted(fmt.tprint("render_rotated_quad", render_system.current_texture.id, render_system.current_pass_index));
+    start_index := cast(u32) len(render_system.buffer.vertex);
     
-    imgui.text_unformatted(fmt.tprint("current_pass_index", render_buffer.current_pass_index));
-    if container.is_valid(render_buffer.current_texture)
+    imgui.text_unformatted(fmt.tprint("current_pass_index", render_system.current_pass_index));
+    if container.is_valid(render_system.current_texture)
     {
-        index_count := len(render_buffer.render_system.index);
+        index_count := len(render_system.buffer.index);
         imgui.text_unformatted(fmt.tprint("index_count", index_count));
-        append(&render_buffer.passes, Sprite_Render_Pass {
-            texture = render_buffer.current_texture, 
-            index_count = index_count - render_buffer.current_pass_index
+        append(&render_system.passes, Sprite_Render_Pass {
+            texture = render_system.current_texture, 
+            index_count = index_count - render_system.current_pass_index
         });
-        render_buffer.current_pass_index = index_count;
-        imgui.text_unformatted(fmt.tprint("set pass_index", render_buffer.current_pass_index));
-        render_buffer.current_texture = {};
+        render_system.current_pass_index = index_count;
+        imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
+        render_system.current_texture = {};
 
         imgui.text_unformatted(fmt.tprint("append pass"));
     }
@@ -692,29 +692,29 @@ render_rotated_quad :: proc(
 
     vertex_data.pos = bottom_left_point;
     vertex_data.color = color;
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = bottom_left_point + right * size.x;
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = bottom_left_point + right * size.x + up * size.y;
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = bottom_left_point + up * size.y;
 
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
-    append(&render_buffer.index, start_index);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 0);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 3);
+    append(&render_system.buffer.index, start_index);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 0);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 3);
 }
 
-push_quad_vertices :: proc(render_buffer: ^Sprite_Render_System, using rect: util.Rect, color: Color)
+push_quad_vertices :: proc(render_system: ^Sprite_Render_System, using rect: util.Rect, color: Color)
 {
-    start_index := cast(u32) len(render_buffer.vertex);
+    start_index := cast(u32) len(render_system.buffer.vertex);
     vertex_data : Sprite_Vertex_Data;
     left_pos := pos.x;
     right_pos := pos.x + size.x;
@@ -723,49 +723,49 @@ push_quad_vertices :: proc(render_buffer: ^Sprite_Render_System, using rect: uti
 
     vertex_data.pos = [2]f32{left_pos, top_pos};
     vertex_data.color = color;
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{right_pos, top_pos};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{left_pos, bottom_pos};
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
     vertex_data.pos = [2]f32{right_pos, bottom_pos};
 
-    append(&render_buffer.vertex, vertex_data);
+    append(&render_system.buffer.vertex, vertex_data);
 
-    append(&render_buffer.index, start_index);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 1);
-    append(&render_buffer.index, start_index + 2);
-    append(&render_buffer.index, start_index + 3);
+    append(&render_system.buffer.index, start_index);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 1);
+    append(&render_system.buffer.index, start_index + 2);
+    append(&render_system.buffer.index, start_index + 3);
 }
 
-render_rounded_quad :: proc(render_buffer: ^Sprite_Render_System, using rect: util.Rect, corner_radius: f32, color: Color, corner_subdivisions: int = 3)
+render_rounded_quad :: proc(render_system: ^Sprite_Render_System, using rect: util.Rect, corner_radius: f32, color: Color, corner_subdivisions: int = 3)
 {
     imgui.text_unformatted(fmt.tprint("render_quad"));
     
-    if container.is_valid(render_buffer.current_texture)
+    if container.is_valid(render_system.current_texture)
     {
-        index_count := len(render_buffer.render_system.index);
-        append(&render_buffer.passes, Sprite_Render_Pass {
-                render_buffer.current_texture, 
-                index_count - render_buffer.current_pass_index
+        index_count := len(render_system.buffer.index);
+        append(&render_system.passes, Sprite_Render_Pass {
+                render_system.current_texture, 
+                index_count - render_system.current_pass_index
         });
-        render_buffer.current_pass_index = index_count;
-        imgui.text_unformatted(fmt.tprint("set pass_index", render_buffer.current_pass_index));
-        render_buffer.current_texture = {};
+        render_system.current_pass_index = index_count;
+        imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
+        render_system.current_texture = {};
     }
-	push_quad_vertices(render_buffer, util.Rect{pos + [2]f32{0, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);
-	push_quad_vertices(render_buffer, util.Rect{pos + [2]f32{size.x - corner_radius, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);
-	push_quad_vertices(render_buffer, util.Rect{pos + [2]f32{corner_radius, 0}, [2]f32{size.x - 2 * corner_radius, size.y}}, color);
+	push_quad_vertices(render_system, util.Rect{pos + [2]f32{0, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);
+	push_quad_vertices(render_system, util.Rect{pos + [2]f32{size.x - corner_radius, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);
+	push_quad_vertices(render_system, util.Rect{pos + [2]f32{corner_radius, 0}, [2]f32{size.x - 2 * corner_radius, size.y}}, color);
 }
 
 render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camera: ^Camera, viewport: Viewport)
 {
-    upload_buffer_data(&render_system.render_system);
+    upload_buffer_data(render_system);
     index_cursor := 0;
 
     texture_id: u32 = render_system.render_state.default_texture;
@@ -773,30 +773,30 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
     {
 		if container.is_valid(pass.texture) do texture_id = container.handle_get(pass.texture).texture_id;
 		gl.BindTexture(gl.TEXTURE_2D, texture_id);
-		prepare_buffer_render(&render_system.render_system.render_state, viewport);
-		use_camera(&render_system.render_system, camera);
-		render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
+		prepare_buffer_render(&render_system.render_state, viewport);
+		use_camera(render_system, camera);
+		render_buffer_content_part(&render_system.render_state, index_cursor, pass.index_count);
 		cleanup_buffer_render();
 		index_cursor += pass.index_count;
     }
     texture_id = render_system.render_state.default_texture;
     if container.is_valid(render_system.current_texture) do texture_id = container.handle_get(render_system.current_texture).texture_id;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
-	prepare_buffer_render(&render_system.render_system.render_state, viewport);
-	use_camera(&render_system.render_system, camera);
+	prepare_buffer_render(&render_system.render_state, viewport);
+	use_camera(render_system, camera);
 	render_buffer_content_part(
-		&render_system.render_system.render_state, 
+		&render_system.render_state, 
 		index_cursor, 
-		len(render_system.render_system.index) - index_cursor
+		len(render_system.buffer.index) - index_cursor
 	);
 	cleanup_buffer_render();
-    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.render_system.index) - index_cursor));
+    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
 
 }
 
 render_ui_buffer_content :: proc(render_system: ^Sprite_Render_System, viewport: Viewport)
 {
-    upload_buffer_data(&render_system.render_system);
+    upload_buffer_data(render_system);
     index_cursor := 0;
 
     for pass, index in render_system.passes
@@ -804,29 +804,29 @@ render_ui_buffer_content :: proc(render_system: ^Sprite_Render_System, viewport:
 		texture_id := container.is_valid(pass.texture) ? 
 						container.handle_get(pass.texture).texture_id : render_system.render_state.default_texture;
         gl.BindTexture(gl.TEXTURE_2D, texture_id);
-		prepare_buffer_render(&render_system.render_system.render_state, viewport);
-        render_buffer_content_part(&render_system.render_system.render_state, index_cursor, pass.index_count);
+		prepare_buffer_render(&render_system.render_state, viewport);
+        render_buffer_content_part(&render_system.render_state, index_cursor, pass.index_count);
 		cleanup_buffer_render();
         index_cursor += pass.index_count;
     }
 	texture_id := container.is_valid(render_system.current_texture) ? 
 					container.handle_get(render_system.current_texture).texture_id : render_system.render_state.default_texture;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
-	prepare_buffer_render(&render_system.render_system.render_state, viewport);
+	prepare_buffer_render(&render_system.render_state, viewport);
 	render_buffer_content_part(
-		&render_system.render_system.render_state, 
+		&render_system.render_state, 
 		index_cursor, 
-		len(render_system.render_system.index) - index_cursor
+		len(render_system.buffer.index) - index_cursor
 	);
 	cleanup_buffer_render();
-    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.render_system.index) - index_cursor));
+    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
 
 }
 
 clear_sprite_render_buffer :: proc(render_system: ^Sprite_Render_System)
 {
-    clear(&render_system.index);
-    clear(&render_system.vertex);
+    clear(&render_system.buffer.index);
+    clear(&render_system.buffer.vertex);
     clear(&render_system.passes);
     render_system.current_texture = {};
     render_system.current_pass_index = 0;
