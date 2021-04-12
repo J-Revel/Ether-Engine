@@ -7,16 +7,22 @@ import "core:log"
 @(private="package")
 vertex_shader_src :: `
 #version 450
-struct Draw_Command
+struct Rect 
 {
 	float x, y, w, h;
-	float corner_radius;
+	int color;
+}
+
+struct Circle
+{
+	float x, y, r;
 	int color;
 }
 
 layout(std430, binding = 1) buffer draw_commands
 {
-	Draw_Command commands[];
+	Rect rects[1000];
+	Circle circles[1000];
 };
 
 out vec4 frag_color;
