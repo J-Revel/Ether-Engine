@@ -74,7 +74,8 @@ init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_A
 	texture_id: u32;
 	gl.GenTextures(1, &texture_id);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);
-	pixels := make([]u8, texture_size * texture_size * 4, context.temp_allocator);
+	pixels := make([]u8, texture_size * texture_size * 4, context.allocator);
+	defer delete(pixels);
 	for i in 0..<texture_size * texture_size
 	{
 		pixels[i] = i % 4 == 3 ? 0:255;

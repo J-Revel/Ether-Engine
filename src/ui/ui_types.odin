@@ -146,3 +146,9 @@ UI_Render_State :: struct
     elementBuffer: u32,
     default_texture: u32,
 }
+
+UI_Render_System :: struct
+{
+    render_state: UI_Render_State,
+    current_texture: render.Texture_Handle,
+}

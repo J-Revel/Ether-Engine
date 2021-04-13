@@ -45,6 +45,7 @@ Scene :: struct
     //color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
     ui_renderer: render.Sprite_Render_System,
+	ui_test_renderer: ui.UI_Render_System,
     transforms: objects.Transform_Table,
     transform_hierarchy: objects.Transform_Hierarchy,
     sprite_components: container.Table(Sprite_Component),

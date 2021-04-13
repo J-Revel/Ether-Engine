@@ -62,6 +62,7 @@ ui_vertex_shader_src :: `
 layout (location = 0) in vec2 pos;
 layout(location = 1) in vec2 uv;
 layout (location = 2) in vec4 color;
+layout (location = 3) in vec4 clip;
 out vec4 frag_color;
 out vec2 frag_pos;
 out vec2 frag_uv;
@@ -74,6 +75,8 @@ void main()
     frag_pos = pos;
     frag_uv = uv;
     vec2 screenPos = pos.xy * 2 / screenSize - vec2(1, 1);
+	screenPos.x = min(screenPos.x, 0.3);
+	screenPos.y = min(screenPos.y, 0.5);
     gl_Position = vec4(screenPos.x, -screenPos.y,0,1);
 }
 `;
