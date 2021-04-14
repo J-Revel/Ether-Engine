@@ -114,6 +114,13 @@ main :: proc() {
 
 
         for running {
+			err := gl.GetError();
+			for err != gl.NO_ERROR
+			{
+				log.error("OPENGL ERROR", err);
+				err = gl.GetError();
+			  // Process/log the error.
+			}
             mx, my: i32;
             sdl.gl_get_drawable_size(window, &mx, &my);
 

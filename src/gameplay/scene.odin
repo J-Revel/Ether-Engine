@@ -44,6 +44,7 @@ Scene :: struct
 	prefab_tables: objects.Named_Table_List,
     //color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
+	ui_ssbo_renderer: ui.Render_System,
     ui_renderer: render.Sprite_Render_System,
 	ui_test_renderer: ui.UI_Render_System,
     transforms: objects.Transform_Table,
@@ -73,6 +74,7 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 
 	render.init_sprite_renderer(&sprite_renderer.render_state, .World);
 	render.init_sprite_renderer(&ui_renderer.render_state, .UI);
+	ui.init_renderer(&ui_ssbo_renderer);
 	//render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;

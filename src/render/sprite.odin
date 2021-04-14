@@ -44,6 +44,7 @@ out vec2 frag_uv;
 uniform vec2 screenSize;
 uniform vec3 camPosZoom;
 
+
 void main()
 {
     frag_color = color;

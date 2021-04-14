@@ -20,9 +20,15 @@ struct Draw_Command
 	Circle circle;
 };
 
+//struct Commands
+//{
+//	Draw_Command commands[1000];
+//};
+//Commands draw_commands;
+
 layout(std430, binding=3) readonly buffer draw_commands
 {
-	Draw_Command commands[1000];
+	Draw_Command commands[];
 };
 
 out vec4 frag_color;
@@ -40,11 +46,11 @@ void main()
 	vec2 pos;
 	if(primitive_type == 0)
 	{
-		Rect rect = draw_commands.commands[primitive_index].rect;
-		pos.x = (vertex_index % 2) ? rect.x : rect.x + rect.w;
-		pos.y = (vertex_index / 2) ? rect.y : rect.y + rect.h;
-		frag_uv.x = (vertex_index % 2) ? rect.clip_x : rect.clip_x + rect.clip_w;
-		frag_uv.y = (vertex_index / 2) ? rect.clip_y : rect.clip_y + rect.clip_h;
+		Rect rect = commands[primitive_index].rect;
+		pos.x = (vertex_index % 2) > 0 ? rect.x : rect.x + rect.w;
+		pos.y = (vertex_index / 2) > 0 ? rect.y : rect.y + rect.h;
+		frag_uv.x = (vertex_index % 2) > 0 ? rect.clip_x : rect.clip_x + rect.clip_w;
+		frag_uv.y = (vertex_index / 2) > 0 ? rect.clip_y : rect.clip_y + rect.clip_h;
 		frag_color = vec4(rect.color%256, (rect.color >> 8) % 256, (rect.color >> 16) % 256, (rect.color >> 24));
 	}
 	else

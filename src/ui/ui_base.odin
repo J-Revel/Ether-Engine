@@ -613,6 +613,8 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 	{
 		switch cmd_data in draw_cmd
 		{
+			case Clip_Draw_Command:
+				
 			case Rect_Draw_Command:
 				render.use_texture(render_system, cmd_data.texture);
 				if cmd_data.corner_radius > 0

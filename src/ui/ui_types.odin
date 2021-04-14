@@ -29,6 +29,11 @@ Rect_Draw_Command :: struct
 	corner_radius: f32,
 }
 
+Clip_Draw_Command :: struct
+{
+	using rect: util.Rect,
+}
+
 Layout_Draw_Command :: struct
 {
 	final_cmd: ^Rect_Draw_Command,
@@ -39,6 +44,7 @@ Layout_Draw_Command :: struct
 Draw_Command :: union
 {
 	Rect_Draw_Command,
+	Clip_Draw_Command,
 }
 
 Draw_List :: [dynamic]Draw_Command;
