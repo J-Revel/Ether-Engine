@@ -112,11 +112,11 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 
 	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
 		rect = {{0, 0}, {200, 200}},
-		color = 0xffffffff,
+		color = 0xff00ffff,
 	});
 	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
 		rect = {{300, 50}, {250, 200}},
-		color = 0xffffffff,
+		color = 0xffff00ff,
 	});
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");

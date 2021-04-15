@@ -41,8 +41,12 @@ void main()
 
     vec2 screenPos = pos.xy * 2 / screenSize - vec2(1, 1);
 
-		frag_uv.x = 0;
+	frag_uv.x = 0;
 	frag_uv.y = 0;
-	frag_color = vec4(1, 1, 1, 1);
+	int r = (rect.color >> 24) % 256;
+	int g = (rect.color >> 16) % 256;
+	int b = (rect.color >> 8) % 256;
+	int a = (rect.color >> 0) % 256;
+	frag_color = vec4(float(r) / 256, float(g) / 256, float(b) / 256, float(a) / 256);
     gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
 }
