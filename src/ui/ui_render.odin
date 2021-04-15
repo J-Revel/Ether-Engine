@@ -14,7 +14,6 @@ SSBO_SIZE :: 10000;
 
 Render_System :: struct
 {
-	index: [dynamic]u32,
     current_texture: render.Texture_Handle,
 
     shader: u32,
@@ -76,8 +75,9 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	assert(ok);
 	fragment_shader_src, ok = os.read_entire_file("resources/shaders/ui.frag", context.temp_allocator);
 	assert(ok);
-	vertex_shader_cstring := &vertex_shader_src[0];
-	gl.ShaderSource(vertex_shader, 1, &vertex_shader_cstring, nil);
+	vertex_cstring := &vertex_shader_src[0];
+	strlen : i32 = i32(len(vertex_shader_src));
+	gl.ShaderSource(vertex_shader, 1, &vertex_cstring, &strlen);
 	gl.CompileShader(vertex_shader);
 	
 	vert_ok: i32;
@@ -89,11 +89,11 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 		error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
 		gl.GetShaderInfoLog(vertex_shader, error_length, nil, &error[0]);
 		log.errorf(string(error));
-		log.info(string(vertex_shader_src));
 	}
 	
 	fragment_shader_cstring := &fragment_shader_src[0];
-	gl.ShaderSource(fragment_shader, 1, &fragment_shader_cstring, nil);
+	strlen = i32(len(fragment_shader_src));
+	gl.ShaderSource(fragment_shader, 1, &fragment_shader_cstring, &strlen);
 	gl.CompileShader(fragment_shader);
 	
 	frag_ok: i32;
@@ -136,14 +136,14 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 		append(&commands, Draw_Command_Data{});
 	}
 
-	command_index := rect_command_count;
+	command_index: i32 = i32(rect_command_count);
 	commands[rect_command_count].rect = rect_command;
-	append(&index, 0);
-	append(&index, 1);
-	append(&index, 2);
-	append(&index, 0);
-	append(&index, 2);
-	append(&index, 3);
+	append(&index, command_index * (1<<8) + 0);
+	append(&index, command_index * (1<<8) + 1);
+	append(&index, command_index * (1<<8) + 2);
+	append(&index, command_index * (1<<8) + 1);
+	append(&index, command_index * (1<<8) + 3);
+	append(&index, command_index * (1<<8) + 2);
 	rect_command_count += 1;
 }
 
@@ -152,11 +152,13 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	log.info(draw_list);
 	gl.BindVertexArray(render_system.vao);
 	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, render_system.primitive_buffer);
+	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 3, primitive_buffer);
+	log.info(draw_list.commands);
 	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, cast(int) len(draw_list.commands) * size_of(Draw_Command_Data), &draw_list.commands[0]);
-	if len(render_system.index) > 0
+	if len(draw_list.index) > 0
 	{
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.element_buffer);
-		gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) len(draw_list.index) * size_of(u32), &render_system.index[0]);
+		gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) len(draw_list.index) * size_of(u32), &draw_list.index[0]);
 	}
 
 	gl.BindVertexArray(0);

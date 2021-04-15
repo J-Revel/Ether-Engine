@@ -114,6 +114,10 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 		rect = {{0, 0}, {200, 200}},
 		color = 0xffffffff,
 	});
+	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
+		rect = {{300, 50}, {250, 200}},
+		color = 0xffffffff,
+	});
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
 	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;

@@ -34,10 +34,15 @@ uniform vec2 screenSize;
 void main()
 {
 	vec2 pos;
-	pos.x = (gl_VertexID % 2) > 0 ? 0 : 1;
-	pos.y = (gl_VertexID / 2) > 0 ? 0 : 1;
-	frag_uv.x = 0;
+	int command_index = gl_VertexID >> 8;
+	Rect rect = commands[command_index].rect;
+	pos.x = (gl_VertexID % 2) > 0 ? rect.x : rect.x + rect.w;
+	pos.y = (gl_VertexID / 2) % 2 > 0 ? rect.y : rect.y + rect.h;
+
+    vec2 screenPos = pos.xy * 2 / screenSize - vec2(1, 1);
+
+		frag_uv.x = 0;
 	frag_uv.y = 0;
 	frag_color = vec4(1, 1, 1, 1);
-    gl_Position = vec4(pos, 0, 1);
+    gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
 }
