@@ -44,7 +44,10 @@ Scene :: struct
 	prefab_tables: objects.Named_Table_List,
     //color_renderer: render.Color_Render_System,
     sprite_renderer: render.Sprite_Render_System,
+
 	ui_ssbo_renderer: ui.Render_System,
+	ui_draw_list: ui.Draw_Command_List,
+
     ui_renderer: render.Sprite_Render_System,
 	ui_test_renderer: ui.UI_Render_System,
     transforms: objects.Transform_Table,
@@ -105,6 +108,11 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 			anchor = [2]f32{0, 0},
 			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
 		},
+	});
+
+	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
+		rect = {{0, 0}, {200, 200}},
+		color = 0xffffffff,
 	});
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
@@ -256,6 +264,7 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
+	ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &scene.ui_draw_list, viewport);
 
 	ui_camera := render.Camera{
 		world_pos = linalg.to_f32(viewport.size / 2),

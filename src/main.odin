@@ -103,7 +103,6 @@ main :: proc() {
         sceneInstance : gameplay.Scene;
         gameplay.init_main_scene(&sceneInstance, &sprite_database);
 
-
         editor_state: editor.Editor_State;
         show_editor := false;
         editor.init_editor(&editor_state, &sprite_database);

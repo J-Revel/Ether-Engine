@@ -467,8 +467,12 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
         return false;
     }
     gl.GetShaderiv(fragment_shader, gl.COMPILE_STATUS, &frag_ok);
-    if frag_ok != gl.TRUE || vert_ok != gl.TRUE {
-        log.errorf("Unable to compile fragment shader: {}", sprite_fragment_shader_src);
+    if frag_ok != gl.TRUE {
+    	error_length: i32;
+    	gl.GetShaderiv(fragment_shader, gl.INFO_LOG_LENGTH, &error_length);
+    	error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
+    	gl.GetShaderInfoLog(fragment_shader, error_length, nil, &error[0]);
+        log.errorf("Unable to compile fragment shader: {}", cstring(&error[0]));
         return false;
     }
 
