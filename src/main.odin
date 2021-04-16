@@ -84,9 +84,15 @@ main :: proc() {
             return;
         }
         gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name); );
-        
 
-
+        extension_count: i32;
+        gl.GetIntegerv(gl.NUM_EXTENSIONS, &extension_count);
+        extensions: [dynamic]cstring;
+        for i in 0..<u32(extension_count)
+        {
+            append(&extensions, gl.GetStringi(gl.EXTENSIONS, i));
+        }
+        log.info(extensions);
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
