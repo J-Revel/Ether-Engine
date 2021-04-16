@@ -113,10 +113,30 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
 		rect = {{0, 0}, {200, 200}},
 		color = 0xff00ffff,
+		corner_radius = 10,
+		border_color = 0x000000ff,
+		border_thickness = 2,
 	});
 	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
 		rect = {{300, 50}, {250, 200}},
 		color = 0xffff00ff,
+		border_color = 0x000000ff,
+		corner_radius = 20,
+		border_thickness = 1,
+	});
+	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
+		rect = {{70, 60}, {100, 200}},
+		color = 0x00ffffff,
+		corner_radius = 2,
+		border_color = 0x000000ff,
+		border_thickness = 5,
+	});
+	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
+		rect = {{600, 500}, {100, 100}},
+		color = 0xff0000ff,
+		corner_radius = 10,
+		border_color = 0x000000ff,
+		border_thickness = 0,
 	});
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");

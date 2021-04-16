@@ -23,25 +23,24 @@ Render_System :: struct
 	primitive_buffer: u32,
 }
 
-Rect_Command :: struct
+UI_Rect :: struct
 {
-	using rect: util.Rect,
-	clip: util.Rect,
-	color: u32,
+	pos, size: [2]i32,
 }
 
-Circle_Command :: struct
+Rect_Command :: struct
 {
-	pos: [2]f32,
-	radius: f32,
+	rect: UI_Rect,
+	clip: util.Rect,
 	color: u32,
-	subdivisions: i32,
+	border_color: u32,
+	border_thickness: f32,
+	corner_radius: f32,
 }
 
 Draw_Command_Data :: struct
 {
 	rect: Rect_Command,
-	circle: Circle_Command,
 }
 
 Draw_Command_List :: struct
@@ -89,6 +88,7 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 		error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
 		gl.GetShaderInfoLog(vertex_shader, error_length, nil, &error[0]);
 		log.errorf(string(error));
+		panic("vertex shader compilation error");
 	}
 	
 	fragment_shader_cstring := &fragment_shader_src[0];
@@ -106,7 +106,7 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 		error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
 		gl.GetShaderInfoLog(fragment_shader, error_length, nil, &error[0]);
 		log.errorf(string(error));
-		log.info(string(fragment_shader_src));
+		panic("fragment shader compilation error");
 	}
 
 	render_system.shader = gl.CreateProgram();
