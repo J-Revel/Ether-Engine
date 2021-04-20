@@ -113,7 +113,17 @@ load_texture :: proc(path: string) -> (Texture, bool)
 	 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	return {strings.clone(path), texture_id, {int(surface.w), int(surface.h)}}, true;
+
+	bindless_id := GetTextureHandleARB(texture_id);
+	MakeTextureHandleResidentARB(bindless_id);
+	result_texture := Texture{
+		path = strings.clone(path),
+		texture_id = texture_id,
+		bindless_id = bindless_id,
+		resident = true,
+		size = {int(surface.w), int(surface.h)}
+	};
+	return result_texture, true;
 }
 
 unload_texture :: proc(texture: ^Texture)

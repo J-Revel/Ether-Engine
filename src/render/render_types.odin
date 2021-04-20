@@ -28,6 +28,8 @@ Texture :: struct
 {
     path: string,
     texture_id: u32,
+	bindless_id: u64,
+	resident: bool,
     size: [2]int,
 }
 

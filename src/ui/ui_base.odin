@@ -62,7 +62,7 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	ui_ctx.current_font = font;
 	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
 	ui_ctx.editor_config.line_height = int(ui_ctx.current_font.line_height) + 4;
-
+	init_renderer(&ui_ctx.renderer);
 }
 
 update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)

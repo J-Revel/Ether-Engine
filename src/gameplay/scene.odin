@@ -91,6 +91,8 @@ test_animation_keyframes : [4]animation.Keyframe(f32) =
 	animation.Keyframe(f32){1, 1}
 };
 
+test_texture_id: u32;
+
 init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 {
 	using container;
@@ -109,6 +111,26 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
 		},
 	});
+
+	texture_id: u32;
+    gl.GenTextures(1, &texture_id);
+
+    data: []u8 = { 255, 0, 0, 255 };
+
+    gl.BindTexture(gl.TEXTURE_2D, texture_id);
+
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, &data[0]);
+    gl.BindTexture(gl.TEXTURE_2D, 0);
+	bindless_id := render.GetTextureHandleARB(texture_id);
+	render.MakeTextureHandleResidentARB(bindless_id);
+
+	test_texture_id = texture_id;
+
 
 	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
 		rect = {{0, 0}, {200, 200}},
@@ -131,13 +153,19 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 		border_color = 0x000000ff,
 		border_thickness = 5,
 	});
-	ui.add_rect_command(&ui_draw_list, ui.Rect_Command{
-		rect = {{600, 500}, {100, 100}},
-		color = 0xff0000ff,
-		corner_radius = 10,
+
+	font_texture := container.handle_get(ui_ctx.font_atlas.texture_handle);
+	log.info(font_texture.bindless_id);
+	
+	ui.add_rect_command(&ui_draw_list, ui.Rect_Command {
+		rect = {{0, 0}, {2048, 2048}},
+		clip = {{0, 0}, {1, 1}},
+		color = 0xffffffff,
 		border_color = 0x000000ff,
-		border_thickness = 0,
+		border_thickness = 5,
+		texture_id = font_texture.bindless_id,
 	});
+
 	/*
 	spaceship_sprite2, sprite2_found := render.get_sprite_any_texture(sprite_database, "spaceship_2");
 	load_metadata_dispatcher: objects.Load_Metadata_Dispatcher;
@@ -288,7 +316,9 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
-	ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &scene.ui_draw_list, viewport);
+	font_texture := container.handle_get(ui_ctx.font_atlas.texture_handle);
+	gl.BindTexture(gl.TEXTURE_2D, font_texture.texture_id);
+	ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &scene.ui_draw_list, viewport, font_texture);
 
 	ui_camera := render.Camera{
 		world_pos = linalg.to_f32(viewport.size / 2),

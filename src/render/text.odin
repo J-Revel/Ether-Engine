@@ -96,7 +96,19 @@ init_font_atlas :: proc(texture_table: ^container.Table(Texture), atlas: ^Font_A
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 	gl.BindTexture(gl.TEXTURE_2D, 0);
 	ok: bool;
-	atlas.texture_handle, ok = container.table_add(texture_table, Texture{texture_id = texture_id, size = [2]int{texture_size, texture_size}});
+	bindless_id := GetTextureHandleARB(texture_id);
+	log.info(GetTextureHandleARB(texture_id));
+	log.info(GetTextureHandleARB(texture_id));
+	log.info(GetTextureHandleARB(texture_id));
+	log.info(GetTextureHandleARB(texture_id));
+	MakeTextureHandleResidentARB(bindless_id);
+	atlas.texture_handle, ok = container.table_add(texture_table, Texture{
+		texture_id = texture_id,
+		size = [2]int{texture_size, texture_size},
+		bindless_id = bindless_id,
+	});
+
+
 	assert(ok);
 	init_atlas(&atlas.pack_tree, [2]f32{f32(texture_size), f32(texture_size)});
 	atlas.texture_size = [2]int{texture_size, texture_size};
@@ -117,7 +129,6 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: ^Font, character: rune, 
 		bearing = [2]int{int(font.face.glyph.bitmap_left), int(-font.face.glyph.bitmap_top)},
 		advance = [2]int{int(font.face.glyph.advance.x), 0},
 	};
-	log.info(font.face.glyph.advance);
 	allocated_rect, alloc_ok := allocate_rect(&font_atlas.pack_tree, [2]f32{f32(bitmap.width), f32(bitmap.rows)});
 	assert(alloc_ok);
 	uv_rect := util.Rect{allocated_rect.pos / linalg.to_f32(texture_size), allocated_rect.size / linalg.to_f32(texture_size)};

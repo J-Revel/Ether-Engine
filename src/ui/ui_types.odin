@@ -5,6 +5,56 @@ import "../render"
 import "../util"
 import "../container"
 
+INDEX_BUFFER_SIZE :: 50000;
+SSBO_SIZE :: 10000;
+
+Render_System :: struct
+{
+    current_texture: render.Texture_Handle,
+
+    shader: u32,
+    //screen_size_attrib: i32,
+	//texture_attrib: i32,
+    vao: u32,
+    element_buffer: u32,
+	primitive_buffer: u32,
+	ubo: u32,
+}
+
+UI_Rect :: struct
+{
+	pos, size: [2]i32,
+}
+
+Rect_Command :: struct
+{
+	rect: UI_Rect,
+	clip: util.Rect,
+	color: u32,
+	border_color: u32,
+	border_thickness: f32,
+	corner_radius: f32,
+	texture_id: u64,
+}
+
+Draw_Command_Data :: struct
+{
+	rect: Rect_Command,
+}
+
+Draw_Command_List :: struct
+{
+	commands: [dynamic]Draw_Command_Data,
+	index: [dynamic]i32,
+	rect_command_count, image_command_count: int,
+}
+
+Ubo_Data :: struct
+{
+	screen_size: [2]f32,
+	padding: [2]f32,
+};
+
 UIID :: distinct string;
 Color :: [4]f32;
 
@@ -119,6 +169,7 @@ UI_Context :: struct
 	font_atlas: render.Font_Atlas,
 	sprite_table: ^container.Table(render.Sprite),
 	editor_config: Editor_Config,
+	renderer: Render_System,
 }
 
 Drag_State :: struct
