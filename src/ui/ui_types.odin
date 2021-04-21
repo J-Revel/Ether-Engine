@@ -30,7 +30,7 @@ Rect_Command :: struct
 {
 	rect: UI_Rect,
 	clip: util.Rect,
-	color: u32,
+	color: Color,
 	border_color: u32,
 	border_thickness: f32,
 	corner_radius: f32,
@@ -46,7 +46,7 @@ Draw_Command_List :: struct
 {
 	commands: [dynamic]Draw_Command_Data,
 	index: [dynamic]i32,
-	rect_command_count, image_command_count: int,
+	rect_command_count: int,
 }
 
 Ubo_Data :: struct
@@ -56,7 +56,7 @@ Ubo_Data :: struct
 };
 
 UIID :: distinct string;
-Color :: [4]f32;
+Color :: render.Color;
 
 Anchor :: struct
 {
@@ -75,7 +75,7 @@ Rect_Draw_Command :: struct
 	using rect: util.Rect,
 	clip: util.Rect,
 	texture: render.Texture_Handle,
-	color: [4]f32,
+	color: Color,
 	corner_radius: f32,
 }
 
@@ -170,6 +170,7 @@ UI_Context :: struct
 	sprite_table: ^container.Table(render.Sprite),
 	editor_config: Editor_Config,
 	renderer: Render_System,
+	ui_draw_list: Draw_Command_List,
 }
 
 Drag_State :: struct

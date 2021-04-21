@@ -6,7 +6,7 @@ import "core:fmt"
 import "../render"
 import "../util"
 
-label :: proc(ctx: ^UI_Context, str: string, color: Color = {1, 1, 1, 1}, location := #caller_location, additional_location_index: i32 = 0) -> (state: Element_State)
+label :: proc(ctx: ^UI_Context, str: string, color: Color = 0xffffffff, location := #caller_location, additional_location_index: i32 = 0) -> (state: Element_State)
 {
 	layout := current_layout(ctx);
 	line_height := ctx.current_font.line_height;
@@ -31,20 +31,20 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	parent_layout := current_layout(ctx)^;
 	widget_rect := allocate_element_space(ctx, {0, f32(ctx.editor_config.line_height)});
 	state := ui_element(ctx, widget_rect, {.Hover, .Press, .Drag}, location, 0);
-	text_color := render.Color{1, 1, 1, 1};
+	text_color := render.rgb(255, 255, 255);
 	if Interaction_Type.Drag in state
 	{
 		value^ += int(ctx.input_state.delta_drag.x);
 	}
 	if Interaction_Type.Drag in state || Interaction_Type.Press in state
 	{
-		text_color.r = 0;
-		element_draw_rect(ctx, default_anchor, {}, render.Color{0.8, 0.8, 0, 1}, 5);
+		text_color &= 0x00ffffff;
+		element_draw_rect(ctx, default_anchor, {}, render.rgb(200, 200, 0), 5);
 	}
 	else if Interaction_Type.Hover in state 
 	{
-		text_color.r = 0;
-		element_draw_rect(ctx, default_anchor, {}, render.Color{1, 1, 0, 1}, 5);
+		text_color &= 0x00ffffff;;
+		element_draw_rect(ctx, default_anchor, {}, render.rgb(255, 255, 0), 5);
 	}
 	new_layout := Layout {
 		rect = widget_rect,
@@ -61,7 +61,7 @@ slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller
 {
 	parent_layout := current_layout(ctx)^;
 	widget_rect := allocate_element_space(ctx, {0, f32(ctx.editor_config.line_height)});
-	rect(&ctx.draw_list, widget_rect, render.Color{1, 1, 1, 1}, 5);
+	rect(&ctx.draw_list, widget_rect, render.rgb(255, 255, 255), 5);
 	value_ratio := f32(value^ - min) / f32(max - min);
 	cursor_size : f32 = 20;
 	cursor_rect := util.Rect {
@@ -76,7 +76,7 @@ slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller
 		if new_ratio > 1 do new_ratio = 1;
 		value^ = min + T(f32(max - min) * new_ratio);
 	}
-	rect(&ctx.draw_list, cursor_rect, Color{0.5, 0.5, 0.5, 1}, 5);
+	rect(&ctx.draw_list, cursor_rect, render.rgb(128, 128, 128), 5);
 }
 
 window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI_Context) -> (draw_content: bool)
@@ -115,7 +115,7 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 		add_layout_to_group(ui_ctx, body_layout);
 	}
 
-	layout_draw_rect(ui_ctx, {}, {}, Color{0.5, 0.5, 0.5, 0.3}, 0);
+	layout_draw_rect(ui_ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);
 	header_outline_rect := current_layout(ui_ctx).rect;
 	header_outline_rect.pos -= {1, 1};
 	header_outline_rect.size += {2, 2};
@@ -134,9 +134,9 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 	next_layout(ui_ctx);
 	if draw_content
 	{
-		layout_draw_rect(ui_ctx, {}, {}, Color{1, 0, 0, 0.8}, 0);
+		layout_draw_rect(ui_ctx, {}, {}, render.rgba(255, 0, 0, 200), 0);
 		header_outline_rect.size.y += current_layout(ui_ctx).rect.size.y;
 	}
-	rect_border(&ui_ctx.draw_list, header_outline_rect, {0, 0, 0, 1}, 1);
+	rect_border(&ui_ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
 	return;
 }

@@ -328,12 +328,19 @@ ui_element :: proc(
 element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32 = 0)
 {
 	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
-	rect := util.Rect{
-		pos = ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top},
-		size = ctx.current_element.size * (anchor.max - anchor.min) - padding_sum,
+	rect := UI_Rect{
+		pos = linalg.to_i32(ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top}),
+		size = linalg.to_i32(ctx.current_element.size * (anchor.max - anchor.min) - padding_sum),
 	};
 	clip := util.Rect{ size = [2]f32{1, 1} };
-	append(&ctx.draw_list, Rect_Draw_Command{rect = rect, clip = clip, color = color, corner_radius = corner_radius});
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = rect,
+		color = color,
+		corner_radius = 10,
+		border_color = 0x000000ff,
+		border_thickness = 1,
+	});
+	//append(&ctx.draw_list, Rect_Draw_Command{rect = rect, clip = clip, color = color, corner_radius = corner_radius});
 }
 
 element_draw_textured_rect :: proc(
@@ -372,8 +379,18 @@ text :: proc(
 	{
 		glyph, glyph_found := font.glyphs[char]; 
 		assert(glyph_found);
-		rect := util.Rect{ pos = linalg.to_f32(pos_cursor + glyph.bearing), size = linalg.to_f32(glyph.size) };
-		textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
+		rect := UI_Rect{ pos = linalg.to_i32(pos_cursor + glyph.bearing), size = linalg.to_i32(glyph.size) };
+		//textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
+
+		glyph_sprite := container.handle_get(glyph.sprite);
+		texture := container.handle_get(glyph_sprite.texture);
+
+		add_rect_command(&ctx.ui_draw_list, Rect_Command{
+			rect = rect,
+			color = color,
+			clip = glyph_sprite.clip,
+			texture_id = texture.bindless_id,
+		});
 		pos_cursor += glyph.advance / 64;
 	}
 }
@@ -430,6 +447,14 @@ layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, col
 		corner_radius = corner_radius,
 	};
 	append(&ctx.draw_list, draw_cmd);
+
+	add_rect_command(&ctx.ui_draw_list, Rect_Command {
+		rect = {linalg.to_i32(layout.pos), linalg.to_i32(layout.size)},
+		clip = {{0, 0}, {1, 1}},
+		color = color,
+		border_color = 0x000000ff,
+		border_thickness = 1,
+	});
 }
 
 default_anchor :: Anchor{{0, 0}, {1, 1}, 0, 0, 0, 0};
@@ -445,18 +470,18 @@ button :: proc(
 	state := ui_element(ui_ctx, rect, {.Hover, .Press, .Click}, location);
 	if Interaction_Type.Press in state
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 1, 1});
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{0.5, 0.5, 0.5, 1});
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(0, 255, 255));
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(128, 128, 128));
 	}
 	else if Interaction_Type.Hover in state
 	{
-		element_draw_rect(ui_ctx, default_anchor, {}, render.Color{1, 0, 0, 1});
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1});
+		element_draw_rect(ui_ctx, default_anchor, {}, render.rgb(255, 0, 0));
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
 	}
 	else
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1});
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1});
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(0, 255, 0));
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
 	}
 	return Interaction_Type.Click in state;
 }
@@ -517,18 +542,18 @@ layout_button :: proc(
 
 	if Interaction_Type.Press in element_state
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 1, 1});
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1});
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(255, 0, 255));
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
 	}
 	else if Interaction_Type.Hover in element_state 
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{1, 0, 0, 1});
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1});
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(255, 0, 0));
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
 	}
 	else
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.Color{0, 1, 0, 1});
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.Color{1, 1, 0, 1});
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(0, 255, 0));
+		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
 	}
 	
 	return Interaction_Type.Click in element_state;

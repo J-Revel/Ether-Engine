@@ -141,4 +141,8 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	gl.DrawElements(gl.TRIANGLES, cast(i32) len(draw_list.index), gl.UNSIGNED_INT, nil);
 	gl.BindVertexArray(0);
 	gl.UseProgram(0);
+
+	clear(&draw_list.commands);
+	clear(&draw_list.index);
+	draw_list.rect_command_count = 0;
 }

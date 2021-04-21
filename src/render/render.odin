@@ -48,6 +48,16 @@ void main()
 INDEX_BUFFER_SIZE :: 50000;
 VERTEX_BUFFER_SIZE :: 20000;
 
+rgba :: proc(r: u8, g: u8, b: u8, a: u8) -> Color
+{
+	return 0x00000001 * Color(a) + 0x00000100 * Color(b) + 0x00010000 * Color(g) + 0x01000000 * Color(r);
+}
+
+rgb :: proc(r: u8, g: u8, b: u8) -> Color
+{
+	return 0x000000ff + 0x00000100 * Color(b) + 0x00010000 * Color(g) + 0x01000000 * Color(r);
+}
+
 init_color_renderer :: proc (result: ^Render_State) -> bool
 {
     vertexShader := gl.CreateShader(gl.VERTEX_SHADER);

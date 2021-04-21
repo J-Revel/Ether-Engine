@@ -268,7 +268,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
 	
-	ui.layout_draw_rect(&ui_ctx, {}, {}, ui.Color{0.5, 1, 0.5, 1}, 20);
+	ui.layout_draw_rect(&ui_ctx, {}, {}, render.rgb(128, 255, 128), 20);
 	//if ui.layout_button("test", {100, 100}, &ui_ctx)
 	{
 		//log.info("BUTTON1");
@@ -317,8 +317,14 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
 	font_texture := container.handle_get(ui_ctx.font_atlas.texture_handle);
-	gl.BindTexture(gl.TEXTURE_2D, font_texture.texture_id);
-	ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &scene.ui_draw_list, viewport, font_texture);
+	if scene.ui_draw_list.rect_command_count> 0
+	{
+		ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &scene.ui_draw_list, viewport, font_texture);
+	}
+	if ui_ctx.ui_draw_list.rect_command_count > 0
+	{
+		ui.render_ui_draw_list(&ui_ctx.renderer, &ui_ctx.ui_draw_list, viewport, font_texture);
+	}
 
 	ui_camera := render.Camera{
 		world_pos = linalg.to_f32(viewport.size / 2),

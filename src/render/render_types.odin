@@ -4,7 +4,7 @@ import "../util"
 import "../../libs/freetype"
 
 vec2 :: [2]f32;
-Color :: [4]f32;
+Color :: distinct u32;
 
 Color_Vertex_Data :: struct
 {

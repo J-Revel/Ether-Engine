@@ -163,10 +163,10 @@ transform_hierarchy_gizmos :: proc(
 {
 	for cursor := first_element_index; cursor > 0; cursor = next_elements[cursor - 1]
 	{
-		color := render.Color{0.5, 0.5, 0.5, 0.5};
+		color := render.rgba(128, 128, 128, 128);
 		if selected_index == cursor
 		{
-			color = render.Color{1, 0, 0, 1};
+			color = render.rgba(255, 0, 0, 255);
 		}
 		absolute_transform := objects.get_absolute_transform(hierarchy, handles[cursor-1]);
 		draw_transform_gizmo(&absolute_transform, color, camera, viewport, renderer);
