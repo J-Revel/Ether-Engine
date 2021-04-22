@@ -273,7 +273,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	{
 		//log.info("BUTTON1");
 	}
-	if ui.window(&window_state, 40, &ui_ctx)
+	if ui.window(&ui_ctx, &window_state, 40)
 	{
 		//log.info(container.handle_get(rune_sprites['a']));
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
@@ -283,7 +283,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state));
 		drag_cache: ui.Drag_State;
 		ui.drag_int(&ui_ctx, &test_value);
-		ui.slider(&ui_ctx, &test_value, 0, 1000);
+		ui.h_slider(&ui_ctx, &test_value, 0, 1000);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

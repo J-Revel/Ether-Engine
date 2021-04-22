@@ -40,9 +40,17 @@ void main()
 	float outer_distance = smoothstep(0, 1, 0.5 - sdf_distance);
 	if(frag_corner_radius == 0)
 		outer_distance = 1;
+	
+	bool has_texture = frag_texture_id.x != 0 || frag_texture_id.y != 0;
 
-
-	if(is_inside)
+	if(frag_border_thickness == 0 && frag_corner_radius == 0)
+	{
+		if(has_texture)
+			out_color = texture(sampler2D(frag_texture_id), frag_uv);
+		else
+			out_color = frag_fill_color;
+	}
+	else if(is_inside)
 	{
 		if(is_border)
 		{
@@ -52,7 +60,7 @@ void main()
 		else
 		{
 			out_color = frag_fill_color;
-			if(frag_texture_id.x != 0 || frag_texture_id.y != 0)
+			if(has_texture)
 			{
 				out_color *= texture(sampler2D(frag_texture_id), frag_uv);
 			}

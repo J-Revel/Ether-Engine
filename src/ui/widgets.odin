@@ -1,6 +1,7 @@
 package ui
 
 import "core:log"
+import "core:math/linalg"
 
 import "core:fmt"
 import "../render"
@@ -57,11 +58,16 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	pop_layout_group(ctx);
 }
 
-slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller_location, additional_location_index: i32 = 0)
+h_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller_location, additional_location_index: i32 = 0)
 {
 	parent_layout := current_layout(ctx)^;
 	widget_rect := allocate_element_space(ctx, {0, f32(ctx.editor_config.line_height)});
-	rect(&ctx.draw_list, widget_rect, render.rgb(255, 255, 255), 5);
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = {pos = linalg.to_i32(widget_rect.pos), size = linalg.to_i32(widget_rect.size)},
+		color = render.rgb(255, 255, 255),
+		corner_radius = 5,
+		border_thickness = 0,
+	});
 	value_ratio := f32(value^ - min) / f32(max - min);
 	cursor_size : f32 = 20;
 	cursor_rect := util.Rect {
@@ -69,19 +75,70 @@ slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller
 		size = [2]f32{cursor_size, widget_rect.size.y},
 	};
 	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Drag}, location, 0);
+	cursor_color: Color = render.rgb(200, 200, 200);
 	if Interaction_Type.Drag in cursor_state
 	{
 		new_ratio := (ctx.input_state.cursor_pos.x - widget_rect.pos.x - cursor_size / 2) / (widget_rect.size.x - cursor_size);
 		if new_ratio < 0 do new_ratio = 0;
 		if new_ratio > 1 do new_ratio = 1;
 		value^ = min + T(f32(max - min) * new_ratio);
+		cursor_color = render.rgb(150, 150, 150);
 	}
-	rect(&ctx.draw_list, cursor_rect, render.rgb(128, 128, 128), 5);
+	else if Interaction_Type.Hover in cursor_state
+	{
+		cursor_color = render.rgb(170, 170, 170);
+	}
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = {pos = linalg.to_i32(cursor_rect.pos), size = linalg.to_i32(cursor_rect.size)},
+		color = cursor_color,
+		corner_radius = 5,
+		border_thickness = 1,
+		border_color = render.rgb(128, 128, 128),
+	});
 }
 
-window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI_Context) -> (draw_content: bool)
+v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, width: f32 = 0, location := #caller_location, additional_location_index: i32 = 0)
+{
+	parent_layout := current_layout(ctx)^;
+	widget_rect := allocate_element_space(ctx, {width, 0});
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = {pos = linalg.to_i32(widget_rect.pos), size = linalg.to_i32(widget_rect.size)},
+		color = render.rgb(255, 255, 255),
+		corner_radius = 5,
+		border_thickness = 0,
+	});
+	value_ratio := f32(value^ - min) / f32(max - min);
+	cursor_size : f32 = 20;
+	cursor_rect := util.Rect {
+		pos = widget_rect.pos + [2]f32{0, cursor_size / 2 + (widget_rect.size.y - cursor_size) * value_ratio - cursor_size / 2},
+		size = [2]f32{widget_rect.size.x, cursor_size},
+	};
+	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Drag}, location, 0);
+	cursor_color: Color = render.rgb(200, 200, 200);
+	if Interaction_Type.Drag in cursor_state
+	{
+		new_ratio := (ctx.input_state.cursor_pos.y - widget_rect.pos.y - cursor_size / 2) / (widget_rect.size.y - cursor_size);
+		if new_ratio < 0 do new_ratio = 0;
+		if new_ratio > 1 do new_ratio = 1;
+		value^ = min + T(f32(max - min) * new_ratio);
+		cursor_color = render.rgb(150, 150, 150);
+	}
+	else if Interaction_Type.Hover in cursor_state
+	{
+		cursor_color = render.rgb(170, 170, 170);
+	}
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = {pos = linalg.to_i32(cursor_rect.pos), size = linalg.to_i32(cursor_rect.size)},
+		color = cursor_color,
+		corner_radius = 5,
+		border_thickness = 1,
+		border_color = render.rgb(128, 128, 128),
+	});
+}
+
+window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height: f32, location := #caller_location) -> (draw_content: bool)
 { 
-	push_layout_group(ui_ctx);
+	push_layout_group(ctx);
 	header_size := [2]f32{rect.size.x, header_height};
 	header_layout := Layout {
 		rect = util.Rect{
@@ -92,51 +149,71 @@ window :: proc(using state: ^Window_State, header_height: f32, using ui_ctx: ^UI
 	};
 
 	// Close button layout
-	add_layout_to_group(ui_ctx, header_layout);
+	add_layout_to_group(ctx, header_layout);
 
 	// Main Header Layout
 	header_layout.direction.x = 1;
-	add_layout_to_group(ui_ctx, header_layout);
+	add_layout_to_group(ctx, header_layout);
 
 	draw_content = !state.folded;
 
 	if draw_content
 	{
 		// Body Layout
+		scrollbar_width: f32 = 30;
 		body_layout := Layout {
 			rect = util.Rect
 			{
 				pos = rect.pos + [2]f32{0, header_height},
-				size = [2]f32{rect.size.x, rect.size.y - header_height},
+				size = [2]f32{rect.size.x - scrollbar_width, rect.size.y - header_height},
 			},
 			direction = [2]f32{0, 1},
 		};
-		
-		add_layout_to_group(ui_ctx, body_layout);
+		add_layout_to_group(ctx, body_layout);
+
+		push_layout_group(ctx);
+		if last_frame_height != 0
+		{
+			scrollbar_layout := Layout {
+				rect = util.Rect
+				{
+					pos = rect.pos + [2]f32{body_layout.rect.size.x, header_height},
+					size = [2]f32{scrollbar_width, rect.size.y - header_height},
+				},
+				direction = [2]f32{0, 1},
+			};
+			add_layout_to_group(ctx, scrollbar_layout);
+			v_slider(ctx, &scroll, 0, 1, 0, location, 1);
+			pop_layout_group(ctx);
+		}
 	}
 
-	layout_draw_rect(ui_ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);
-	header_outline_rect := current_layout(ui_ctx).rect;
+	layout_draw_rect(ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);
+	header_outline_rect := current_layout(ctx).rect;
 	header_outline_rect.pos -= {1, 1};
 	header_outline_rect.size += {2, 2};
 	// Close button
-	if drag_box(util.Rect{rect.pos, header_size}, &drag_state, ui_ctx)
+	if drag_box(util.Rect{rect.pos, header_size}, &drag_state, ctx)
 	{
 		rect.pos += drag_state.drag_offset;
 		drag_state.drag_offset = [2]f32{0, 0};
 	}
-	layout_button("close button", {header_height, header_height}, ui_ctx); 
-	next_layout(ui_ctx);
-	if layout_button("fold button", {header_height, header_height}, ui_ctx)
+	layout_button("close button", {header_height, header_height}, ctx); 
+	next_layout(ctx);
+	if layout_button("fold button", {header_height, header_height}, ctx)
 	{
 		state.folded = !state.folded;
 	}
-	next_layout(ui_ctx);
+	next_layout(ctx);
 	if draw_content
 	{
-		layout_draw_rect(ui_ctx, {}, {}, render.rgba(255, 0, 0, 200), 0);
-		header_outline_rect.size.y += current_layout(ui_ctx).rect.size.y;
+		layout_draw_rect(ctx, {}, {}, render.rgba(255, 0, 0, 200), 0);
+		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
 	}
-	rect_border(&ui_ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
+	rect_border(&ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
 	return;
+}
+
+window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
+{
 }

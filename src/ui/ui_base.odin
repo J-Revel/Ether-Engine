@@ -539,27 +539,31 @@ layout_button :: proc(
 	layout := current_layout(ui_ctx);
 	allocated_space := allocate_element_space(ui_ctx, size);
 	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Press, .Click}, location);
+	color: Color;
 
 	if Interaction_Type.Press in element_state
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(255, 0, 255));
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
+		color = render.rgb(150, 150, 0);
 	}
 	else if Interaction_Type.Hover in element_state 
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(255, 0, 0));
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
+		color = render.rgb(200, 200, 0);
 	}
 	else
 	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(0, 255, 0));
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
+		color = render.rgb(255, 255, 0);
 	}
+	element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, color);
 	
 	return Interaction_Type.Click in element_state;
 }
 
-vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^UI_Context)
+vsplit :: proc{
+	vsplit_layout_ratio,
+	vsplit_layout_sizes,
+};
+
+vsplit_layout_ratio :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^UI_Context)
 {
 	parent_layout := current_layout(ui_ctx)^;
 	left_split_width := parent_layout.size.x * split_ratio;
@@ -578,6 +582,39 @@ vsplit_layout :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^U
 	new_layout.pos.x += left_split_width;
 	new_layout.size.x = parent_layout.size.x * (1 - split_ratio);
 	add_layout_to_group(ui_ctx, new_layout);
+}
+
+vsplit_layout_sizes :: proc(split_sizes: []f32, inner_padding: Padding, using ui_ctx: ^UI_Context)
+{
+	parent_layout := current_layout(ui_ctx)^;
+	used_size: f32 = 0;
+	variable_sizes_count := 0;
+	for size in split_sizes
+	{
+		if size == 0 do variable_sizes_count += 1;
+		used_size += size;
+	}
+	variable_size := (parent_layout.size.x - used_size)/f32(variable_sizes_count);
+	
+	cursor_pos := parent_layout.pos;
+	push_layout_group(ui_ctx);
+	for preferred_size, index in split_sizes
+	{
+		target_size := preferred_size;
+		if preferred_size == 0 do target_size = variable_size;
+
+		new_layout := Layout {
+			rect = util.Rect
+			{
+				pos = cursor_pos,
+				size = [2]f32{target_size, parent_layout.size.y},
+			},
+			padding = inner_padding,
+			direction = [2]f32{0, 1},
+		};
+		cursor_pos.x += target_size;
+		add_layout_to_group(ui_ctx, new_layout);
+	}
 }
 
 round_corner_subdivisions :: 3;

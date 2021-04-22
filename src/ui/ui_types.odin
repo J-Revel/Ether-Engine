@@ -31,7 +31,7 @@ Rect_Command :: struct
 	rect: UI_Rect,
 	clip: util.Rect,
 	color: Color,
-	border_color: u32,
+	border_color: Color,
 	border_thickness: f32,
 	corner_radius: f32,
 	texture_id: u64,
@@ -185,6 +185,8 @@ Window_State :: struct
 	drag_state: Drag_State,
 	rect: util.Rect,
 	folded: bool,
+	scroll: f32,
+	last_frame_height: f32,
 }
 
 Editor_Config :: struct
