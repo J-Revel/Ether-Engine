@@ -30,6 +30,7 @@ import "core:reflect"
 
 import "../ui"
 import "../util"
+import "../audio"
 
 
 Rect :: struct
@@ -284,6 +285,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		drag_cache: ui.Drag_State;
 		ui.drag_int(&ui_ctx, &test_value);
 		ui.h_slider(&ui_ctx, &test_value, 0, 1000);
+		//audio.set_sound_freq(cast(f32)test_value);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

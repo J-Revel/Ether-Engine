@@ -184,8 +184,8 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 			};
 			add_layout_to_group(ctx, scrollbar_layout);
 			v_slider(ctx, &scroll, 0, 1, 0, location, 1);
-			pop_layout_group(ctx);
 		}
+		pop_layout_group(ctx);
 	}
 
 	layout_draw_rect(ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);

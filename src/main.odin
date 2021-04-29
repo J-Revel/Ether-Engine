@@ -24,6 +24,7 @@ import "util";
 import "input"
 import "gameplay"
 import "editor"
+import "audio"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
@@ -45,7 +46,7 @@ main :: proc() {
 
     log.info("Starting SDL Example...");
     
-    init_err := sdl.init(.Video);
+    init_err := sdl.init(.Video | .Audio);
     defer sdl.quit();
     if init_err == 0 
     {
@@ -87,6 +88,8 @@ main :: proc() {
         gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, load_proc);
 
 		render.load_ARB_bindless_texture(load_proc);
+		test_frequency : f32 = 440;
+		audio.init_audio_system();
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);
