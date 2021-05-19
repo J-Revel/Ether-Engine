@@ -49,7 +49,7 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	}
 	new_layout := Layout {
 		rect = widget_rect,
-		direction = {1, 0}
+		direction = {1, 0},
 	};
 	push_layout_group(ctx);
 	add_layout_to_group(ctx, new_layout);
@@ -162,8 +162,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		// Body Layout
 		scrollbar_width: f32 = 30;
 		body_layout := Layout {
-			rect = util.Rect
-			{
+			rect = util.Rect {
 				pos = rect.pos + [2]f32{0, header_height},
 				size = [2]f32{rect.size.x - scrollbar_width, rect.size.y - header_height},
 			},
@@ -175,8 +174,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		if last_frame_height != 0
 		{
 			scrollbar_layout := Layout {
-				rect = util.Rect
-				{
+				rect = util.Rect {
 					pos = rect.pos + [2]f32{body_layout.rect.size.x, header_height},
 					size = [2]f32{scrollbar_width, rect.size.y - header_height},
 				},
@@ -209,6 +207,10 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 	{
 		layout_draw_rect(ctx, {}, {}, render.rgba(255, 0, 0, 200), 0);
 		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
+		scroll_content_rect := current_layout(ctx).rect;
+		scroll_content_rect.size.y = state.last_frame_height;
+		rect_border(&ctx.draw_list, scroll_content_rect, render.rgba(255, 255, 255, 100), 1);
+		log.info(scroll_content_rect);
 	}
 	rect_border(&ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
 	return;
@@ -216,4 +218,5 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 
 window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 {
+	state.last_frame_height = current_layout(ctx).rect.size.y;
 }

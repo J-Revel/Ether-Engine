@@ -134,9 +134,8 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
 	}
 	clear(&ui_ctx.next_elements_under_cursor);
 	clear(&ui_ctx.layout_stack);
-	base_layout := Layout{
-		rect = util.Rect
-		{
+	base_layout := Layout {
+		rect = util.Rect {
 			pos = {0, 0},
 			size = screen_size,
 		},
@@ -258,7 +257,7 @@ textured_rect :: proc(
 		rect = rect,
 		clip = sprite_data.clip,
 		color = color,
-		texture = texture_handle
+		texture = texture_handle,
 	});
 }
 
@@ -267,7 +266,7 @@ ui_element :: proc(
 	rect: util.Rect,
 	interactions: Interactions,
 	location := #caller_location,
-	additional_element_index: i32 = 0
+	additional_element_index: i32 = 0,
 ) -> (out_state: Element_State)
 {
 	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
@@ -348,7 +347,7 @@ element_draw_textured_rect :: proc(
 	padding: Padding,
 	color: Color,
 	sprite: render.Sprite_Handle,
-	ctx: ^UI_Context
+	ctx: ^UI_Context,
 )
 {
 	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
@@ -362,7 +361,7 @@ element_draw_textured_rect :: proc(
 		rect = rect,
 		clip = sprite_data.clip,
 		color = color,
-		texture = texture_handle
+		texture = texture_handle,
 	});
 }
 
@@ -414,7 +413,7 @@ element_draw_text :: proc(
 	text: string,
 	color: Color,
 	font: ^render.Font,
-	ctx: ^UI_Context
+	ctx: ^UI_Context,
 ) {
 	pos_cursor := ctx.current_element.pos + padding.top_left + [2]f32{0, font.line_height};
 	line_size := int(ctx.current_element.pos.x + ctx.current_element.size.x - pos_cursor.x - padding.bottom_right.x);
@@ -464,7 +463,7 @@ button :: proc(
 	rect: util.Rect,
 
 	ui_ctx: ^UI_Context,
-	location := #caller_location
+	location := #caller_location,
 ) -> bool
 {
 	state := ui_element(ui_ctx, rect, {.Hover, .Press, .Click}, location);
@@ -491,7 +490,7 @@ drag_box :: proc(
 	drag_state: ^Drag_State,
 
 	ui_ctx: ^UI_Context,
-	location := #caller_location
+	location := #caller_location,
 ) -> (state_changed: bool)
 {
 	element_state := ui_element(ui_ctx, rect, {.Drag}, location);
@@ -533,7 +532,7 @@ layout_button :: proc(
 	size: [2]f32,
 
 	using ui_ctx: ^UI_Context,
-	location := #caller_location
+	location := #caller_location,
 ) -> (clicked: bool)
 {
 	layout := current_layout(ui_ctx);
@@ -568,8 +567,7 @@ vsplit_layout_ratio :: proc(split_ratio: f32, inner_padding: Padding, using ui_c
 	parent_layout := current_layout(ui_ctx)^;
 	left_split_width := parent_layout.size.x * split_ratio;
 	new_layout := Layout {
-		rect = util.Rect
-		{
+		rect = util.Rect {
 			pos = parent_layout.pos,
 			size = [2]f32{left_split_width, parent_layout.size.y},
 		},
@@ -604,8 +602,7 @@ vsplit_layout_sizes :: proc(split_sizes: []f32, inner_padding: Padding, using ui
 		if preferred_size == 0 do target_size = variable_size;
 
 		new_layout := Layout {
-			rect = util.Rect
-			{
+			rect = util.Rect {
 				pos = cursor_pos,
 				size = [2]f32{target_size, parent_layout.size.y},
 			},
@@ -686,52 +683,52 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 						render_system, 
 						{
 							pos + [2]f32{0, corner_radius},
-							[2]f32{corner_radius, size.y - 2 * corner_radius}
+							[2]f32{corner_radius, size.y - 2 * corner_radius},
 						}, 
 						cmd_data.clip, 
-						cmd_data.color
+						cmd_data.color,
 					);
 					push_rect_data(
 						render_system, 
 						{
 							pos + [2]f32{corner_radius, 0},
-							[2]f32{size.x - corner_radius * 2, size.y}
+							[2]f32{size.x - corner_radius * 2, size.y},
 						}, 
 						clip, 
-						cmd_data.color
+						cmd_data.color,
 					);
 					push_rect_data(
 						render_system, 
 						{
 							pos + [2]f32{size.x - corner_radius, corner_radius}, 
-							[2]f32{corner_radius, size.y - 2 * corner_radius}
+							[2]f32{corner_radius, size.y - 2 * corner_radius},
 						}, 
 						cmd_data.clip, 
-						cmd_data.color
+						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
 						pos + [2]f32{corner_radius, corner_radius},
 						[2]f32{-corner_radius, -corner_radius},
-						cmd_data.color
+						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
 						pos + [2]f32{cmd_data.size.x - corner_radius, corner_radius},
 						[2]f32{corner_radius, -corner_radius},
-						cmd_data.color
+						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
 						pos + [2]f32{corner_radius, cmd_data.size.y - corner_radius},
 						[2]f32{-corner_radius, corner_radius},
-						cmd_data.color
+						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
 						pos + cmd_data.size - [2]f32{corner_radius, corner_radius},
 						[2]f32{corner_radius, corner_radius},
-						cmd_data.color
+						cmd_data.color,
 					);
 				}
 				else

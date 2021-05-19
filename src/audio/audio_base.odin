@@ -1,6 +1,7 @@
 package audio
 
 import sdl "shared:odin-sdl2"
+import mixer "shared:odin-sdl2/mixer"
 import "core:math"
 import "core:runtime"
 import "core:log"
@@ -26,7 +27,6 @@ Audio_Change_Type :: enum i32 {
 }
 
 wav_pos: ^u8;
-wav_len: u32;
 time: f32;
 random: rand.Rand;
 random_float := rand.float32;
@@ -39,48 +39,62 @@ audio_callback :: proc "c" (user_data: rawptr, stream: ^u8, len: i32)
 	{
 		value := cast(^f32)(uintptr(rawptr(stream)) + uintptr(i * size_of(f32)));
 		sample_time := time + f32(i); 
-		value^ = 0.2 * math.sin(2 * math.PI * sample_time * 440 / 96000);
+		//value^ = 0.2 * math.sin(2 * math.PI * sample_time * 440 / f32(audio_system_data.freq));
+		for clip in audio_system_data.playing_clips
+		{
+			value^ = (cast(^f32)mem.ptr_offset(clip.data, int(clip.play_cursor) + int(i) * size_of(f32)))^;
+		}
+	}
+	for clip in &audio_system_data.playing_clips
+	{
+		clip.play_cursor += int(len/size_of(f32)) * size_of(f32);
 	}
 	time += f32(4096);
 }
 
-audio_spec := sdl.Audio_Spec {
-	freq = 96000,
-	format = u16(Audio_Format.F32LSB),
-	channels = 1,
-	samples = 4096,
-};
 
 load_wav :: proc(file: cstring, spec: ^sdl.Audio_Spec, audio_buf: ^^u8, audio_len: ^u32) -> ^sdl.Audio_Spec
 {
 	return sdl.load_wav_rw(sdl.rw_from_file(file, "rb"), 1, spec, audio_buf, audio_len);
 }
 
-set_sound_freq :: proc(f: f32)
+Audio_System :: struct
 {
-	data := cast(^f32)(audio_spec.userdata);
-	data^ = f;
+	spec: sdl.Audio_Spec,
+	audio_system_data: Audio_System_Data,
 }
 
 Audio_System_Data :: struct
 {
-	random: rand.Rand,
-
+	using spec: ^sdl.Audio_Spec,
+	playing_clips: [dynamic]Audio_Clip,
 }
 
-init_audio_system :: proc()
+Audio_Clip :: struct
 {
+	spec: sdl.Audio_Spec,
+	data: ^u8,
+	data_size: int,
+	play_cursor: int,
+}
+
+init_audio_system :: proc(audio_system: ^Audio_System)
+{
+	audio_spec := sdl.Audio_Spec {
+		freq = 96000,
+		format = u16(Audio_Format.F32LSB),
+		channels = 1,
+		samples = 4096,
+	};
 	random = rand.create(123546);
-	audio_spec.callback = audio_callback;
-	audio_system_data := new(Audio_System_Data);
-	audio_spec.userdata = rawptr(audio_system_data);
-	audio_device := sdl.open_audio_device(nil, 0, &audio_spec, &audio_spec, i32(Audio_Change_Type.Allow_Frequency_Change));
-	log.info(audio_spec);
-	sdl.pause_audio_device(audio_device, 0);
-	wav_buffer: ^u8;
-	if load_wav("resources/audio/music.wav", &audio_spec, &wav_buffer, &wav_len) == nil
+	mixer.init(i32(mixer.Init_Flags.mp3));
+	if mixer.open_audio(22050, u16(Audio_Format.F32LSB), 2, 1024) < 0 {
+		log.info("ERROR LOADING MIXER LIB");
+	}
+	music := mixer.load_wav("resources/audio/music.wav");
+	if music == nil
 	{
 		log.info("ERROR LOADING MUSIC");
 	}
-	wav_pos = wav_buffer;
+	//mixer.play_channel_timed(-1, music, 0, 0);
 }

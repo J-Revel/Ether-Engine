@@ -11,7 +11,7 @@ import "core:log"
 SDL_State :: struct {
     time: u64,
     mouse_down: [3]bool,
-    cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor
+    cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor,
 }
 
 setup_state :: proc(using state: ^SDL_State) {

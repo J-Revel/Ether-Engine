@@ -11,13 +11,13 @@ Bounding_Box :: struct
 {
 	center: vec2,
 	angle: f32,
-	size: vec2
+	size: vec2,
 }
 
 Circle :: struct
 {
 	center: vec2,
-	radius: f32
+	radius: f32,
 }
 
 is_inside_bb :: proc(using bb: ^Bounding_Box, pos: [2]f32) -> bool
@@ -45,7 +45,7 @@ collision_hitbox_empty_circle :: proc(hitbox: ^Bounding_Box, circle: ^Circle) ->
 		hitbox.center + hitbox_right + hitbox_up,
 		hitbox.center - hitbox_right + hitbox_up,
 		hitbox.center + hitbox_right - hitbox_up,
-		hitbox.center - hitbox_right - hitbox_up
+		hitbox.center - hitbox_right - hitbox_up,
 	};
 
 	min_distance : f32 = 99999999;

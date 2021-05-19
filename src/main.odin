@@ -89,7 +89,9 @@ main :: proc() {
 
 		render.load_ARB_bindless_texture(load_proc);
 		test_frequency : f32 = 440;
-		audio.init_audio_system();
+		
+		audio_system: audio.Audio_System;
+		audio.init_audio_system(&audio_system);
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
         imgui_state := init_imgui_state(window);

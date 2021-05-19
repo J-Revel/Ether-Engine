@@ -5,7 +5,7 @@ import "core:mem"
 Named_Element :: struct(T: typeid)
 {
 	name: string,
-	value: T
+	value: T,
 }
 
 Bit_Array :: []u32;
@@ -13,19 +13,19 @@ Bit_Array :: []u32;
 Raw_Handle :: struct
 {
 	id: int,
-	raw_table: ^Raw_Table
+	raw_table: ^Raw_Table,
 }
 
 Handle :: struct(T: typeid)
 {
 	id: int,
-	table: ^Table(T)
+	table: ^Table(T),
 }
 
 Generic_Handle :: struct
 {
 	id: int,
-	table_data: ^Table_Data
+	table_data: ^Table_Data,
 }
 
 Table_Data :: struct

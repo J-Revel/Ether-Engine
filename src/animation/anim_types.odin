@@ -12,7 +12,7 @@ Curve_Type :: enum
 	Bool, 
 	Integer, 
 	Color, 
-	Vec2
+	Vec2,
 }
 
 Keyframe :: struct(T: typeid)
@@ -58,7 +58,7 @@ Animation_Database :: struct
 {
 	animation_curves: container.Table(Animation_Curve(f32)),
 	animation_players: container.Table(Animation_Player),
-	animation_configs: container.Table(Animation_Config)
+	animation_configs: container.Table(Animation_Config),
 }
 
 init_animation_database :: proc(prefab_tables: ^objects.Named_Table_List, using database: ^Animation_Database)

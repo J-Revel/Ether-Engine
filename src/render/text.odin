@@ -53,7 +53,7 @@ load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, t
 		0,
 		gl.RED,
 		gl.UNSIGNED_BYTE,
-		face.glyph.bitmap.buffer
+		face.glyph.bitmap.buffer,
 	);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -137,8 +137,8 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: ^Font, character: rune, 
 		texture = font_atlas.texture_handle,
 		id = fmt.aprint("char", character),
 		data = {
-			clip = uv_rect
-		}
+			clip = uv_rect,
+		},
 	};
 	glyph.sprite, add_ok = container.table_add(sprite_table, sprite);
 	assert(add_ok);

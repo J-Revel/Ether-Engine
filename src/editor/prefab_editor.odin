@@ -59,7 +59,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 			extensions = extensions, 
 			hide_folders = false, 
 			can_create = false, 
-			confirm_dialog = false
+			confirm_dialog = false,
 		};
 	path, file_search_state := file_selector_popup_button("prefab_load", "Load Prefab", search_config);
 	
@@ -158,7 +158,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 			}
 
 			input_component_data: objects.Component_Model_Data = {
-				data = input.display_value
+				data = input.display_value,
 			};
 			// not in default_input_types == component type
 			input_component_model: objects.Component_Model = {
@@ -166,7 +166,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 			};
 			prefab := Editor_Prefab{
 				prefab_tables = &scene.prefab_tables,
-				components = []objects.Component_Model{input_component_model}
+				components = []objects.Component_Model{input_component_model},
 			};
 
 			field := Component_Field {
@@ -369,7 +369,7 @@ update_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, input_sta
 	}
 	scene_viewport := render.Viewport{
 		viewport.top_left,
-		{viewport.size.x / 2, viewport.size.y}
+		{viewport.size.x / 2, viewport.size.y},
 	};
 
 	update_gizmos(editor_state, input_state, &scene.camera, scene_viewport);
@@ -506,7 +506,7 @@ update_gizmos :: proc(using editor_state: ^Prefab_Editor_State, input_state: ^in
 get_component_field_data :: proc
 {
 	get_component_field_data_raw,
-	get_component_field_data_typed
+	get_component_field_data_typed,
 };
 
 get_component_data :: proc(components: []objects.Component_Model, component_index: int, $T: typeid) -> ^T
@@ -806,14 +806,13 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 		imgui.button("*");
 		if imgui.begin_popup_context_item("ref_input_popup", .MouseButtonLeft)
 		{
-			struct_field := Prefab_Field
-			{
+			struct_field := Prefab_Field {
 				{
 					name = field.name,
 					type_id = field.type_id,
-					offset_in_component = field.offset_in_component
+					offset_in_component = field.offset_in_component,
 				},
-				field.component_index
+				field.component_index,
 			};
 			if metadata_index < 0
 			{
@@ -866,9 +865,9 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 				child_type := variant.types[i];
 				child_field: Prefab_Field = {
 					{
-						variant.names[i], field.offset_in_component + variant.offsets[i], child_type.id
+						variant.names[i], field.offset_in_component + variant.offsets[i], child_type.id,
 					}, 
-					field.component_index
+					field.component_index,
 				};
 				component_editor_child(prefab, variant.names[i], child_field, component_editor_callbacks, scene_database);
 				imgui.pop_id();
@@ -950,7 +949,7 @@ component_field_body :: proc(using prefab: Editor_Prefab, base_name: string, fie
 			{
 				prefab_field: Prefab_Field = { 
 					{ "", field.offset_in_component, variant.elem.id },
-					field.component_index
+					field.component_index,
 				};
 				for i in 0..<variant.count
 				{
@@ -972,7 +971,7 @@ component_editor_child :: proc(using prefab: Editor_Prefab,
 	base_name: string, 
 	field: Prefab_Field, 
 	component_editor_callbacks: Editor_Callback_List, 
-	scene_database: ^container.Database
+	scene_database: ^container.Database,
 	) -> (modified: bool)
 {
 	metadata_index := get_component_field_metadata_index(components[:], field);

@@ -56,13 +56,13 @@ Load_Metadata :: struct
 
 Serialized_Data :: union
 {
-	i64, f64, bool, string
+	i64, f64, bool, string,
 }
 
 Instantiate_Metadata_Dispatcher :: map[typeid]container.Table(Instantiate_Metadata);
 Load_Metadata_Dispatcher :: map[typeid] struct {
 	type_id: typeid,
-	table: container.Table(Load_Metadata)
+	table: container.Table(Load_Metadata),
 };
 
 // Every data that a component field can have that must be computed during the prefab instantiation
@@ -70,7 +70,7 @@ Component_Field_Metadata :: union
 {
 	Ref_Metadata,
 	Input_Metadata,
-	Type_Specific_Metadata
+	Type_Specific_Metadata,
 }
 
 Component_Model_Data :: struct
@@ -108,14 +108,14 @@ Input_Type :: union
 Prefab_Input :: struct
 {
 	name: string,
-	type: Input_Type
+	type: Input_Type,
 }
 
 Dynamic_Prefab :: struct
 {
 	transform_hierarchy: Transform_Hierarchy,
 	components: [dynamic]Component_Model,
-	inputs: [dynamic]Prefab_Input
+	inputs: [dynamic]Prefab_Input,
 }
 
 Prefab :: struct
@@ -128,7 +128,7 @@ Prefab :: struct
 Named_Component :: struct(T: typeid)
 {
 	name: string,
-	value: container.Handle(T)
+	value: container.Handle(T),
 }
 
 Named_Raw_Handle :: container.Named_Element(container.Raw_Handle);
@@ -141,9 +141,9 @@ Registered_Component_Data :: struct
 
 Component_Type :: struct
 {
-	name: string
+	name: string,
 	type_id: typeid,
-	handle_type_id: typeid
+	handle_type_id: typeid,
 }
 
 Named_Table :: struct { name: string, table: container.Raw_Table };
@@ -154,7 +154,7 @@ Named_Table_List :: struct {
 }
 
 Prefab_Instance_Transform :: struct {
-	handle: Transform_Hierarchy_Handle
+	handle: Transform_Hierarchy_Handle,
 	uid: Transform_UID,
 };
 

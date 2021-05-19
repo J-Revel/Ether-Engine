@@ -10,7 +10,7 @@ Transform :: struct
 {
 	pos: [2]f32, // position relative to parent
 	scale: f32,
-	angle: f32
+	angle: f32,
 }
 
 Transform_Handle :: container.Handle(Transform);
@@ -87,8 +87,8 @@ transform_hierarchy_add_leaf :: proc(
 	using hierarchy: ^Transform_Hierarchy,
 	transform: Transform,
 	parent: Transform_Hierarchy_Handle,
-	name: string)
--> Transform_Hierarchy_Handle
+	name: string,
+) -> Transform_Hierarchy_Handle 
 {
 	new_element_index := len(transforms)+1;
 	result, ok := container.table_add(&element_index_table, new_element_index);

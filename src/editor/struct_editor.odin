@@ -24,7 +24,7 @@ Editor_Delegate_Map :: map[typeid]Struct_Editor_Delegate;
 
 default_struct_editor_delegates: Editor_Delegate_Map =
 {
-	typeid_of(render.Sprite_Handle) = sprite_struct_editor
+	typeid_of(render.Sprite_Handle) = sprite_struct_editor,
 };
 
 struct_editor :: proc {

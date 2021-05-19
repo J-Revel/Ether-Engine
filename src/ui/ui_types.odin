@@ -129,16 +129,14 @@ Input_State_Data :: struct
 
 Element_State :: bit_set[Interaction_Type];
 
-Interaction_Type :: enum u8
-{
+Interaction_Type :: enum u8 {
 	Hover,
 	Press,
 	Click,
 	Drag,
 }
 
-Cursor_Input_State :: enum u8
-{
+Cursor_Input_State :: enum u8 {
 	Normal,
 	Press,
 	Down,
@@ -186,6 +184,7 @@ Window_State :: struct
 	rect: util.Rect,
 	folded: bool,
 	scroll: f32,
+	
 	last_frame_height: f32,
 }
 

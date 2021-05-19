@@ -30,7 +30,6 @@ import "core:reflect"
 
 import "../ui"
 import "../util"
-import "../audio"
 
 
 Rect :: struct
@@ -89,7 +88,7 @@ test_animation_keyframes : [4]animation.Keyframe(f32) =
 	animation.Keyframe(f32){0, 0},
 	animation.Keyframe(f32){0.5, 1},
 	animation.Keyframe(f32){0.75, 0.5},
-	animation.Keyframe(f32){1, 1}
+	animation.Keyframe(f32){1, 1},
 };
 
 test_texture_id: u32;
@@ -109,7 +108,7 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 		"test",
 		render.Sprite_Data {
 			anchor = [2]f32{0, 0},
-			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}}
+			clip = util.Rect{ pos=[2]f32{0, 0}, size = [2]f32{1, 1}},
 		},
 	});
 
@@ -242,8 +241,7 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 
 time : f32 = 0;
 ui_ctx: ui.UI_Context;
-window_state := ui.Window_State
-{
+window_state := ui.Window_State {
 	rect = util.Rect{
 		size = [2]f32{300, 200},
 	},
@@ -285,7 +283,6 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		drag_cache: ui.Drag_State;
 		ui.drag_int(&ui_ctx, &test_value);
 		ui.h_slider(&ui_ctx, &test_value, 0, 1000);
-		//audio.set_sound_freq(cast(f32)test_value);
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
@@ -298,6 +295,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		{
 			log.info("BUTTON3");
 		}
+		ui.window_end(&ui_ctx, &window_state);
 	}
 	ui.pop_layout_group(&ui_ctx);
 	ui.render_layout_commands(&ui_ctx);

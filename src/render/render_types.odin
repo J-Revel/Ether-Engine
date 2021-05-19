@@ -9,7 +9,7 @@ Color :: distinct u32;
 Color_Vertex_Data :: struct
 {
     pos: vec2,
-    color: Color
+    color: Color,
 }
 
 Viewport :: struct
@@ -53,7 +53,7 @@ Sprite_Vertex_Data :: struct
 {
     pos: vec2,
     uv: vec2,
-    color: Color
+    color: Color,
 }
 
 Sprite_Render_Pass :: struct

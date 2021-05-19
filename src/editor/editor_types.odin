@@ -24,17 +24,17 @@ Editor_State :: struct
 Editor_Sprite_Data :: struct
 {
 	name: []u8,
-	using data: render.Sprite_Data
+	using data: render.Sprite_Data,
 }
 
 Sprite_Edit_Corner :: enum
 {
-	None, Min, Max
+	None, Min, Max,
 }
 
 Sprite_Editor_Tool :: enum
 {
-	None, Scroll, Selected, Move, Resize, Move_Anchor
+	None, Scroll, Selected, Move, Resize, Move_Anchor,
 }
 
 Sprite_Tool_Data :: struct
@@ -46,7 +46,7 @@ Sprite_Tool_Data :: struct
 	edit_sprite_h_corner: Sprite_Edit_Corner,
 	edit_sprite_v_corner: Sprite_Edit_Corner,
 	last_tool: Sprite_Editor_Tool,
-	moved: bool
+	moved: bool,
 }
 
 Sprite_Editor_Theme :: struct
@@ -77,7 +77,7 @@ Sprite_Editor_State :: struct
 
 Sprite_Side :: enum
 {
-	Left, Right, Up, Down
+	Left, Right, Up, Down,
 }
 
 Sprite_Editor_Render_Data :: struct
@@ -101,7 +101,7 @@ Component_Field :: struct
 {
 	name: string,
 	offset_in_component: uintptr,
-	type_id: typeid
+	type_id: typeid,
 }
 
 Prefab_Editor_Input :: struct
@@ -122,7 +122,7 @@ Editor_Type_Callback :: #type proc
 (
 	prefab: Editor_Prefab, 
 	field: Prefab_Field,
-	scene_database: ^container.Database
+	scene_database: ^container.Database,
 );
 
 Gizmo_Drag_Action :: enum
@@ -176,7 +176,7 @@ Curve_Editor_State :: struct
 
 Anim_Editor_State :: struct
 {
-	anim_curve: animation.Dynamic_Animation_Curve(f32)
+	anim_curve: animation.Dynamic_Animation_Curve(f32),
 	curve_editor_state: Curve_Editor_State,
 }
 
@@ -201,7 +201,7 @@ File_Filter_Type :: enum
 {
 	All,
 	Show_With_Ext,
-	Hide_With_Ext
+	Hide_With_Ext,
 }
 
 File_Search_Config :: struct
@@ -218,5 +218,5 @@ File_Selection_Data :: struct
 {
 	current_path: string,
 	new_file_name: string,
-	display_data: []os.File_Info
+	display_data: []os.File_Info,
 }

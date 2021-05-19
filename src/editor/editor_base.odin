@@ -100,6 +100,12 @@ init_editor :: proc(using editor_state: ^Editor_State, sprite_db: ^render.Sprite
 	init_anim_editor(&anim_editor);
 }
 
+update_editor_new :: proc(using editor_state: ^Editor_State, viewport: render.Viewport, input_state: ^input.State)
+{
+	window_top_left: [2]int = {viewport.top_left.x + viewport.size.x / 2, viewport.top_left.y};
+	
+}
+
 update_editor :: proc(using editor_state: ^Editor_State, viewport: render.Viewport, input_state: ^input.State)
 {
 	window_top_left: [2]int = {viewport.top_left.x + viewport.size.x / 2, viewport.top_left.y};
@@ -140,7 +146,7 @@ save_sprites :: proc(output_path: string, using editor_state: ^Sprite_Editor_Sta
 		sprite: render.Sprite = {
 			texture_id, 
 			bytes_to_string(sprite_data.name[:]),
-			sprite_data.data
+			sprite_data.data,
 		};
 		container.table_add(&temp_sprite_table, sprite);
 	}
@@ -253,11 +259,11 @@ update_sprite_editor :: proc(using editor_state: ^Sprite_Editor_State, viewport:
 		{
 			texture_rect = {
 				editor_center_pos - texture_size * scale / 2 - drag_offset, 
-				texture_size * scale
+				texture_size * scale,
 			},
 			editor_rect = {
 				editor_pos,
-				editor_size
+				editor_size,
 			},
 			mouse_pos = io.mouse_pos,
 		};

@@ -109,7 +109,7 @@ table_database_add_init :: proc(prefab_tables: ^Named_Table_List, name: string, 
 	if !type_already_added do append(&prefab_tables.component_types, Component_Type{
 		name, 
 		T, 
-		typeid_of(container.Handle(T))
+		typeid_of(container.Handle(T)),
 	});
 	log.info("Create database", name);
 }
@@ -119,10 +119,12 @@ prefab_instantiate_dynamic :: proc(
 	prefab: ^Dynamic_Prefab,
 	input_data: map[string]any,
 	metadata_dispatcher: ^Instantiate_Metadata_Dispatcher,
-	scene_database: ^container.Database)
--> (out_components: []Named_Raw_Handle, 
+	scene_database: ^container.Database,
+) -> (
+	out_components: []Named_Raw_Handle, 
 	out_transforms: []Prefab_Instance_Transform, 
-	success: bool)
+	success: bool,
+)
 {
 	return components_instantiate(
 		prefab_tables,
@@ -140,8 +142,8 @@ prefab_instantiate :: proc(
 	prefab: ^Prefab,
 	input_data: map[string]any,
 	metadata_dispatcher: ^Instantiate_Metadata_Dispatcher,
-	scene_database: ^container.Database)
--> (out_components: []Named_Raw_Handle, 
+	scene_database: ^container.Database,
+) -> (out_components: []Named_Raw_Handle, 
 	out_transforms: []Prefab_Instance_Transform, 
 	success: bool)
 {
@@ -163,10 +165,12 @@ components_instantiate :: proc(
 	inputs: []Prefab_Input,
 	input_data: map[string]any,
 	metadata_dispatcher: ^Instantiate_Metadata_Dispatcher,
-	scene_database: ^container.Database) 
--> (out_components: []Named_Raw_Handle, 
+	scene_database: ^container.Database,
+) -> (
+	out_components: []Named_Raw_Handle, 
 	out_transforms: []Prefab_Instance_Transform, 
-	success: bool)
+	success: bool,
+)
 {
 	data_total_size := 0;
 	components_data := make([]rawptr, len(components), context.temp_allocator);
@@ -280,7 +284,7 @@ components_instantiate :: proc(
 						metadata_type_id = metadata_info.metadata_type_id,
 						metadata = metadata_info.data,
 						component_index = i,
-						offset_in_component = offset
+						offset_in_component = offset,
 					};
 					if metadata_info.field_type_id in metadata_dispatcher^
 					{
@@ -456,7 +460,7 @@ load_prefab :: proc(
 	path: string,
 	prefab_tables: ^Named_Table_List,
 	metadata_dispatcher: ^Load_Metadata_Dispatcher,
-	allocator := context.allocator
+	allocator := context.allocator,
 ) -> (Prefab, bool)
 {
 	file, ok := os.read_entire_file(path, context.temp_allocator);

@@ -121,7 +121,7 @@ load_texture :: proc(path: string) -> (Texture, bool)
 		texture_id = texture_id,
 		bindless_id = bindless_id,
 		resident = true,
-		size = {int(surface.w), int(surface.h)}
+		size = {int(surface.w), int(surface.h)},
 	};
 	return result_texture, true;
 }
@@ -254,7 +254,7 @@ sprite_sort_interface := sort.Interface {
     {
         s := (^[]Sprite)(it.collection);
         s[i], s[j] = s[j], s[i];
-    }
+    },
 };
 
 save_sprites_to_file :: proc(path: string, sprites_ids: []Sprite_Handle) -> os.Errno
@@ -549,7 +549,7 @@ render_sprite :: proc(
             }
             append(&render_system.passes, Sprite_Render_Pass {
                     pass_texture, 
-                    index_count - render_system.current_pass_index
+                    index_count - render_system.current_pass_index,
             });
             render_system.current_pass_index = index_count;
             imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
@@ -562,7 +562,7 @@ render_sprite :: proc(
     texture_size: [2]f32 = {f32(texture_size_i.x), f32(texture_size_i.y)};
     clip_size := [2]f32{
     	clip.size.x > 0 ? clip.size.x : 1,
-    	clip.size.y > 0 ? clip.size.y : 1
+    	clip.size.y > 0 ? clip.size.y : 1,
     };
     render_size := texture_size * clip_size;
 
@@ -621,7 +621,7 @@ use_texture :: proc(
             }
             append(&render_system.passes, Sprite_Render_Pass {
                     pass_texture, 
-                    index_count - render_system.current_pass_index
+                    index_count - render_system.current_pass_index,
             });
             render_system.current_pass_index = index_count;
         }
@@ -640,7 +640,7 @@ render_quad :: proc(render_system: ^Sprite_Render_System, pos: [2]f32, size: [2]
         index_count := len(render_system.buffer.index);
         append(&render_system.passes, Sprite_Render_Pass {
                 render_system.current_texture, 
-                index_count - render_system.current_pass_index
+                index_count - render_system.current_pass_index,
         });
         render_system.current_pass_index = index_count;
         imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
@@ -694,7 +694,7 @@ render_rotated_quad :: proc(
         imgui.text_unformatted(fmt.tprint("index_count", index_count));
         append(&render_system.passes, Sprite_Render_Pass {
             texture = render_system.current_texture, 
-            index_count = index_count - render_system.current_pass_index
+            index_count = index_count - render_system.current_pass_index,
         });
         render_system.current_pass_index = index_count;
         imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
@@ -770,7 +770,7 @@ render_rounded_quad :: proc(render_system: ^Sprite_Render_System, using rect: ut
         index_count := len(render_system.buffer.index);
         append(&render_system.passes, Sprite_Render_Pass {
                 render_system.current_texture, 
-                index_count - render_system.current_pass_index
+                index_count - render_system.current_pass_index,
         });
         render_system.current_pass_index = index_count;
         imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
@@ -805,7 +805,7 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
 	render_buffer_content_part(
 		&render_system.render_state, 
 		index_cursor, 
-		len(render_system.buffer.index) - index_cursor
+		len(render_system.buffer.index) - index_cursor,
 	);
 	cleanup_buffer_render();
     imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
@@ -819,22 +819,20 @@ render_ui_buffer_content :: proc(render_system: ^Sprite_Render_System, viewport:
 
     for pass, index in render_system.passes
     {
-		texture_id := container.is_valid(pass.texture) ? 
-						container.handle_get(pass.texture).texture_id : render_system.render_state.default_texture;
+		texture_id := container.is_valid(pass.texture) ? container.handle_get(pass.texture).texture_id : render_system.render_state.default_texture;
         gl.BindTexture(gl.TEXTURE_2D, texture_id);
 		prepare_buffer_render(&render_system.render_state, viewport);
         render_buffer_content_part(&render_system.render_state, index_cursor, pass.index_count);
 		cleanup_buffer_render();
         index_cursor += pass.index_count;
     }
-	texture_id := container.is_valid(render_system.current_texture) ? 
-					container.handle_get(render_system.current_texture).texture_id : render_system.render_state.default_texture;
+	texture_id := container.is_valid(render_system.current_texture) ? container.handle_get(render_system.current_texture).texture_id : render_system.render_state.default_texture;
     gl.BindTexture(gl.TEXTURE_2D, texture_id);
 	prepare_buffer_render(&render_system.render_state, viewport);
 	render_buffer_content_part(
 		&render_system.render_state, 
 		index_cursor, 
-		len(render_system.buffer.index) - index_cursor
+		len(render_system.buffer.index) - index_cursor,
 	);
 	cleanup_buffer_render();
     imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
