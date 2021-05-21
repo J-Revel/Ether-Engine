@@ -320,8 +320,21 @@ ui_element :: proc(
 		}
 	}
 	layout := current_layout(ctx);
-	layout.used_rect = join_rects(layout.used_rect, util.Rect{ctx.current_element.pos, ctx.current_element.size});
+	use_rect_in_layout(ctx, rect);
 	return;
+}
+
+use_rect_in_layout :: proc(ctx: ^UI_Context, rect: util.Rect)
+{
+	layout := current_layout(ctx);
+	if layout.used_rect.size.x == 0 || layout.used_rect.size.y == 0
+	{
+		layout.used_rect = rect;
+	}
+	else
+	{
+		layout.used_rect = join_rects(layout.used_rect, rect);
+	}
 }
 
 element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32 = 0)
@@ -524,6 +537,7 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
 		result.size.y = layout.size.y;
 	}
 	layout.cursor += linalg.vector_dot(result.size, linalg.to_f32(layout.direction));
+	use_rect_in_layout(ui_ctx, result);
 	return result;
 }
 

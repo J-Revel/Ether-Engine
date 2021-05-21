@@ -18,11 +18,13 @@ label :: proc(ctx: ^UI_Context, str: string, color: Color = 0xffffffff, location
 		allocated_length = f32(render.get_text_render_size(ctx.current_font, str));
 	}
 	allocated_space := allocate_element_space(ctx, [2]f32{allocated_length, f32(len(lines)) * line_height});
+
 	first_line_pos := allocated_space.pos + [2]f32{0, line_height};
 	for line, index in lines
 	{
 		text(line, color, first_line_pos + [2]f32{0, f32(line_height) * f32(index)}, ctx.current_font, ctx);
 	}
+	
 	return state;
 }
 
@@ -209,6 +211,12 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
 		scroll_content_rect := current_layout(ctx).rect;
 		scroll_content_rect.size.y = state.last_frame_height;
+		add_rect_command(&ctx.ui_draw_list, Rect_Command{
+			rect = {pos = linalg.to_i32(scroll_content_rect.pos), size = linalg.to_i32(scroll_content_rect.size/2)},
+			color = render.rgba(255, 255, 255, 100),
+			corner_radius = 5,
+			border_thickness = 0,
+		});
 		rect_border(&ctx.draw_list, scroll_content_rect, render.rgba(255, 255, 255, 100), 1);
 		log.info(scroll_content_rect);
 	}
@@ -218,5 +226,5 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 
 window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 {
-	state.last_frame_height = current_layout(ctx).rect.size.y;
+	state.last_frame_height = current_layout(ctx).used_rect.size.y;
 }
