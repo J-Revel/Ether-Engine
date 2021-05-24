@@ -4,12 +4,13 @@
 struct Rect 
 {
 	ivec2 pos, size;
-	vec2 clip_pos, clip_size;
+	vec2 uv_pos, uv_size;
 	uint color;
 	uint border_color;
 	float border_thickness;
 	float corner_radius;
 	uvec2 texture_id;
+	int clip_rect_index;
 };
 
 struct Draw_Command
@@ -19,6 +20,7 @@ struct Draw_Command
 
 layout(std430, binding=3) readonly buffer draw_commands
 {
+	Rect clip_rects[256];
 	Draw_Command commands[];
 };
 
@@ -42,7 +44,7 @@ out vec2 frag_uv;
 void main()
 {
 	vec2 pos;
-	int command_index = (gl_VertexID >> 8) % (1 << 8);
+	int command_index = (gl_VertexID >> 16) % (1 << 16);
 	vec2 pos_ratio = vec2(((gl_VertexID % 2) > 0 ? 0 : 1), ((gl_VertexID / 2) % 2 > 0 ? 0 : 1));
 
 	Rect rect = commands[command_index].rect;
@@ -70,6 +72,6 @@ void main()
 	gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
 
 
-	frag_uv = vec2(rect.clip_pos + rect.clip_size * pos_ratio);
+	frag_uv = vec2(rect.uv_pos+ rect.uv_size * pos_ratio);
 	frag_texture_id = rect.texture_id;
 }

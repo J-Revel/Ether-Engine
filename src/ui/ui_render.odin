@@ -92,7 +92,7 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	return true;
 }
 
-add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command)
+add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command, clip_index: int)
 {
 	if rect_command_count >= len(commands)
 	{
@@ -101,12 +101,13 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 
 	command_index: i32 = i32(rect_command_count);
 	commands[rect_command_count].rect = rect_command;
-	append(&index, command_index * (1<<8) + 0);
-	append(&index, command_index * (1<<8) + 1);
-	append(&index, command_index * (1<<8) + 2);
-	append(&index, command_index * (1<<8) + 1);
-	append(&index, command_index * (1<<8) + 3);
-	append(&index, command_index * (1<<8) + 2);
+	commands[rect_command_count].clip_index = draw_list.clip_stack[len(draw_list.clip_stack) - 1];
+	append(&index, command_index * (1<<16) + 0);
+	append(&index, command_index * (1<<16) + 1);
+	append(&index, command_index * (1<<16) + 2);
+	append(&index, command_index * (1<<16) + 1);
+	append(&index, command_index * (1<<16) + 3);
+	append(&index, command_index * (1<<16) + 2);
 	rect_command_count += 1;
 }
 

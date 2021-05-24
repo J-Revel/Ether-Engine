@@ -40,6 +40,7 @@ Rect_Command :: struct
 Draw_Command_Data :: struct
 {
 	rect: Rect_Command,
+	clip_index: int,
 }
 
 Draw_Command_List :: struct
@@ -47,6 +48,9 @@ Draw_Command_List :: struct
 	commands: [dynamic]Draw_Command_Data,
 	index: [dynamic]i32,
 	rect_command_count: int,
+	clips: [dynamic]util.Rect,
+	clip_stack: [dynamic]int,
+
 }
 
 Ubo_Data :: struct
