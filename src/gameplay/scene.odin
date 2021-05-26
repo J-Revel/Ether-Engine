@@ -164,11 +164,6 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 
 	
 	ui.layout_draw_rect(&ui_ctx, {}, {}, render.rgb(128, 255, 128), 20);
-	//if ui.layout_button("test", {100, 100}, &ui_ctx)
-	{
-		//log.info("BUTTON1");
-	}
-	log.info("_________START__________");
 	if ui.window(&ui_ctx, &window_state, 40)
 	{
 		//log.info(container.handle_get(rune_sprites['a']));
@@ -178,21 +173,16 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
 		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state));
 		drag_cache: ui.Drag_State;
-			log.info("------A------");
 		ui.drag_int(&ui_ctx, &test_value);
-			log.info("------B------");
 		ui.h_slider(&ui_ctx, &test_value, 0, 1000);
-			log.info("------C------");
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
 		}
-			log.info("------D------");
 		if ui.layout_button("test", {150, 100}, &ui_ctx)
 		{
 			log.info("BUTTON2");
 		}
-			log.info("------E------");
 		if ui.layout_button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
@@ -205,11 +195,9 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		{
 			log.info("BUTTON3");
 		}
-			log.info("------F------");
 		ui.window_end(&ui_ctx, &window_state);
 	}
 	ui.pop_layout_group(&ui_ctx);
-	log.info("======================");
 	ui.render_layout_commands(&ui_ctx);
 }
 

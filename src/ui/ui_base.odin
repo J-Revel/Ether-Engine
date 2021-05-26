@@ -143,7 +143,7 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
 	};
 	push_layout_group(ui_ctx);
 	add_layout_to_group(ui_ctx, base_layout);
-	reset_draw_list(&ui_ctx.ui_draw_list);
+	reset_draw_list(&ui_ctx.ui_draw_list, screen_size);
 }
 
 push_layout_group :: proc(using ui_ctx: ^UI_Context)
@@ -345,7 +345,6 @@ element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, co
 		pos = linalg.to_i32(ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top}),
 		size = linalg.to_i32(ctx.current_element.size * (anchor.max - anchor.min) - padding_sum),
 	};
-	clip := util.Rect{ size = [2]f32{1, 1} };
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = rect,
 		color = color,

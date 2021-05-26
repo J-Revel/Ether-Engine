@@ -92,10 +92,10 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	return true;
 }
 
-reset_draw_list :: proc(using draw_list: ^Draw_Command_List)
+reset_draw_list :: proc(using draw_list: ^Draw_Command_List, screen_size: [2]f32)
 {
 	clips = {};
-	append(&clips, util.Rect{{0.1, 0.1}, {0.8, 0.8}});
+	append(&clips, util.Rect{{0, 0}, screen_size});
 	clip_stack = {};
 	append(&clip_stack, 0);
 }
