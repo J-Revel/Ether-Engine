@@ -50,7 +50,6 @@ Draw_Command_List :: struct
 	rect_command_count: int,
 	clips: [dynamic]util.Rect,
 	clip_stack: [dynamic]int,
-
 }
 
 Ubo_Data :: struct
@@ -77,7 +76,7 @@ Padding :: struct
 Rect_Draw_Command :: struct
 {
 	using rect: util.Rect,
-	clip: util.Rect,
+	uv_rect: util.Rect,
 	texture: render.Texture_Handle,
 	color: Color,
 	corner_radius: f32,

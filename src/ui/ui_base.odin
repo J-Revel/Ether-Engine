@@ -143,6 +143,7 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
 	};
 	push_layout_group(ui_ctx);
 	add_layout_to_group(ui_ctx, base_layout);
+	reset_draw_list(&ui_ctx.ui_draw_list);
 }
 
 push_layout_group :: proc(using ui_ctx: ^UI_Context)
@@ -210,35 +211,35 @@ current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 
 rect :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, corner_radius: f32 = 0)
 {
-	clip_rect := util.Rect { size = [2]f32{1, 1}};
-	append(draw_list, Rect_Draw_Command{rect = rect, clip = clip_rect, color = color, corner_radius = corner_radius});
+	uv_rect := util.Rect { size = [2]f32{1, 1}};
+	append(draw_list, Rect_Draw_Command{rect = rect, uv_rect= uv_rect, color = color, corner_radius = corner_radius});
 }
 
 rect_border :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, thickness: f32 = 1)
 {
-	clip_rect := util.Rect { size = [2]f32{1, 1}};
+	uv_rect:= util.Rect { size = [2]f32{1, 1}};
 	append(draw_list, Rect_Draw_Command{
 		rect = util.Rect{rect.pos, [2]f32{rect.size.x, thickness}},
-		clip = clip_rect,
+		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
 
 	append(draw_list, Rect_Draw_Command{
 		rect = util.Rect{rect.pos, [2]f32{thickness, rect.size.y}},
-		clip = clip_rect,
+		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
 	append(draw_list, Rect_Draw_Command{
 		rect = util.Rect{rect.pos + [2]f32{rect.size.x - thickness, 0}, [2]f32{thickness, rect.size.y}},
-		clip = clip_rect,
+		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
 	append(draw_list, Rect_Draw_Command{
 		rect = util.Rect{rect.pos + [2]f32{0, rect.size.y - thickness}, [2]f32{rect.size.x, thickness}},
-		clip = clip_rect,
+		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
@@ -255,7 +256,7 @@ textured_rect :: proc(
 	texture_handle := sprite_data.texture;
 	append(draw_list, Rect_Draw_Command{
 		rect = rect,
-		clip = sprite_data.clip,
+		uv_rect = sprite_data.clip,
 		color = color,
 		texture = texture_handle,
 	});
@@ -372,7 +373,7 @@ element_draw_textured_rect :: proc(
 	texture_handle := sprite_data.texture;
 	append(&ctx.draw_list, Rect_Draw_Command{
 		rect = rect,
-		clip = sprite_data.clip,
+		uv_rect = sprite_data.clip,
 		color = color,
 		texture = texture_handle,
 	});
@@ -699,7 +700,7 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 							pos + [2]f32{0, corner_radius},
 							[2]f32{corner_radius, size.y - 2 * corner_radius},
 						}, 
-						cmd_data.clip, 
+						cmd_data.uv_rect, 
 						cmd_data.color,
 					);
 					push_rect_data(
@@ -708,7 +709,7 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 							pos + [2]f32{corner_radius, 0},
 							[2]f32{size.x - corner_radius * 2, size.y},
 						}, 
-						clip, 
+						uv_rect, 
 						cmd_data.color,
 					);
 					push_rect_data(
@@ -717,7 +718,7 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 							pos + [2]f32{size.x - corner_radius, corner_radius}, 
 							[2]f32{corner_radius, size.y - 2 * corner_radius},
 						}, 
-						cmd_data.clip, 
+						cmd_data.uv_rect, 
 						cmd_data.color,
 					);
 					push_corner_data(
@@ -747,7 +748,7 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 				}
 				else
 				{
-					push_rect_data(render_system, {cmd_data.pos, cmd_data.size}, cmd_data.clip, cmd_data.color);
+					push_rect_data(render_system, {cmd_data.pos, cmd_data.size}, cmd_data.uv_rect, cmd_data.color);
 				}
 		}
 	}

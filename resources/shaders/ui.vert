@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_bindless_texture : require 
 
-struct Rect 
+struct Rect_Command
 {
 	ivec2 pos, size;
 	vec2 uv_pos, uv_size;
@@ -10,12 +10,18 @@ struct Rect
 	float border_thickness;
 	float corner_radius;
 	uvec2 texture_id;
-	int clip_rect_index;
+	int clip_index;
 };
 
 struct Draw_Command
 {
-	Rect rect;
+	Rect_Command rect_command;
+};
+
+struct Rect
+{
+	vec2 pos;
+	vec2 size;
 };
 
 layout(std430, binding=3) readonly buffer draw_commands
@@ -46,8 +52,9 @@ void main()
 	vec2 pos;
 	int command_index = (gl_VertexID >> 16) % (1 << 16);
 	vec2 pos_ratio = vec2(((gl_VertexID % 2) > 0 ? 0 : 1), ((gl_VertexID / 2) % 2 > 0 ? 0 : 1));
-
-	Rect rect = commands[command_index].rect;
+	
+	Draw_Command draw_command = commands[command_index];
+	Rect_Command rect = draw_command.rect_command;
 	pos = rect.pos + rect.size * pos_ratio;
 
 	vec2 screenPos = pos.xy * 2 / Uniform.screen_size - vec2(1, 1);
@@ -69,9 +76,11 @@ void main()
 	frag_corner_radius = rect.corner_radius;
 	frag_border_thickness = rect.border_thickness;
 
+	Rect clip = clip_rects[rect.clip_index];
+	screenPos.x = clamp(screenPos.x, clip.pos.x, clip.pos.x + clip.size.x);
+	screenPos.y = clamp(screenPos.y, clip.pos.y, clip.pos.y + clip.size.y);
 	gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
 
-
-	frag_uv = vec2(rect.uv_pos+ rect.uv_size * pos_ratio);
+	frag_uv = vec2(rect.uv_pos + rect.uv_size * pos_ratio);
 	frag_texture_id = rect.texture_id;
 }

@@ -92,7 +92,15 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	return true;
 }
 
-add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command, clip_index: int)
+reset_draw_list :: proc(using draw_list: ^Draw_Command_List)
+{
+	clips = {};
+	append(&clips, util.Rect{{0.1, 0.1}, {0.8, 0.8}});
+	clip_stack = {};
+	append(&clip_stack, 0);
+}
+
+add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command)
 {
 	if rect_command_count >= len(commands)
 	{
@@ -118,7 +126,8 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 3, primitive_buffer);
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 4, ubo);
 
-	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, cast(int) len(draw_list.commands) * size_of(Draw_Command_Data), &draw_list.commands[0]);
+	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, cast(int) len(draw_list.clips) * size_of(util.Rect), &draw_list.clips[0]);
+	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 256 * size_of(util.Rect), cast(int) len(draw_list.commands) * size_of(Draw_Command_Data), &draw_list.commands[0]);
 	if len(draw_list.index) > 0
 	{
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.element_buffer);
