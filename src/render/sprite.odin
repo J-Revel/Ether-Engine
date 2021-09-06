@@ -13,7 +13,6 @@ import "core:math"
 
 import "../container"
 import "../../libs/imgui"
-import "../objects"
 import "../util"
 
 @(private="package")
@@ -356,7 +355,7 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
     if ok
     {
         parsed, ok := json.parse(file);
-        parsed_object := parsed.value.(json.Object);
+        parsed_object := parsed.(json.Object);
 
         for texture_path, sprite_list in parsed_object
         {
@@ -364,21 +363,21 @@ load_sprites_from_file :: proc (path: string, textures: ^container.Table(Texture
             assert(ok);
             texture_id, texture_add_ok := container.table_add(textures, texture);
             sprite := Sprite{texture = texture_id};
-            for sprite_data in sprite_list.value.(json.Array)
+            for sprite_data in sprite_list.(json.Array)
             {
-                sprite_data_root := sprite_data.value.(json.Object);
-                anchor_data := sprite_data_root["anchor"].value.(json.Array);
-                clip_data := sprite_data_root["clip"].value.(json.Object);
-                clip_pos_data := clip_data["pos"].value.(json.Array);
-                clip_size_data := clip_data["size"].value.(json.Array);
+                sprite_data_root := sprite_data.(json.Object);
+                anchor_data := sprite_data_root["anchor"].(json.Array);
+                clip_data := sprite_data_root["clip"].(json.Object);
+                clip_pos_data := clip_data["pos"].(json.Array);
+                clip_size_data := clip_data["size"].(json.Array);
 
-                sprite.id = strings.clone(sprite_data_root["id"].value.(json.String));
-                sprite.anchor.x = f32(anchor_data[0].value.(json.Float));
-                sprite.anchor.y = f32(anchor_data[1].value.(json.Float));
-                sprite.clip.pos.x = f32(clip_pos_data[0].value.(json.Float));
-                sprite.clip.pos.y = f32(clip_pos_data[1].value.(json.Float));
-                sprite.clip.size.x = f32(clip_size_data[0].value.(json.Float));
-                sprite.clip.size.y = f32(clip_size_data[1].value.(json.Float));
+                sprite.id = strings.clone(sprite_data_root["id"].(json.String));
+                sprite.anchor.x = f32(anchor_data[0].(json.Float));
+                sprite.anchor.y = f32(anchor_data[1].(json.Float));
+                sprite.clip.pos.x = f32(clip_pos_data[0].(json.Float));
+                sprite.clip.pos.y = f32(clip_pos_data[1].(json.Float));
+                sprite.clip.size.x = f32(clip_size_data[0].(json.Float));
+                sprite.clip.size.y = f32(clip_size_data[1].(json.Float));
                 container.table_add(sprites, sprite);
             }
         }
@@ -395,7 +394,7 @@ load_sprites_data :: proc (path: string, allocator := context.temp_allocator) ->
     if ok
     {
         parsed, ok := json.parse(file, .JSON, false, context.temp_allocator);
-        parsed_object := parsed.value.(json.Object);
+        parsed_object := parsed.(json.Object);
 
         sprite := Sprite_Data{};
 
@@ -406,18 +405,18 @@ load_sprites_data :: proc (path: string, allocator := context.temp_allocator) ->
 
         for sprite_name, sprite_data in parsed_object
         {
-            sprite_data_root := sprite_data.value.(json.Object);
-            anchor_data := sprite_data_root["anchor"].value.(json.Array);
-            clip_data := sprite_data_root["clip"].value.(json.Object);
-            clip_pos_data := clip_data["pos"].value.(json.Array);
-            clip_size_data := clip_data["size"].value.(json.Array);
+            sprite_data_root := sprite_data.(json.Object);
+            anchor_data := sprite_data_root["anchor"].(json.Array);
+            clip_data := sprite_data_root["clip"].(json.Object);
+            clip_pos_data := clip_data["pos"].(json.Array);
+            clip_size_data := clip_data["size"].(json.Array);
 
-            sprite.anchor.x = f32(anchor_data[0].value.(json.Float));
-            sprite.anchor.y = f32(anchor_data[1].value.(json.Float));
-            sprite.clip.pos.x = f32(clip_pos_data[0].value.(json.Float));
-            sprite.clip.pos.y = f32(clip_pos_data[1].value.(json.Float));
-            sprite.clip.size.x = f32(clip_size_data[0].value.(json.Float));
-            sprite.clip.size.y = f32(clip_size_data[1].value.(json.Float));
+            sprite.anchor.x = f32(anchor_data[0].(json.Float));
+            sprite.anchor.y = f32(anchor_data[1].(json.Float));
+            sprite.clip.pos.x = f32(clip_pos_data[0].(json.Float));
+            sprite.clip.pos.y = f32(clip_pos_data[1].(json.Float));
+            sprite.clip.size.x = f32(clip_size_data[0].(json.Float));
+            sprite.clip.size.y = f32(clip_size_data[1].(json.Float));
 
             out_names[cursor] = sprite_name;
             out_data[cursor] = sprite;
@@ -525,10 +524,17 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
     return true;
 }
 
+Transform :: struct
+{
+    pos: [2]f32, // position relative to parent
+	scale: f32,
+	angle: f32,
+}
+
 render_sprite :: proc(
     render_system: ^Sprite_Render_System, 
     using sprite: ^Sprite, 
-    using absolute_transform: objects.Transform, 
+    using absolute_transform: Transform, 
     color: Color)
 {
     imgui.text_unformatted(fmt.tprint("render_sprite", sprite.texture));

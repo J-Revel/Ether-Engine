@@ -5,8 +5,8 @@ import win32 "core:sys/windows"
 import "core:os"
 import "../util"
 import "../objects"
-import "../gameplay"
 import "../animation"
+import "../gameplay"
 
 Editor_State :: struct
 {

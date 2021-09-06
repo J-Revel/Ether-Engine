@@ -13,7 +13,6 @@ import "core:os"
 import "core:encoding/json"
 import sdl "shared:odin-sdl2"
 
-import "../gameplay"
 import "../render"
 import "../container"
 import "../objects"
@@ -185,7 +184,7 @@ find_struct_fields_of_type :: proc(type_info: runtime.Type_Info_Struct, expected
 	{
 		if types[i].id == expected_type_id 
 		{
-			append(&result, reflect.Struct_Field{names[i], types[i].id, {}, offsets[i], false});
+			append(&result, reflect.Struct_Field{names[i], types[i], {}, offsets[i], false});
 		}
 	}
 	return result[:];

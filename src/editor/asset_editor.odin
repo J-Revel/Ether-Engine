@@ -13,7 +13,6 @@ import "core:reflect"
 import "core:os"
 import "core:path"
 import "../animation"
-import "../gameplay"
 
 import "../util"
 import "../objects"

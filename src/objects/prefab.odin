@@ -309,7 +309,7 @@ components_instantiate :: proc(
 
 parse_json_float :: proc(json_data: json.Value) -> f32
 {
-	#partial switch v in json_data.value
+	#partial switch v in json_data
 	{
 		case json.Integer:
 			return f32(v);
@@ -322,7 +322,7 @@ parse_json_float :: proc(json_data: json.Value) -> f32
 parse_json_int :: proc(json_data: json.Value) -> int
 {
 
-	#partial switch v in json_data.value
+	#partial switch v in json_data
 	{
 		case json.Integer:
 			return int(v);
@@ -341,7 +341,7 @@ find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field
 		for fname, i in s.names {
 			if fname == name {
 				field.name   = s.names[i];
-				field.type   = s.types[i].id;
+				field.type   = s.types[i];
 				field.tag    = reflect.Struct_Tag(s.tags[i]);
 				field.offset = s.offsets[i];
 				field_found = true;
@@ -376,23 +376,23 @@ build_component_model_from_json :: proc(
 	{
 		if name == "type" do continue;
 		field, field_found := find_struct_field(base_ti, name);
-		if field.type in metadata_dispatcher^
+		if field.type.id in metadata_dispatcher^
 		{
 			metadata: Load_Metadata;
-			dispatcher_entry := &(metadata_dispatcher^)[field.type];
+			dispatcher_entry := &(metadata_dispatcher^)[field.type.id];
 
 			metadata.data_type_id = dispatcher_entry.type_id;
 			metadata.offset_in_component = field.offset;
 			metadata_type_info := type_info_of(dispatcher_entry.type_id);
 			// TODO : check memory leak (context.allocator would make the strings temp)
-			metadata.data = serialization.json_read_struct(value.value.(json.Object), metadata_type_info, context.temp_allocator);
+			metadata.data = serialization.json_read_struct(value.(json.Object), metadata_type_info, context.temp_allocator);
 			metadata.component_index = component_index;
 
 			container.table_add(&dispatcher_entry.table, metadata);
 		}
 		else
 		{
-			#partial switch t in value.value
+			#partial switch t in value
 			{
 				case json.Object:
 				{
@@ -400,7 +400,7 @@ build_component_model_from_json :: proc(
 				}
 				case json.Array:
 				{
-					if(type_info_of(field.type).size == size_of(f32) * len(t))
+					if(field.type.size == size_of(f32) * len(t))
 					{
 						for i := 0; i < len(t); i += 1
 						{
@@ -417,7 +417,7 @@ build_component_model_from_json :: proc(
 				case json.Float:
 				{
 					// TODO : maybe handle f64 ?
-					if(field.type == typeid_of(f32))
+					if(field.type.id == typeid_of(f32))
 					{
 						value: f32 = f32(t);
 						fieldPtr := rawptr(uintptr(result.data) + field.offset);
@@ -431,7 +431,7 @@ build_component_model_from_json :: proc(
 						input_index, parse_success := strconv.parse_int(t[1:]);
 						result.metadata[result.metadata_count] = Input_Metadata{input_index};
 						result.metadata_offsets[result.metadata_count] = field.offset;
-						result.metadata_types[result.metadata_count] = field.type;
+						result.metadata_types[result.metadata_count] = field.type.id;
 						result.metadata_count += 1;
 					}
 					if(t[0] == '@')
@@ -444,7 +444,7 @@ build_component_model_from_json :: proc(
 							log.info(component_data);
 							result.metadata[result.metadata_count] = Ref_Metadata{component_data.component_index};
 							result.metadata_offsets[result.metadata_count] = field.offset;
-							result.metadata_types[result.metadata_count] = field.type;
+							result.metadata_types[result.metadata_count] = field.type.id;
 							result.metadata_count += 1;
 							log.info("REF ADDED ", ref_name, result.metadata[:result.metadata_count]);
 						}
@@ -470,16 +470,16 @@ load_prefab :: proc(
 
 		prefab: Prefab;
 
-		json_object: json.Object = parsed_json.value.(json.Object);
-		component_count := len(json_object["components"].value.(json.Object));
+		json_object: json.Object = parsed_json.(json.Object);
+		component_count := len(json_object["components"].(json.Object));
 		
 		transform_hierarchy_init(&prefab.transform_hierarchy, 100);
 
-		transform_array := json_object["transforms"].value.(json.Array);
+		transform_array := json_object["transforms"].(json.Array);
 		for transform_json, index in transform_array
 		{
-			main_json_object: json.Object = transform_json.value.(json.Object);
-			transform_json_object := main_json_object["transform"].value.(json.Object);
+			main_json_object: json.Object = transform_json.(json.Object);
+			transform_json_object := main_json_object["transform"].(json.Object);
 			transform_type_info := type_info_of(Transform);
 			log.info("load transform", index);
 			parsed_transform := serialization.json_read_struct(
@@ -490,7 +490,7 @@ load_prefab :: proc(
 			transform_instance := (cast(^Transform)parsed_transform)^;
 			log.info(transform_instance);
 			append(&transforms, transform_instance);
-			append(&names, main_json_object["name"].value.(json.String));
+			append(&names, main_json_object["name"].(json.String));
 			append(&levels, parse_json_int(main_json_object["level"]));
 			append(&next_elements, 0);
 			if index > 0 do next_elements[index-1] = index + 1;
@@ -512,12 +512,12 @@ load_prefab :: proc(
 
 		registered_components: map[string]Registered_Component_Data;
 
-		input_objects := json_object["inputs"].value.(json.Array);
+		input_objects := json_object["inputs"].(json.Array);
 		prefab.inputs = make([]Prefab_Input, len(input_objects), allocator);
 		for input_data, index in input_objects
 		{
-			input_name := input_data.value.(json.Object)["name"].value.(string);
-			input_type := input_data.value.(json.Object)["type"].value.(string);
+			input_name := input_data.(json.Object)["name"].(string);
+			input_type := input_data.(json.Object)["type"].(string);
 			prefab.inputs[index].name = strings.clone(input_name);
 			input_types_map := get_input_types_map(prefab_tables);
 			if input_type in input_types_map
@@ -529,10 +529,10 @@ load_prefab :: proc(
 
 
 		component_cursor := 0;
-		for name, value in json_object["components"].value.(json.Object)
+		for name, value in json_object["components"].(json.Object)
 		{
-			value_obj := value.value.(json.Object);
-			table_name := value_obj["type"].value.(json.String);
+			value_obj := value.(json.Object);
+			table_name := value_obj["type"].(json.String);
 			if table, table_index, ok := db_get_table(prefab_tables, table_name); ok
 			{
 				registered_components[name] = {component_cursor, table_index};				
@@ -541,10 +541,10 @@ load_prefab :: proc(
 		}
 
 		component_cursor = 0;
-		for name, value in json_object["components"].value.(json.Object)
+		for name, value in json_object["components"].(json.Object)
 		{
-			value_obj := value.value.(json.Object);
-			table_name := value_obj["type"].value.(json.String);
+			value_obj := value.(json.Object);
+			table_name := value_obj["type"].(json.String);
 			if table, table_index, ok := db_get_table(prefab_tables, table_name); ok
 			{
 				prefab.components[component_cursor].table_index = table_index;
@@ -570,8 +570,8 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, prefab_tables
 	{
 		parsed_json, ok := json.parse(file);
 
-		json_object: json.Object = parsed_json.value.(json.Object);
-		component_count := len(json_object["components"].value.(json.Object));
+		json_object: json.Object = parsed_json.(json.Object);
+		component_count := len(json_object["components"].(json.Object));
 
 		clear(&prefab.components);
 		clear(&prefab.inputs);
@@ -580,12 +580,12 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, prefab_tables
 
 		registered_components := make(map[string]Registered_Component_Data, 10, allocator);
 
-		input_objects := json_object["inputs"].value.(json.Array);
+		input_objects := json_object["inputs"].(json.Array);
 		for input_data, index in input_objects
 		{
 			new_input: Prefab_Input;
-			input_name := input_data.value.(json.Object)["name"].value.(string);
-			input_type := input_data.value.(json.Object)["type"].value.(string);
+			input_name := input_data.(json.Object)["name"].(string);
+			input_type := input_data.(json.Object)["type"].(string);
 			new_input.name = strings.clone(input_name);
 			input_types_map := get_input_types_map(prefab_tables);
 			if input_type in input_types_map
@@ -595,10 +595,10 @@ load_dynamic_prefab :: proc(path: string, prefab: ^Dynamic_Prefab, prefab_tables
 			append(&prefab.inputs, new_input);
 		}
 
-		for name, value in json_object["components"].value.(json.Object)
+		for name, value in json_object["components"].(json.Object)
 		{
-			value_obj := value.value.(json.Object);
-			table_name := value_obj["type"].value.(json.String);
+			value_obj := value.(json.Object);
+			table_name := value_obj["type"].(json.String);
 			if table, table_index, ok := db_get_table(prefab_tables, table_name); ok
 			{
 				new_component: Component_Model;

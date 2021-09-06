@@ -15,13 +15,13 @@ import sdl "shared:odin-sdl2"
 import gl "shared:odin-gl";
 
 import "../util"
-import "../gameplay"
 import "../render"
 import "../container"
 import "../objects"
 import "../animation"
 import "../input"
 import "../serialization"
+import "../gameplay"
 
 init_prefab_editor :: proc(using editor_state: ^Prefab_Editor_State, sprite_database: ^render.Sprite_Database)
 {

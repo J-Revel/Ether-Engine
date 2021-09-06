@@ -24,7 +24,7 @@ render_sprite_components :: proc(hierarchy: ^objects.Transform_Hierarchy, render
         {
             absolute_transform := objects.get_absolute_transform(hierarchy, sprite_component.transform);
 	    	sprite := container.handle_get(sprite_component.sprite);
-	    	render.render_sprite(render_buffer, sprite, absolute_transform, render.rgb(255, 255, 255));
+	    	render.render_sprite(render_buffer, sprite, transmute(render.Transform)absolute_transform, render.rgb(255, 255, 255));
     	}
     }
 }

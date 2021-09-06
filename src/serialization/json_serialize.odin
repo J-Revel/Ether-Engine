@@ -64,7 +64,7 @@ find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field
 		for fname, i in s.names {
 			if fname == name {
 				field.name   = s.names[i];
-				field.type   = s.types[i].id;
+				field.type   = s.types[i];
 				field.tag    = reflect.Struct_Tag(s.tags[i]);
 				field.offset = s.offsets[i];
 				field_found = true;
@@ -85,7 +85,7 @@ find_struct_field :: proc(type_info: ^runtime.Type_Info, name: string) -> (field
 
 parse_json_float :: proc(json_data: json.Value) -> f32
 {
-	#partial switch v in json_data.value
+	#partial switch v in json_data
 	{
 		case json.Integer:
 			return f32(v);
@@ -103,7 +103,7 @@ json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocat
 	for name, value in json_data
 	{
 		field, field_found := find_struct_field(base_ti, name);
-		#partial switch t in value.value
+		#partial switch t in value
 		{
 			case json.Object:
 			{
@@ -111,7 +111,7 @@ json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocat
 			}
 			case json.Array:
 			{
-				if(type_info_of(field.type).size == size_of(f32) * len(t))
+				if(field.type.size == size_of(f32) * len(t))
 				{
 					for i := 0; i < len(t); i += 1
 					{
@@ -128,7 +128,7 @@ json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocat
 			case json.Float:
 			{
 				// TODO : maybe handle f64 ?
-				if field.type == typeid_of(f32)
+				if field.type.id == typeid_of(f32)
 				{
 					field_ptr := cast(^f32)(uintptr(result) + field.offset);
 					field_ptr^ = f32(t);
@@ -136,7 +136,7 @@ json_read_struct :: proc(json_data: json.Object, ti: ^runtime.Type_Info, allocat
 			}
 			case json.String:
 			{
-				if field.type == typeid_of(string)
+				if field.type.id == typeid_of(string)
 				{
 					str_copy := strings.clone(t, allocator);
 					field_ptr := cast(^string)(uintptr(result) + field.offset);
