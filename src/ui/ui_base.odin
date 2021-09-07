@@ -63,6 +63,26 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
 	ui_ctx.editor_config.line_height = int(ui_ctx.current_font.line_height) + 4;
 	init_renderer(&ui_ctx.renderer);
+
+	ui_ctx.button_theme = {
+		default_theme = {
+			fill_color = render.rgb(255, 255, 0),
+			border_color = render.rgb(0, 0, 0),
+			border_thickness = 2,
+			corner_radius = 30,
+		},
+		hovered_theme = {
+			fill_color = render.rgb(0, 255, 0),
+			border_color = render.rgb(0, 0, 0),
+			border_thickness = 5,
+		},
+		clicked_theme = {
+			fill_color = render.rgb(255, 255, 255),
+			border_color = render.rgb(0, 0, 0),
+			border_thickness = 1,
+		},
+	};
+	log.info(ui_ctx.button_theme);
 }
 
 update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
@@ -338,6 +358,20 @@ use_rect_in_layout :: proc(ctx: ^UI_Context, rect: util.Rect)
 	}
 }
 
+element_draw_themed_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, theme: ^Rect_Theme)
+{
+	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	rect := UI_Rect{
+		pos = linalg.to_i32(ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top}),
+		size = linalg.to_i32(ctx.current_element.size * (anchor.max - anchor.min) - padding_sum),
+	};
+	log.info(theme^);
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = rect,
+		theme = theme^,
+	});
+}
+
 element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32 = 0)
 {
 	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
@@ -347,10 +381,12 @@ element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, co
 	};
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = rect,
-		color = color,
-		corner_radius = 10,
-		border_color = 0x000000ff,
-		border_thickness = 1,
+		theme = {
+			fill_color = color,
+			corner_radius = 10,
+			border_color = 0x000000ff,
+			border_thickness = 1,
+		},
 	});
 	//append(&ctx.draw_list, Rect_Draw_Command{rect = rect, clip = clip, color = color, corner_radius = corner_radius});
 }
@@ -399,8 +435,10 @@ text :: proc(
 
 		add_rect_command(&ctx.ui_draw_list, Rect_Command{
 			rect = rect,
-			color = color,
-			clip = glyph_sprite.clip,
+			uv_clip = glyph_sprite.clip,
+			theme = {
+				fill_color = color,
+			},
 			texture_id = texture.bindless_id,
 		});
 		pos_cursor += glyph.advance / 64;
@@ -462,10 +500,12 @@ layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, col
 
 	add_rect_command(&ctx.ui_draw_list, Rect_Command {
 		rect = {linalg.to_i32(layout.pos), linalg.to_i32(layout.size)},
-		clip = {{0, 0}, {1, 1}},
-		color = color,
-		border_color = 0x000000ff,
-		border_thickness = 1,
+		uv_clip = {{0, 0}, {1, 1}},
+		theme = {
+			fill_color = color,
+			border_color = render.rgb(0, 0, 0),
+			border_thickness = 1,
+		},
 	});
 }
 
@@ -554,19 +594,20 @@ layout_button :: proc(
 	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Press, .Click}, location);
 	color: Color;
 
+	used_theme: Rect_Theme;
 	if Interaction_Type.Press in element_state
 	{
-		color = render.rgb(150, 150, 0);
+		used_theme = button_theme.clicked_theme;
 	}
 	else if Interaction_Type.Hover in element_state 
 	{
-		color = render.rgb(200, 200, 0);
+		used_theme = button_theme.hovered_theme;
 	}
 	else
 	{
-		color = render.rgb(255, 255, 0);
+		used_theme = button_theme.default_theme;
 	}
-	element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, color);
+	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
 	
 	return Interaction_Type.Click in element_state;
 }

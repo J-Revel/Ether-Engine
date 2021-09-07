@@ -29,11 +29,8 @@ UI_Rect :: struct
 Rect_Command :: struct
 {
 	rect: UI_Rect,
-	clip: util.Rect,
-	color: Color,
-	border_color: Color,
-	border_thickness: f32,
-	corner_radius: f32,
+	uv_clip: util.Rect,
+	using theme: Rect_Theme,
 	texture_id: u64,
 }
 
@@ -172,6 +169,7 @@ UI_Context :: struct
 	editor_config: Editor_Config,
 	renderer: Render_System,
 	ui_draw_list: Draw_Command_List,
+	button_theme: Button_Theme,
 }
 
 Drag_State :: struct
@@ -213,4 +211,21 @@ UI_Render_System :: struct
 {
     render_state: UI_Render_State,
     current_texture: render.Texture_Handle,
+}
+
+Rect_Theme :: struct
+{
+	fill_color: Color,
+	border_color: Color,
+	border_thickness: f32,
+	corner_radius: f32,
+}
+
+
+Button_Theme :: struct
+{
+	default_theme: Rect_Theme,
+	hovered_theme: Rect_Theme,
+	clicked_theme: Rect_Theme,
+	round_ratio: f32, // 0 = rect, 1 = round
 }

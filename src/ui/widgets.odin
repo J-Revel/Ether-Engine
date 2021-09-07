@@ -66,9 +66,11 @@ h_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #call
 	widget_rect := allocate_element_space(ctx, {0, f32(ctx.editor_config.line_height)});
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = {pos = linalg.to_i32(widget_rect.pos), size = linalg.to_i32(widget_rect.size)},
-		color = render.rgb(255, 255, 255),
-		corner_radius = 5,
-		border_thickness = 0,
+		theme = {
+			fill_color = render.rgb(255, 255, 255),
+			corner_radius = 5,
+			border_thickness = 0,
+		},
 	});
 	value_ratio := f32(value^ - min) / f32(max - min);
 	cursor_size : f32 = 20;
@@ -92,10 +94,12 @@ h_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #call
 	}
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = {pos = linalg.to_i32(cursor_rect.pos), size = linalg.to_i32(cursor_rect.size)},
-		color = cursor_color,
-		corner_radius = 5,
-		border_thickness = 1,
-		border_color = render.rgb(128, 128, 128),
+		theme = {
+			fill_color = cursor_color,
+			corner_radius = 5,
+			border_thickness = 1,
+			border_color = render.rgb(128, 128, 128),
+		},
 	});
 }
 
@@ -105,9 +109,11 @@ v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, width: f32 = 0, l
 	widget_rect := allocate_element_space(ctx, {width, 0});
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = {pos = linalg.to_i32(widget_rect.pos), size = linalg.to_i32(widget_rect.size)},
-		color = render.rgb(255, 255, 255),
-		corner_radius = 5,
-		border_thickness = 0,
+		theme = {
+			fill_color = render.rgb(255, 255, 255),
+			corner_radius = 5,
+			border_thickness = 0,
+		},
 	});
 	value_ratio := f32(value^ - min) / f32(max - min);
 	cursor_size : f32 = 20;
@@ -131,10 +137,12 @@ v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, width: f32 = 0, l
 	}
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = {pos = linalg.to_i32(cursor_rect.pos), size = linalg.to_i32(cursor_rect.size)},
-		color = cursor_color,
-		corner_radius = 5,
-		border_thickness = 1,
-		border_color = render.rgb(128, 128, 128),
+		theme = {
+			fill_color = cursor_color,
+			corner_radius = 5,
+			border_thickness = 1,
+			border_color = render.rgb(128, 128, 128),
+		},
 	});
 }
 
@@ -213,12 +221,14 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		scroll_content_rect.size.y = state.last_frame_height;
 		add_rect_command(&ctx.ui_draw_list, Rect_Command{
 			rect = {pos = linalg.to_i32(scroll_content_rect.pos), size = linalg.to_i32(scroll_content_rect.size/2)},
-			color = render.rgba(255, 255, 255, 100),
-			corner_radius = 5,
-			border_thickness = 0,
+			theme = {
+				fill_color = render.rgba(255, 255, 255, 100),
+				corner_radius = 5,
+				border_thickness = 0,
+			},
 		});
 		rect_border(&ctx.draw_list, scroll_content_rect, render.rgba(255, 255, 255, 100), 1);
-		log.info(scroll_content_rect);
+		//log.info(scroll_content_rect);
 	}
 	rect_border(&ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
 	return;
