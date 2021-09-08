@@ -169,7 +169,7 @@ UI_Context :: struct
 	editor_config: Editor_Config,
 	renderer: Render_System,
 	ui_draw_list: Draw_Command_List,
-	button_theme: Button_Theme,
+	current_theme: UI_Theme,
 }
 
 Drag_State :: struct
@@ -213,6 +213,12 @@ UI_Render_System :: struct
     current_texture: render.Texture_Handle,
 }
 
+Unit :: enum
+{
+	Pixels,
+	Ratio,
+}
+
 Rect_Theme :: struct
 {
 	fill_color: Color,
@@ -228,4 +234,16 @@ Button_Theme :: struct
 	hovered_theme: Rect_Theme,
 	clicked_theme: Rect_Theme,
 	round_ratio: f32, // 0 = rect, 1 = round
+	corner_radius_unit: Unit,
+}
+
+Window_Theme :: struct
+{
+	fill_color: Color,
+}
+
+UI_Theme :: struct
+{
+	button: Button_Theme,
+	window: Window_Theme,
 }

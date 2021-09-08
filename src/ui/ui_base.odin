@@ -64,25 +64,33 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	ui_ctx.editor_config.line_height = int(ui_ctx.current_font.line_height) + 4;
 	init_renderer(&ui_ctx.renderer);
 
-	ui_ctx.button_theme = {
-		default_theme = {
-			fill_color = render.rgb(255, 255, 0),
-			border_color = render.rgb(0, 0, 0),
-			border_thickness = 2,
-			corner_radius = 30,
+	ui_ctx.current_theme = {
+		window = {
+			fill_color = render.rgb(100, 100, 100),
 		},
-		hovered_theme = {
-			fill_color = render.rgb(0, 255, 0),
-			border_color = render.rgb(0, 0, 0),
-			border_thickness = 5,
-		},
-		clicked_theme = {
-			fill_color = render.rgb(255, 255, 255),
-			border_color = render.rgb(0, 0, 0),
-			border_thickness = 1,
+		button = {
+			default_theme = {
+				fill_color = render.rgb(255, 255, 0),
+				border_color = render.rgb(0, 0, 0),
+				border_thickness = 2,
+				corner_radius = 1,
+			},
+			hovered_theme = {
+				fill_color = render.rgb(0, 255, 0),
+				border_color = render.rgb(0, 0, 0),
+				border_thickness = 5,
+				corner_radius = 0.5,
+			},
+			clicked_theme = {
+				fill_color = render.rgb(255, 255, 255),
+				border_color = render.rgb(0, 0, 0),
+				border_thickness = 1,
+				corner_radius = 0.3,
+			},
+			corner_radius_unit = Unit.Ratio,
 		},
 	};
-	log.info(ui_ctx.button_theme);
+	log.info(ui_ctx.current_theme);
 }
 
 update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
@@ -485,6 +493,13 @@ layout_draw_used_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ct
 	append(&current_layout(ctx).draw_commands, layout_cmd);
 }
 
+// TODO : utility functions to get an anchored / padded sub rect ?
+layout_get_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding) -> util.Rect
+{
+	layout := current_layout(ctx);
+	return {pos = layout.pos, size = layout.size};
+}
+
 layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32)
 {
 	layout := current_layout(ctx);
@@ -498,8 +513,9 @@ layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, col
 	};
 	append(&ctx.draw_list, draw_cmd);
 
+	layout_rect := layout_get_rect(ctx, anchor, padding);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command {
-		rect = {linalg.to_i32(layout.pos), linalg.to_i32(layout.size)},
+		rect = UI_Rect{pos = linalg.to_i32(layout.pos), size = linalg.to_i32(layout.size)},
 		uv_clip = {{0, 0}, {1, 1}},
 		theme = {
 			fill_color = color,
@@ -510,33 +526,6 @@ layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, col
 }
 
 default_anchor :: Anchor{{0, 0}, {1, 1}, 0, 0, 0, 0};
-
-button :: proc(
-	txt: 	string,
-	rect: util.Rect,
-
-	ui_ctx: ^UI_Context,
-	location := #caller_location,
-) -> bool
-{
-	state := ui_element(ui_ctx, rect, {.Hover, .Press, .Click}, location);
-	if Interaction_Type.Press in state
-	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(0, 255, 255));
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(128, 128, 128));
-	}
-	else if Interaction_Type.Hover in state
-	{
-		element_draw_rect(ui_ctx, default_anchor, {}, render.rgb(255, 0, 0));
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
-	}
-	else
-	{
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, render.rgb(0, 255, 0));
-		element_draw_rect(ui_ctx, {{0, 0}, {1, 1}, 5, 5, 5, 5}, {}, render.rgb(255, 255, 0));
-	}
-	return Interaction_Type.Click in state;
-}
 
 drag_box :: proc(
 	rect: util.Rect,
@@ -581,7 +570,7 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
 	return result;
 }
 
-layout_button :: proc(
+button :: proc(
 	label: string,
 	size: [2]f32,
 
@@ -595,18 +584,20 @@ layout_button :: proc(
 	color: Color;
 
 	used_theme: Rect_Theme;
+	using current_theme.button;
 	if Interaction_Type.Press in element_state
 	{
-		used_theme = button_theme.clicked_theme;
+		used_theme = clicked_theme;
 	}
 	else if Interaction_Type.Hover in element_state 
 	{
-		used_theme = button_theme.hovered_theme;
+		used_theme = hovered_theme;
 	}
 	else
 	{
-		used_theme = button_theme.default_theme;
+		used_theme = default_theme;
 	}
+	if(corner_radius_unit == Unit.Ratio) do used_theme.corner_radius *= allocated_space.size.y / 2;
 	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
 	
 	return Interaction_Type.Click in element_state;

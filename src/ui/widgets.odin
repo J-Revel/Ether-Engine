@@ -167,6 +167,8 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 
 	draw_content = !state.folded;
 
+	theme := current_theme.window;
+
 	if draw_content
 	{
 		// Body Layout
@@ -206,16 +208,17 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		rect.pos += drag_state.drag_offset;
 		drag_state.drag_offset = [2]f32{0, 0};
 	}
-	layout_button("close button", {header_height, header_height}, ctx); 
+	button("close button", {header_height, header_height}, ctx); 
 	next_layout(ctx);
-	if layout_button("fold button", {header_height, header_height}, ctx)
+	if button("fold button", {header_height, header_height}, ctx)
 	{
 		state.folded = !state.folded;
 	}
 	next_layout(ctx);
 	if draw_content
 	{
-		layout_draw_rect(ctx, {}, {}, render.rgba(255, 0, 0, 200), 0);
+		push_clip(&ctx.ui_draw_list, layout_get_rect(ctx, {}, {}));
+		layout_draw_rect(ctx, {}, {}, theme.fill_color, 0);
 		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
 		scroll_content_rect := current_layout(ctx).rect;
 		scroll_content_rect.size.y = state.last_frame_height;
@@ -236,5 +239,6 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 
 window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 {
+	pop_clip(&ctx.ui_draw_list);
 	state.last_frame_height = current_layout(ctx).used_rect.size.y;
 }

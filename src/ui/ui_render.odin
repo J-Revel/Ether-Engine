@@ -100,6 +100,18 @@ reset_draw_list :: proc(using draw_list: ^Draw_Command_List, screen_size: [2]f32
 	append(&clip_stack, 0);
 }
 
+push_clip :: proc(using draw_list: ^Draw_Command_List, clip_rect: util.Rect)
+{
+	append(&clips, clip_rect);
+	new_clip_index := len(clip_stack);
+	append(&clip_stack, new_clip_index);
+}
+
+pop_clip :: proc(using draw_list: ^Draw_Command_List)
+{
+	pop(&clip_stack);
+}
+
 add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command)
 {
 	if rect_command_count >= len(commands)
@@ -109,7 +121,7 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 
 	command_index: i32 = i32(rect_command_count);
 	commands[rect_command_count].rect = rect_command;
-	commands[rect_command_count].clip_index = draw_list.clip_stack[len(draw_list.clip_stack) - 1];
+	commands[rect_command_count].clip_index = clip_stack[len(clip_stack) - 1];
 	append(&index, command_index * (1<<16) + 0);
 	append(&index, command_index * (1<<16) + 1);
 	append(&index, command_index * (1<<16) + 2);

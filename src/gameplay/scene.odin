@@ -175,23 +175,23 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		drag_cache: ui.Drag_State;
 		ui.drag_int(&ui_ctx, &test_value);
 		ui.h_slider(&ui_ctx, &test_value, 0, 1000);
-		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		if ui.button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
 		}
-		if ui.layout_button("test", {150, 100}, &ui_ctx)
+		if ui.button("test", {150, 100}, &ui_ctx)
 		{
 			log.info("BUTTON2");
 		}
-		if ui.layout_button("test", {100, 100}, &ui_ctx)
+		if ui.button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");
 		}
-		if ui.layout_button("test", {100, 20}, &ui_ctx)
+		if ui.button("test", {100, 20}, &ui_ctx)
 		{
 			log.info("BUTTON3");
 		}
-		if ui.layout_button("test", {100, 60}, &ui_ctx)
+		if ui.button("test", {100, 60}, &ui_ctx)
 		{
 			log.info("BUTTON3");
 		}
