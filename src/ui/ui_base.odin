@@ -648,10 +648,11 @@ vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, i
 
 	for(i in 0..<len(split_sizes))
 	{
+		width := parent_layout.size.x * split_weights[i] / weights_sum;
 		result[i] = Layout {
 			rect = util.Rect {
 				pos = parent_layout.pos,
-				size = [2]f32{left_split_width, parent_layout.size.y},
+				size = [2]f32{width, parent_layout.size.y},
 			},
 			padding = inner_padding,
 			direction = [2]f32{0, 1},
