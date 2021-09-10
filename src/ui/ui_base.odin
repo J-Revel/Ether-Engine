@@ -608,56 +608,59 @@ vsplit :: proc{
 	vsplit_layout_sizes,
 };
 
-vsplit_layout_ratio :: proc(split_ratio: f32, inner_padding: Padding, using ui_ctx: ^UI_Context)
+vsplit_layout_ratio :: proc(using ui_ctx: ^UI_Context, layout: Layout, split_ratio: f32, inner_padding: Padding) -> [2]Layout
 {
 	parent_layout := current_layout(ui_ctx)^;
 	left_split_width := parent_layout.size.x * split_ratio;
-	new_layout := Layout {
-		rect = util.Rect {
-			pos = parent_layout.pos,
-			size = [2]f32{left_split_width, parent_layout.size.y},
+	out_layouts: [2]Layout = {
+		{
+			rect = util.Rect {
+				pos = parent_layout.pos,
+				size = [2]f32{left_split_width, parent_layout.size.y},
+			},
+			padding = inner_padding,
+			direction = [2]f32{0, 1},
 		},
-		padding = inner_padding,
-		direction = [2]f32{0, 1},
+		{
+			rect = util.Rect {
+				pos = [2]f32 {parent_layout.pos. x + left_split_width, parent_layout.pos.y},
+				size = [2]f32{parent_layout.size.x - left_split_width, parent_layout.size.y},
+			},
+			padding = inner_padding,
+			direction = [2]f32{0, 1},
+		},
 	};
-	new_layout.size.x = left_split_width;
-	push_layout_group(ui_ctx);
-	add_layout_to_group(ui_ctx, new_layout);
-	new_layout.pos.x += left_split_width;
-	new_layout.size.x = parent_layout.size.x * (1 - split_ratio);
-	add_layout_to_group(ui_ctx, new_layout);
+	return out_layouts;
 }
 
-vsplit_layout_sizes :: proc(split_sizes: []f32, inner_padding: Padding, using ui_ctx: ^UI_Context)
+vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, inner_padding: Padding, allocator := context.temp_allocator) -> []Layout
 {
 	parent_layout := current_layout(ui_ctx)^;
-	used_size: f32 = 0;
-	variable_sizes_count := 0;
-	for size in split_sizes
-	{
-		if size == 0 do variable_sizes_count += 1;
-		used_size += size;
-	}
-	variable_size := (parent_layout.size.x - used_size)/f32(variable_sizes_count);
-	
-	cursor_pos := parent_layout.pos;
-	push_layout_group(ui_ctx);
-	for preferred_size, index in split_sizes
-	{
-		target_size := preferred_size;
-		if preferred_size == 0 do target_size = variable_size;
+	left_split_width := parent_layout.size.x * split_ratio;
 
-		new_layout := Layout {
+	result := make([]Layout, len(split_sizes));
+
+	weights_sum := 0;
+	for(i in 0..<len(split_weights))
+	{
+		weights_sum += split_weights[i];
+	}
+
+	for(i in 0..<len(split_sizes))
+	{
+		result[i] = Layout {
 			rect = util.Rect {
-				pos = cursor_pos,
-				size = [2]f32{target_size, parent_layout.size.y},
+				pos = parent_layout.pos,
+				size = [2]f32{left_split_width, parent_layout.size.y},
 			},
 			padding = inner_padding,
 			direction = [2]f32{0, 1},
 		};
-		cursor_pos.x += target_size;
-		add_layout_to_group(ui_ctx, new_layout);
 	}
+	out_layouts[1] = out_layouts[0];
+	out_layouts[0].size.x = left_split_width;
+	out_layouts[1].pos.x += left_split_width;
+	out_layouts[1].size.x = parent_layout.size.x * (1 - split_ratio);
 }
 
 round_corner_subdivisions :: 3;

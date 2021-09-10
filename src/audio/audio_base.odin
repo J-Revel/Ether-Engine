@@ -1,7 +1,7 @@
 package audio
 
 import sdl "shared:odin-sdl2"
-import mixer "shared:odin-sdl2/mixer"
+//import mixer "shared:odin-sdl2/mixer"
 import "core:math"
 import "core:runtime"
 import "core:log"
@@ -87,14 +87,14 @@ init_audio_system :: proc(audio_system: ^Audio_System)
 		samples = 4096,
 	};
 	random = rand.create(123546);
-	mixer.init(i32(mixer.Init_Flags.mp3));
-	if mixer.open_audio(22050, u16(Audio_Format.F32LSB), 2, 1024) < 0 {
-		log.info("ERROR LOADING MIXER LIB");
-	}
-	music := mixer.load_wav("resources/audio/music.wav");
-	if music == nil
-	{
-		log.info("ERROR LOADING MUSIC");
-	}
+	//mixer.init(i32(mixer.Init_Flags.mp3));
+	//if mixer.open_audio(22050, u16(Audio_Format.F32LSB), 2, 1024) < 0 {
+	//	log.info("ERROR LOADING MIXER LIB");
+	//}
+	//music := mixer.load_wav("resources/audio/music.wav");
+	//if music == nil
+	//{
+	//	log.info("ERROR LOADING MUSIC");
+	//}
 	//mixer.play_channel_timed(-1, music, 0, 0);
 }
