@@ -138,8 +138,8 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 time : f32 = 0;
 ui_ctx: ui.UI_Context;
 window_state := ui.Window_State {
-	rect = util.Rect{
-		size = [2]f32{300, 200},
+	rect = ui.UI_Rect{
+		size = {300, 200},
 	},
 };
 
@@ -157,7 +157,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&transform_hierarchy, &sprite_renderer, &sprite_components);
 
-	ui.reset_ctx(&ui_ctx, linalg.to_f32(viewport.size));
+	ui.reset_ctx(&ui_ctx, viewport.size);
 	ui.update_input_state(&ui_ctx, input_state);
 	
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
@@ -197,8 +197,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		}
 		ui.window_end(&ui_ctx, &window_state);
 	}
-	ui.pop_layout_group(&ui_ctx);
-	ui.render_layout_commands(&ui_ctx);
+	ui.pop_layout(&ui_ctx);
 }
 
 do_render :: proc(using scene: ^Scene, viewport: render.Viewport)

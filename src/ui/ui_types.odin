@@ -21,14 +21,34 @@ Render_System :: struct
 	ubo: u32,
 }
 
+UI_Vec :: [2]int;
+
 UI_Rect :: struct
 {
-	pos, size: [2]i32,
+	pos, size: UI_Vec,
 }
+
+UV_Vec :: [2]f32;
+
+UV_Rect :: util.Rect; 
 
 Rect_Command :: struct
 {
 	rect: UI_Rect,
+	uv_clip: util.Rect,
+	using theme: Rect_Theme,
+	texture_id: u64,
+}
+
+GPU_Rect :: struct
+{
+	pos: [2]i32,
+	size: [2]i32,
+}
+
+GPU_Rect_Command :: struct
+{
+	rect: GPU_Rect,
 	uv_clip: util.Rect,
 	using theme: Rect_Theme,
 	texture_id: u64,
@@ -40,18 +60,24 @@ Draw_Command_Data :: struct
 	clip_index: int,
 }
 
+GPU_Draw_Command_Data :: struct
+{
+	rect: GPU_Rect_Command,
+	clip_index: int,
+}
+
 Draw_Command_List :: struct
 {
-	commands: [dynamic]Draw_Command_Data,
+	commands: [dynamic]GPU_Draw_Command_Data,
 	index: [dynamic]i32,
 	rect_command_count: int,
-	clips: [dynamic]util.Rect,
+	clips: [dynamic]UI_Rect,
 	clip_stack: [dynamic]int,
 }
 
 Ubo_Data :: struct
 {
-	screen_size: [2]f32,
+	screen_size: UI_Vec,
 	padding: [2]f32,
 };
 
@@ -60,23 +86,23 @@ Color :: render.Color;
 
 Anchor :: struct
 {
-	min, max: [2]f32,
-	left, top, right, bottom: f32,
+	min, max: UV_Vec,
+	left, top, right, bottom: int,
 }
 
 Padding :: struct
 {
-	top_left: [2]f32,
-	bottom_right: [2]f32,
+	top_left: [2]int,
+	bottom_right: [2]int,
 }
 
 Rect_Draw_Command :: struct
 {
-	using rect: util.Rect,
+	using rect: UI_Rect,
 	uv_rect: util.Rect,
 	texture: render.Texture_Handle,
 	color: Color,
-	corner_radius: f32,
+	corner_radius: int,
 }
 
 Clip_Draw_Command :: struct
@@ -101,29 +127,21 @@ Draw_List :: [dynamic]Draw_Command;
 
 Layout :: struct
 {
-	using rect: util.Rect,
-	direction: [2]f32,
-	used_rect: util.Rect,
-	padding: Padding,
-	cursor: f32,
+	using rect: UI_Rect,
+	cursor: int,
+	direction: [2]int,
 	draw_commands: [dynamic]Layout_Draw_Command,
 }
 
-Layout_Group :: struct
-{
-	layouts: [dynamic]Layout,
-	cursor: int,
-}
-
-Layout_Stack :: [dynamic]Layout_Group;
+Layout_Stack :: [dynamic]Layout;
 
 Input_State_Data :: struct
 {
 	drag_target: UI_ID,
-	cursor_pos: [2]f32,
-	last_cursor_pos: [2]f32,
-	drag_amount: [2]f32,
-	delta_drag: [2]f32,
+	cursor_pos: UI_Vec,
+	last_cursor_pos: UI_Vec,
+	drag_amount: UI_Vec,
+	delta_drag: UI_Vec,
 	cursor_state: Cursor_Input_State,
 }
 
@@ -151,8 +169,14 @@ UI_ID :: distinct uint;
 
 UI_Element :: struct
 {
-	using rect: util.Rect,
+	using rect: UI_Rect,
 	id: UI_ID,
+}
+
+Content_Size_Fitter :: struct
+{
+	rect: UI_Rect,
+	layout_index_in_stack: int,
 }
 
 UI_Context :: struct
@@ -170,23 +194,24 @@ UI_Context :: struct
 	renderer: Render_System,
 	ui_draw_list: Draw_Command_List,
 	current_theme: UI_Theme,
+	content_size_fitters: [dynamic]Content_Size_Fitter,
 }
 
 Drag_State :: struct
 {
-	drag_last_pos: [2]f32,
+	drag_last_pos: UI_Vec,
 	dragging: bool,
-	drag_offset: [2]f32,
+	drag_offset: UI_Vec,
 }
 
 Window_State :: struct
 {
 	drag_state: Drag_State,
-	rect: util.Rect,
+	rect: UI_Rect,
 	folded: bool,
-	scroll: f32,
+	scroll: int,
 	
-	last_frame_height: f32,
+	last_frame_height: int,
 }
 
 Editor_Config :: struct
@@ -223,8 +248,8 @@ Rect_Theme :: struct
 {
 	fill_color: Color,
 	border_color: Color,
-	border_thickness: f32,
-	corner_radius: f32,
+	border_thickness: int,
+	corner_radius: int,
 }
 
 

@@ -14,7 +14,7 @@ import "../container"
 import "../render"
 import "../util"
 
-join_rects :: proc(A: util.Rect, B: util.Rect) -> (result: util.Rect)
+join_rects :: proc(A: UI_Rect, B: UI_Rect) -> (result: UI_Rect)
 {
 	if A.size.x == 0
 	{
@@ -51,9 +51,9 @@ join_rects :: proc(A: util.Rect, B: util.Rect) -> (result: util.Rect)
 	return result;
 }
 
-simple_padding :: proc(value: f32) -> Padding
+simple_padding :: proc(value: int) -> Padding
 {
-	return Padding{[2]f32{value, value}, [2]f32{value, value}};
+	return Padding{[2]int{value, value}, [2]int{value, value}};
 }
 
 init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, font: ^render.Font)
@@ -79,13 +79,13 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 				fill_color = render.rgb(0, 255, 0),
 				border_color = render.rgb(0, 0, 0),
 				border_thickness = 5,
-				corner_radius = 0.5,
+				corner_radius = 1,
 			},
 			clicked_theme = {
 				fill_color = render.rgb(255, 255, 255),
 				border_color = render.rgb(0, 0, 0),
 				border_thickness = 1,
-				corner_radius = 0.3,
+				corner_radius = 1,
 			},
 			corner_radius_unit = Unit.Ratio,
 		},
@@ -97,7 +97,7 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 {
 	using ui_ctx.input_state;
 	last_cursor_pos = cursor_pos;
-	cursor_pos = linalg.to_f32(input_state.mouse_pos);
+	cursor_pos = input_state.mouse_pos;
 	cursor_offset := cursor_pos - last_cursor_pos; 
 	switch cursor_state 
 	{
@@ -123,7 +123,7 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 		case .Down:
 			drag_amount += cursor_offset;
 			delta_drag = cursor_offset;
-			max_down_distance: f32 = 10;
+			max_down_distance: int= 10;
 			if linalg.vector_length2(drag_amount) > max_down_distance * max_down_distance
 			{
 				cursor_state = Cursor_Input_State.Drag;
@@ -153,7 +153,7 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 	}
 }
 
-reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
+reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]int)
 {
 	clear(&ui_ctx.elements_under_cursor);
 	for interaction_type, ui_id in ui_ctx.next_elements_under_cursor
@@ -163,110 +163,106 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]f32)
 	clear(&ui_ctx.next_elements_under_cursor);
 	clear(&ui_ctx.layout_stack);
 	base_layout := Layout {
-		rect = util.Rect {
+		rect = UI_Rect {
 			pos = {0, 0},
 			size = screen_size,
 		},
-		direction = [2]f32{0, 1},
+		direction = [2]int{0, 1},
 	};
-	push_layout_group(ui_ctx);
-	add_layout_to_group(ui_ctx, base_layout);
+	push_layout(ui_ctx, base_layout);
 	reset_draw_list(&ui_ctx.ui_draw_list, screen_size);
 }
 
-push_layout_group :: proc(using ui_ctx: ^UI_Context)
+scale_ui_vec_2f :: proc(v: UI_Vec, scale: [2]f32) -> (result: UI_Vec)
 {
-	new_layout_group: Layout_Group;
-	append(&layout_stack, new_layout_group);
+	result.x = int(f32(v.x) * scale.x);
+	result.y = int(f32(v.y) * scale.y);
+	return;
 }
 
-apply_anchor_padding :: proc(rect: util.Rect, anchor: Anchor, padding: Padding) -> (result: util.Rect)
+scale_ui_vec_scal :: proc(v: UI_Vec, scale: f32) -> (result: UI_Vec)
 {
-	result.pos = rect.pos + rect.size * anchor.min + padding.top_left;
-	result.size = rect.size * (anchor.max - anchor.min) - padding.top_left - padding.bottom_right;
+	result.x = int(f32(v.x) * scale);
+	result.y = int(f32(v.y) * scale);
+	return;
+}
+
+scale_ui_vec :: proc {
+	scale_ui_vec_scal,
+	scale_ui_vec_2f,
+}
+
+push_layout :: proc(using ui_ctx: ^UI_Context, layout: Layout)
+{
+	append(&layout_stack, layout);
+}
+
+apply_anchor_padding :: proc(rect: UI_Rect, anchor: Anchor, padding: Padding) -> (result: UI_Rect)
+{
+	result.pos = rect.pos + scale_ui_vec(rect.size, anchor.min) + padding.top_left;
+	result.size = scale_ui_vec(rect.size, anchor.max - anchor.min) - padding.top_left - padding.bottom_right;
 	return result;
 }
 
-pop_layout_group :: proc(using ui_ctx: ^UI_Context)
+pop_layout :: proc(using ui_ctx: ^UI_Context)
 {
-	popped_layout_group := pop(&layout_stack);
-	parent_used_rect := &current_layout(ui_ctx).used_rect;
-	for layout in popped_layout_group.layouts
+	layout_index := len(layout_stack)-1;
+	current_layout := pop(&layout_stack);
+	if(len(content_size_fitters) > 0)
 	{
-		display_rect := util.Rect{
-			pos = layout.used_rect.pos - layout.padding.top_left,
-			size = layout.used_rect.size + layout.padding.top_left + layout.padding.bottom_right,
-		};
-		for draw_command in layout.draw_commands
+		content_size_fitter := content_size_fitters[len(content_size_fitters)-1];
+		if content_size_fitter.layout_index_in_stack == layout_index
 		{
-			draw_command.final_cmd.pos = display_rect.pos;
-			draw_command.final_cmd.size = display_rect.size;
-		}
-		parent_used_rect^ = join_rects(parent_used_rect^, display_rect);
-	}
-}
-
-render_layout_commands :: proc(using ui_ctx: ^UI_Context)
-{
-	current_layout_group := layout_stack[len(layout_stack)-1];
-	for layout in current_layout_group.layouts
-	{
-		for draw_command in layout.draw_commands
-		{
-			draw_command.final_cmd.pos = layout.used_rect.pos - layout.padding.top_left;
-			draw_command.final_cmd.size = layout.used_rect.size + layout.padding.top_left + layout.padding.bottom_right;
+			current_layout.rect = content_size_fitter.rect; 
 		}
 	}
-}
-
-add_layout_to_group :: proc(using ui_ctx: ^UI_Context, layout: Layout)
-{
-	current_layout_group := &layout_stack[len(layout_stack)-1];
-	append(&current_layout_group.layouts, layout);
-}
-
-next_layout :: proc(using ui_ctx: ^UI_Context)
-{
-	current_group := &layout_stack[len(layout_stack)-1];
-	current_group.cursor = (current_group.cursor + 1) % len(current_group.layouts);
+	for draw_command in current_layout.draw_commands
+	{
+		// TODO : handle anchor and padding properly
+		draw_command.final_cmd.pos = current_layout.rect.pos;
+		draw_command.final_cmd.size = current_layout.rect.size;
+	}
+	for content_size_fitter in &content_size_fitters
+	{
+		content_size_fitter.rect = join_rects(content_size_fitter.rect, current_layout.rect);
+	}
 }
 
 current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 {
-	current_group := layout_stack[len(layout_stack)-1];
-	return &current_group.layouts[current_group.cursor];
+	return &layout_stack[len(layout_stack)-1];
 }
 
-rect :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, corner_radius: f32 = 0)
+rect :: proc(draw_list: ^Draw_List, rect: UI_Rect, color: Color, corner_radius: int = 0)
 {
 	uv_rect := util.Rect { size = [2]f32{1, 1}};
 	append(draw_list, Rect_Draw_Command{rect = rect, uv_rect= uv_rect, color = color, corner_radius = corner_radius});
 }
 
-rect_border :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, thickness: f32 = 1)
+rect_border :: proc(draw_list: ^Draw_List, rect: UI_Rect, color: Color, thickness: int = 1)
 {
 	uv_rect:= util.Rect { size = [2]f32{1, 1}};
 	append(draw_list, Rect_Draw_Command{
-		rect = util.Rect{rect.pos, [2]f32{rect.size.x, thickness}},
+		rect = UI_Rect{linalg.to_int(rect.pos), UI_Vec{rect.size.x, thickness}},
 		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
 
 	append(draw_list, Rect_Draw_Command{
-		rect = util.Rect{rect.pos, [2]f32{thickness, rect.size.y}},
+		rect = UI_Rect{rect.pos, UI_Vec{thickness, rect.size.y}},
 		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
 	append(draw_list, Rect_Draw_Command{
-		rect = util.Rect{rect.pos + [2]f32{rect.size.x - thickness, 0}, [2]f32{thickness, rect.size.y}},
+		rect = UI_Rect{rect.pos + UI_Vec{rect.size.x - thickness, 0}, UI_Vec{thickness, rect.size.y}},
 		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
 	});
 	append(draw_list, Rect_Draw_Command{
-		rect = util.Rect{rect.pos + [2]f32{0, rect.size.y - thickness}, [2]f32{rect.size.x, thickness}},
+		rect = UI_Rect{rect.pos + UI_Vec{0, rect.size.y - thickness}, UI_Vec{rect.size.x, thickness}},
 		uv_rect = uv_rect,
 		color = color,
 		corner_radius = 0,
@@ -274,7 +270,7 @@ rect_border :: proc(draw_list: ^Draw_List, rect: util.Rect, color: Color, thickn
 }
 
 textured_rect :: proc(
-	rect: util.Rect,
+	rect: UI_Rect,
 	color: Color,
 	sprite: render.Sprite_Handle,
 	draw_list: ^Draw_List, 
@@ -292,7 +288,7 @@ textured_rect :: proc(
 
 ui_element :: proc(
 	ctx: ^UI_Context,
-	rect: util.Rect,
+	rect: UI_Rect,
 	interactions: Interactions,
 	location := #caller_location,
 	additional_element_index: i32 = 0,
@@ -353,27 +349,28 @@ ui_element :: proc(
 	return;
 }
 
-use_rect_in_layout :: proc(ctx: ^UI_Context, rect: util.Rect)
+use_rect_in_layout :: proc(using ctx: ^UI_Context, rect: UI_Rect)
 {
-	layout := current_layout(ctx);
-	if layout.used_rect.size.x == 0 || layout.used_rect.size.y == 0
+	for content_size_fitter in &content_size_fitters
 	{
-		layout.used_rect = rect;
-	}
-	else
-	{
-		layout.used_rect = join_rects(layout.used_rect, rect);
+		if content_size_fitter.rect.size.x == 0 || content_size_fitter.rect.size.y == 0
+		{
+			content_size_fitter.rect = rect;
+		}
+		else
+		{
+			content_size_fitter.rect = join_rects(content_size_fitter.rect, rect);
+		}
 	}
 }
 
 element_draw_themed_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, theme: ^Rect_Theme)
 {
-	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	padding_sum := UI_Vec{anchor.right + anchor.left, anchor.bottom + anchor.top};
 	rect := UI_Rect{
-		pos = linalg.to_i32(ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top}),
-		size = linalg.to_i32(ctx.current_element.size * (anchor.max - anchor.min) - padding_sum),
+		pos = ctx.current_element.pos + scale_ui_vec(ctx.current_element.size, anchor.min) + UI_Vec{anchor.left, anchor.top},
+		size = scale_ui_vec(ctx.current_element.size, (anchor.max - anchor.min)) - padding_sum,
 	};
-	log.info(theme^);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = rect,
 		theme = theme^,
@@ -382,10 +379,10 @@ element_draw_themed_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padd
 
 element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32 = 0)
 {
-	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	padding_sum := UI_Vec{anchor.right + anchor.left, anchor.bottom + anchor.top};
 	rect := UI_Rect{
-		pos = linalg.to_i32(ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top}),
-		size = linalg.to_i32(ctx.current_element.size * (anchor.max - anchor.min) - padding_sum),
+		pos = ctx.current_element.pos + scale_ui_vec(ctx.current_element.size, anchor.min) + UI_Vec{anchor.left, anchor.top},
+		size = scale_ui_vec(ctx.current_element.size, anchor.max - anchor.min) - padding_sum,
 	};
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = rect,
@@ -407,10 +404,10 @@ element_draw_textured_rect :: proc(
 	ctx: ^UI_Context,
 )
 {
-	padding_sum := [2]f32{anchor.right + anchor.left, anchor.bottom + anchor.top};
-	rect := util.Rect{
-		pos = ctx.current_element.pos + anchor.min * ctx.current_element.size + [2]f32{anchor.left, anchor.top},
-		size = ctx.current_element.size * (anchor.max - anchor.min) - padding_sum,
+	padding_sum := UI_Vec{anchor.right + anchor.left, anchor.bottom + anchor.top};
+	rect := UI_Rect{
+		pos = ctx.current_element.pos + scale_ui_vec(ctx.current_element.size, anchor.min) + UI_Vec{anchor.left, anchor.top},
+		size = scale_ui_vec(ctx.current_element.size, anchor.max - anchor.min) - padding_sum,
 	};
 	sprite_data: ^render.Sprite = container.handle_get(sprite);
 	texture_handle := sprite_data.texture;
@@ -425,7 +422,7 @@ element_draw_textured_rect :: proc(
 text :: proc(
 	text: string,
 	color: Color,
-	pos: [2]f32,
+	pos: UI_Vec,
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
@@ -435,7 +432,7 @@ text :: proc(
 	{
 		glyph, glyph_found := font.glyphs[char]; 
 		assert(glyph_found);
-		rect := UI_Rect{ pos = linalg.to_i32(pos_cursor + glyph.bearing), size = linalg.to_i32(glyph.size) };
+		rect := UI_Rect{ pos = pos_cursor + glyph.bearing, size = glyph.size };
 		//textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
 
 		glyph_sprite := container.handle_get(glyph.sprite);
@@ -456,14 +453,14 @@ text :: proc(
 multiline_text :: proc(
 	str: string,
 	color: Color,
-	pos: [2]f32,
+	pos: UI_Vec,
 	line_size: int,
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
 	for substring, index in render.split_text_for_render(font, str, line_size)
 	{
-		text(substring, color, pos + [2]f32{0, f32(font.line_height) * f32(index)}, font, ctx);
+		text(substring, color, pos + UI_Vec{0, int(font.line_height * f32(index))}, font, ctx);
 	}
 }
 
@@ -474,7 +471,7 @@ element_draw_text :: proc(
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
-	pos_cursor := ctx.current_element.pos + padding.top_left + [2]f32{0, font.line_height};
+	pos_cursor := ctx.current_element.pos + padding.top_left + UI_Vec{0, int(font.line_height)};
 	line_size := int(ctx.current_element.pos.x + ctx.current_element.size.x - pos_cursor.x - padding.bottom_right.x);
 	multiline_text(text, color, pos_cursor, line_size, font, ctx);
 }
@@ -494,13 +491,13 @@ layout_draw_used_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ct
 }
 
 // TODO : utility functions to get an anchored / padded sub rect ?
-layout_get_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding) -> util.Rect
+layout_get_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding) -> UI_Rect
 {
 	layout := current_layout(ctx);
 	return {pos = layout.pos, size = layout.size};
 }
 
-layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32)
+layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: int)
 {
 	layout := current_layout(ctx);
 	draw_cmd := Rect_Draw_Command{
@@ -515,7 +512,7 @@ layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, col
 
 	layout_rect := layout_get_rect(ctx, anchor, padding);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command {
-		rect = UI_Rect{pos = linalg.to_i32(layout.pos), size = linalg.to_i32(layout.size)},
+		rect = UI_Rect{pos = layout.pos, size = layout.size},
 		uv_clip = {{0, 0}, {1, 1}},
 		theme = {
 			fill_color = color,
@@ -528,7 +525,7 @@ layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, col
 default_anchor :: Anchor{{0, 0}, {1, 1}, 0, 0, 0, 0};
 
 drag_box :: proc(
-	rect: util.Rect,
+	rect: UI_Rect,
 	drag_state: ^Drag_State,
 
 	ui_ctx: ^UI_Context,
@@ -545,17 +542,17 @@ drag_box :: proc(
 	return false;
 }
 
-allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
+allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]int) -> UI_Rect
 {
 	layout := current_layout(ui_ctx);
-	result := util.Rect{layout.pos + layout.padding.top_left + layout.cursor * layout.direction, size};
+	result := UI_Rect{layout.pos + layout.direction * layout.cursor, size};
 	if layout.direction.x < 0
 	{
-		result.pos.x = layout.pos.x + layout.size.x - layout.padding.bottom_right.x - layout.cursor - size.x;
+		result.pos.x = layout.pos.x + layout.size.x - layout.cursor - size.x;
 	}
 	if layout.direction.y < 0
 	{
-		result.pos.y = layout.pos.y + layout.size.y - layout.padding.bottom_right.y - layout.cursor - size.y;
+		result.pos.y = layout.pos.y + layout.size.y - layout.cursor - size.y;
 	}
 	if size.x == 0
 	{
@@ -565,14 +562,14 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]f32) -> util.Rect
 	{
 		result.size.y = layout.size.y;
 	}
-	layout.cursor += linalg.vector_dot(result.size, linalg.to_f32(layout.direction));
+	layout.cursor += linalg.vector_dot(result.size, layout.direction);
 	use_rect_in_layout(ui_ctx, result);
 	return result;
 }
 
 button :: proc(
 	label: string,
-	size: [2]f32,
+	size: UI_Vec,
 
 	using ui_ctx: ^UI_Context,
 	location := #caller_location,
@@ -605,63 +602,52 @@ button :: proc(
 
 vsplit :: proc{
 	vsplit_layout_ratio,
-	vsplit_layout_sizes,
+	vsplit_layout_weights,
 };
 
-vsplit_layout_ratio :: proc(using ui_ctx: ^UI_Context, layout: Layout, split_ratio: f32, inner_padding: Padding) -> [2]Layout
+vsplit_layout_ratio :: proc(using ui_ctx: ^UI_Context, parent: UI_Rect, split_ratio: f32) -> [2]UI_Rect
 {
 	parent_layout := current_layout(ui_ctx)^;
-	left_split_width := parent_layout.size.x * split_ratio;
-	out_layouts: [2]Layout = {
+	left_split_width := int(f32(parent_layout.size.x) * split_ratio);
+	out_layouts: [2]UI_Rect= {
 		{
-			rect = util.Rect {
-				pos = parent_layout.pos,
-				size = [2]f32{left_split_width, parent_layout.size.y},
-			},
-			padding = inner_padding,
-			direction = [2]f32{0, 1},
+			pos = parent.pos,
+			size = [2]int{left_split_width, parent_layout.size.y},
 		},
 		{
-			rect = util.Rect {
-				pos = [2]f32 {parent_layout.pos. x + left_split_width, parent_layout.pos.y},
-				size = [2]f32{parent_layout.size.x - left_split_width, parent_layout.size.y},
-			},
-			padding = inner_padding,
-			direction = [2]f32{0, 1},
+			pos = [2]int{parent_layout.pos. x + left_split_width, parent_layout.pos.y},
+			size = [2]int{parent_layout.size.x - left_split_width, parent_layout.size.y},
 		},
 	};
 	return out_layouts;
 }
 
-vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, inner_padding: Padding, allocator := context.temp_allocator) -> []Layout
+vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, allocator := context.temp_allocator) -> []Layout
 {
 	parent_layout := current_layout(ui_ctx)^;
-	left_split_width := parent_layout.size.x * split_ratio;
 
-	result := make([]Layout, len(split_sizes));
+	result := make([]Layout, len(split_weights));
 
-	weights_sum := 0;
-	for(i in 0..<len(split_weights))
+	weights_sum: f32;
+	for i in 0..<len(split_weights)
 	{
 		weights_sum += split_weights[i];
 	}
 
-	for(i in 0..<len(split_sizes))
+	pos_cursor := parent_layout.pos;
+	for i in 0..<len(split_weights)
 	{
-		width := parent_layout.size.x * split_weights[i] / weights_sum;
+		width := int(f32(parent_layout.size.x) * split_weights[i] / weights_sum);
 		result[i] = Layout {
-			rect = util.Rect {
-				pos = parent_layout.pos,
-				size = [2]f32{width, parent_layout.size.y},
+			rect = UI_Rect {
+				pos = pos_cursor,
+				size = {width, parent_layout.size.y},
 			},
-			padding = inner_padding,
-			direction = [2]f32{0, 1},
+			direction = {0, 1},
 		};
+		pos_cursor.x += width;
 	}
-	out_layouts[1] = out_layouts[0];
-	out_layouts[0].size.x = left_split_width;
-	out_layouts[1].pos.x += left_split_width;
-	out_layouts[1].size.x = parent_layout.size.x * (1 - split_ratio);
+	return result;
 }
 
 round_corner_subdivisions :: 3;
@@ -669,12 +655,14 @@ round_corner_subdivisions :: 3;
 render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Render_System)
 {
 
-	push_rect_data :: proc(render_system: ^render.Sprite_Render_System, using rect: util.Rect, clip: util.Rect, color: render.Color)
+	push_rect_data :: proc(render_system: ^render.Sprite_Render_System, rect: UI_Rect, clip: UV_Rect, color: render.Color)
 	{
 		vertices: [dynamic]render.Sprite_Vertex_Data;
 		indices: [dynamic]u32;
 		quad_index_list := [?]u32{0, 1, 2, 0, 2, 3};
 		start_index := u32(len(vertices));
+		pos := linalg.to_f32(rect.pos);
+		size := linalg.to_f32(rect.size);
 		vertice: render.Sprite_Vertex_Data = {pos, clip.pos, color};
 		append(&vertices, vertice);
 		vertice.pos.x = pos.x + size.x;
@@ -695,16 +683,17 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 		clear(&indices);
 	}
 
-	push_corner_data :: proc(render_system: ^render.Sprite_Render_System, pos: [2]f32, dir: [2]f32, color: Color)
+	push_corner_data :: proc(render_system: ^render.Sprite_Render_System, pos: UI_Vec, dir: UI_Vec, color: Color)
 	{
 		vertices: [dynamic]render.Sprite_Vertex_Data;
 		indices: [dynamic]u32;
-		vertice: render.Sprite_Vertex_Data = {pos, {}, color};
+		f_pos := linalg.to_f32(pos);
+		vertice: render.Sprite_Vertex_Data = {f_pos, {}, color};
 		append(&vertices, vertice);
 		for i in 0..round_corner_subdivisions
 		{
 			angle := f32(i) / f32(round_corner_subdivisions) * math.PI / 2;
-			vertice.pos = pos + [2]f32{dir.x * math.cos(angle), dir.y * math.sin(angle)};
+			vertice.pos = f_pos + [2]f32{f32(dir.x) * math.cos(angle), f32(dir.y) * math.sin(angle)};
 			append(&vertices, vertice);
 		}
 		for i in 0..<round_corner_subdivisions
@@ -732,8 +721,8 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 					push_rect_data(
 						render_system, 
 						{
-							pos + [2]f32{0, corner_radius},
-							[2]f32{corner_radius, size.y - 2 * corner_radius},
+							pos + UI_Vec{0, corner_radius},
+							UI_Vec{corner_radius, size.y - 2 * corner_radius},
 						}, 
 						cmd_data.uv_rect, 
 						cmd_data.color,
@@ -741,8 +730,8 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 					push_rect_data(
 						render_system, 
 						{
-							pos + [2]f32{corner_radius, 0},
-							[2]f32{size.x - corner_radius * 2, size.y},
+							pos + UI_Vec{corner_radius, 0},
+							UI_Vec{size.x - corner_radius * 2, size.y},
 						}, 
 						uv_rect, 
 						cmd_data.color,
@@ -750,34 +739,34 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 					push_rect_data(
 						render_system, 
 						{
-							pos + [2]f32{size.x - corner_radius, corner_radius}, 
-							[2]f32{corner_radius, size.y - 2 * corner_radius},
+							pos + UI_Vec{size.x - corner_radius, corner_radius}, 
+							UI_Vec{corner_radius, size.y - 2 * corner_radius},
 						}, 
 						cmd_data.uv_rect, 
 						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
-						pos + [2]f32{corner_radius, corner_radius},
-						[2]f32{-corner_radius, -corner_radius},
+						pos + UI_Vec{corner_radius, corner_radius},
+						UI_Vec{-corner_radius, -corner_radius},
 						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
-						pos + [2]f32{cmd_data.size.x - corner_radius, corner_radius},
-						[2]f32{corner_radius, -corner_radius},
+						pos + UI_Vec{cmd_data.size.x - corner_radius, corner_radius},
+						UI_Vec{corner_radius, -corner_radius},
 						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
-						pos + [2]f32{corner_radius, cmd_data.size.y - corner_radius},
-						[2]f32{-corner_radius, corner_radius},
+						pos + UI_Vec{corner_radius, cmd_data.size.y - corner_radius},
+						UI_Vec{-corner_radius, corner_radius},
 						cmd_data.color,
 					);
 					push_corner_data(
 						render_system,
-						pos + cmd_data.size - [2]f32{corner_radius, corner_radius},
-						[2]f32{corner_radius, corner_radius},
+						pos + cmd_data.size - UI_Vec{corner_radius, corner_radius},
+						UI_Vec{corner_radius, corner_radius},
 						cmd_data.color,
 					);
 				}

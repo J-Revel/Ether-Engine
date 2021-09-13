@@ -7,8 +7,8 @@ struct Rect_Command
 	vec2 uv_pos, uv_size;
 	uint color;
 	uint border_color;
-	float border_thickness;
-	float corner_radius;
+	int border_thickness;
+	int corner_radius;
 	uvec2 texture_id;
 	int clip_index;
 };
@@ -32,7 +32,7 @@ layout(std430, binding=3) readonly buffer draw_commands
 
 layout(binding = 4) uniform uni 
 {
-	vec2 screen_size;
+	ivec2 screen_size;
 } Uniform;
 
 
@@ -49,7 +49,6 @@ out vec2 frag_uv;
 
 void main()
 {
-	vec2 pos;
 	int command_index = (gl_VertexID >> 16) % (1 << 16);
 	vec2 pos_ratio = vec2(((gl_VertexID % 2) > 0 ? 0 : 1), ((gl_VertexID / 2) % 2 > 0 ? 0 : 1));
 
@@ -57,7 +56,7 @@ void main()
 	Rect_Command rect_command = draw_command.rect_command;
 
 	Rect clip = clip_rects[rect_command.clip_index];
-	pos = rect_command.pos + rect_command.size * pos_ratio;
+	vec2 pos = rect_command.pos + rect_command.size * pos_ratio;
 	pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
 	pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
 	

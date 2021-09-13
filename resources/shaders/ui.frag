@@ -27,7 +27,7 @@ float rounded_rect_sdf(vec2 pos_from_center, vec2 half_rect_size, float corner_r
 
 layout(binding = 4) uniform uni 
 {
-	vec2 screen_size;
+	ivec2 screen_size;
 } Uniform;
 
 void main()

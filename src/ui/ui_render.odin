@@ -92,15 +92,15 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	return true;
 }
 
-reset_draw_list :: proc(using draw_list: ^Draw_Command_List, screen_size: [2]f32)
+reset_draw_list :: proc(using draw_list: ^Draw_Command_List, screen_size: [2]int)
 {
 	clips = {};
-	append(&clips, util.Rect{{0, 0}, screen_size});
+	append(&clips, UI_Rect{{0, 0}, screen_size});
 	clip_stack = {};
 	append(&clip_stack, 0);
 }
 
-push_clip :: proc(using draw_list: ^Draw_Command_List, clip_rect: util.Rect)
+push_clip :: proc(using draw_list: ^Draw_Command_List, clip_rect: UI_Rect)
 {
 	append(&clips, clip_rect);
 	new_clip_index := len(clip_stack);
@@ -116,11 +116,22 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 {
 	if rect_command_count >= len(commands)
 	{
-		append(&commands, Draw_Command_Data{});
+		append(&commands, GPU_Draw_Command_Data{});
 	}
 
+	gpu_rect_command: GPU_Rect_Command = {
+		rect = {
+			pos = linalg.to_i32(rect_command.rect.pos),
+			size = linalg.to_i32(rect_command.rect.size),
+		},
+		uv_clip = rect_command.uv_clip,
+		theme = rect_command.theme,
+		texture_id = rect_command.texture_id,
+	};
+	log.info(gpu_rect_command);
+
 	command_index: i32 = i32(rect_command_count);
-	commands[rect_command_count].rect = rect_command;
+	commands[rect_command_count].rect = gpu_rect_command;
 	commands[rect_command_count].clip_index = clip_stack[len(clip_stack) - 1];
 	append(&index, command_index * (1<<16) + 0);
 	append(&index, command_index * (1<<16) + 1);
@@ -138,8 +149,8 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 3, primitive_buffer);
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 4, ubo);
 
-	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, cast(int) len(draw_list.clips) * size_of(util.Rect), &draw_list.clips[0]);
-	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 256 * size_of(util.Rect), cast(int) len(draw_list.commands) * size_of(Draw_Command_Data), &draw_list.commands[0]);
+	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, int(len(draw_list.clips)) * size_of(util.Rect), &draw_list.clips[0]);
+	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 256 * size_of(util.Rect), int(len(draw_list.commands)) * size_of(GPU_Draw_Command_Data), &draw_list.commands[0]);
 	if len(draw_list.index) > 0
 	{
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.element_buffer);
@@ -147,7 +158,7 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	}
 
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo);
-	ubo_data := Ubo_Data{linalg.to_f32(viewport.size), {}};
+	ubo_data := Ubo_Data{viewport.size, {}};
 	gl.BufferSubData(gl.UNIFORM_BUFFER, 0, cast(int)size_of(Ubo_Data), &ubo_data);
 
 	gl.BindVertexArray(0);
