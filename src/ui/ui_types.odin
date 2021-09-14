@@ -40,18 +40,16 @@ Rect_Command :: struct
 	texture_id: u64,
 }
 
-GPU_Rect :: struct
-{
-	pos: [2]i32,
-	size: [2]i32,
-}
-
 GPU_Rect_Command :: struct
 {
-	rect: GPU_Rect,
-	uv_clip: util.Rect,
-	using theme: Rect_Theme,
+	pos, size : [2]i32,
+	uv_pos, uv_size : [2]f32,
+	color: u32,
+	border_color: u32,
+	border_thickness: i32,
+	corner_radius: i32,
 	texture_id: u64,
+	clip_index: i32,
 }
 
 Draw_Command_Data :: struct
@@ -60,15 +58,9 @@ Draw_Command_Data :: struct
 	clip_index: int,
 }
 
-GPU_Draw_Command_Data :: struct
-{
-	rect: GPU_Rect_Command,
-	clip_index: int,
-}
-
 Draw_Command_List :: struct
 {
-	commands: [dynamic]GPU_Draw_Command_Data,
+	commands: [dynamic]GPU_Rect_Command,
 	index: [dynamic]i32,
 	rect_command_count: int,
 	clips: [dynamic]UI_Rect,
@@ -77,7 +69,7 @@ Draw_Command_List :: struct
 
 Ubo_Data :: struct
 {
-	screen_size: UI_Vec,
+	screen_size: [2]i32,
 	padding: [2]f32,
 };
 

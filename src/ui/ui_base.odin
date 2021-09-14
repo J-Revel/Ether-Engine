@@ -187,10 +187,11 @@ scale_ui_vec_scal :: proc(v: UI_Vec, scale: f32) -> (result: UI_Vec)
 	return;
 }
 
-scale_ui_vec :: proc {
+scale_ui_vec :: proc
+{
 	scale_ui_vec_scal,
 	scale_ui_vec_2f,
-}
+};
 
 push_layout :: proc(using ui_ctx: ^UI_Context, layout: Layout)
 {

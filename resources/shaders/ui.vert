@@ -11,6 +11,7 @@ struct Rect_Command
 	int corner_radius;
 	uvec2 texture_id;
 	int clip_index;
+	int padding;
 };
 
 struct Draw_Command
@@ -57,8 +58,8 @@ void main()
 
 	Rect clip = clip_rects[rect_command.clip_index];
 	vec2 pos = rect_command.pos + rect_command.size * pos_ratio;
-	pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
-	pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
+	//pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
+	//pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
 	
 	pos_ratio = (pos - rect_command.pos) / rect_command.size;
 
