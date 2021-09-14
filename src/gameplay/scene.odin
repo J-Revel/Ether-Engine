@@ -163,7 +163,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
 
 	
-	ui.layout_draw_rect(&ui_ctx, {}, {}, render.rgb(128, 255, 128), 20);
+	//ui.layout_draw_rect(&ui_ctx, {}, {}, render.rgb(128, 255, 128), 20);
 	if ui.window(&ui_ctx, &window_state, 40)
 	{
 		//log.info(container.handle_get(rune_sprites['a']));
@@ -197,7 +197,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		}
 		ui.window_end(&ui_ctx, &window_state);
 	}
-	ui.pop_layout(&ui_ctx);
+	//ui.pop_layout(&ui_ctx);
 }
 
 do_render :: proc(using scene: ^Scene, viewport: render.Viewport)

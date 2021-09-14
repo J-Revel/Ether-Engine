@@ -131,7 +131,6 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 		texture_id = rect_command.texture_id,
 		clip_index = i32(clip_stack[len(clip_stack) - 1]),
 	};
-	log.info(gpu_rect_command);
 
 	command_index: i32 = i32(rect_command_count);
 	commands[rect_command_count] = gpu_rect_command;

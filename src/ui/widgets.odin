@@ -106,6 +106,7 @@ v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, width: int = 0, l
 {
 	parent_layout := current_layout(ctx)^;
 	widget_rect := allocate_element_space(ctx, {width, 0});
+	log.info(widget_rect);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = widget_rect,
 		theme = {
@@ -156,18 +157,27 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		direction = {-1, 0},
 	};
 
-	// Close button layout
 	push_layout(ctx, header_layout);
+	layout_draw_rect(ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);
+	if(button("close button", {header_height, header_height}, ctx))
+	{
 
-	// Main Header Layout
-	header_layout.direction.x = 1;
+	}
 	pop_layout(ctx);
+	header_layout.direction.x = 1;
 	push_layout(ctx, header_layout);
-
+	if button("fold button", {header_height, header_height}, ctx)
+	{
+		state.folded = !state.folded;
+	}
 	draw_content = !state.folded;
 
+	header_outline_rect := current_layout(ctx).rect;
+	header_outline_rect.pos -= {1, 1};
+	header_outline_rect.size += {2, 2};
+	// Close button
+	pop_layout(ctx);
 	theme := current_theme.window;
-
 	if draw_content
 	{
 		// Body Layout
@@ -194,25 +204,8 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 			v_slider(ctx, &scroll, 0, 1, 0, location, 1);
 			pop_layout(ctx);
 		}
-		pop_layout(ctx);
 	}
 
-	layout_draw_rect(ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);
-	header_outline_rect := current_layout(ctx).rect;
-	header_outline_rect.pos -= {1, 1};
-	header_outline_rect.size += {2, 2};
-	// Close button
-	if drag_box(UI_Rect{rect.pos, header_size}, &drag_state, ctx)
-	{
-		rect.pos += drag_state.drag_offset;
-		drag_state.drag_offset = {0, 0};
-	}
-	button("close button", {header_height, header_height}, ctx); 
-	//next_layout(ctx);
-	if button("fold button", {header_height, header_height}, ctx)
-	{
-		state.folded = !state.folded;
-	}
 	//next_layout(ctx);
 	if draw_content
 	{
@@ -229,16 +222,30 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 				border_thickness = 0,
 			},
 		});
-		rect_border(&ctx.draw_list, scroll_content_rect, render.rgba(255, 255, 255, 100), 1);
+		push_layout(ctx, Layout{
+			rect =	scroll_content_rect,
+			direction = {0, 1},
+		});
+		add_content_size_fitter(ctx);
+		//rect_border(&ctx.draw_list, scroll_content_rect, render.rgba(255, 255, 255, 100), 1);
 		//log.info(scroll_content_rect);
 	}
-	rect_border(&ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
+	// Handle drags at the end to keep a consistent rect.pos through the rendering of the window
+	if drag_box(UI_Rect{rect.pos, header_size}, &drag_state, ctx)
+	{
+		rect.pos += drag_state.drag_offset;
+		drag_state.drag_offset = {0, 0};
+	}
+	//rect_border(&ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
 	return;
 }
 
 window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 {
 	pop_clip(&ctx.ui_draw_list);
+	layout := pop_layout(ctx);
+	
 	// TODO : handle content height computation
-	//state.last_frame_height = current_layout(ctx).used_rect.size.y;
+	state.last_frame_height = layout.size.y;
+	log.info(layout.size.y);
 }

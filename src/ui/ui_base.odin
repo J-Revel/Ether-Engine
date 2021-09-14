@@ -198,6 +198,11 @@ push_layout :: proc(using ui_ctx: ^UI_Context, layout: Layout)
 	append(&layout_stack, layout);
 }
 
+replace_layout :: proc(using ui_ctx: ^UI_Context, layout: Layout)
+{
+	layout_stack[len(layout_stack)-1] = layout;
+}
+
 apply_anchor_padding :: proc(rect: UI_Rect, anchor: Anchor, padding: Padding) -> (result: UI_Rect)
 {
 	result.pos = rect.pos + scale_ui_vec(rect.size, anchor.min) + padding.top_left;
@@ -205,7 +210,15 @@ apply_anchor_padding :: proc(rect: UI_Rect, anchor: Anchor, padding: Padding) ->
 	return result;
 }
 
-pop_layout :: proc(using ui_ctx: ^UI_Context)
+add_content_size_fitter :: proc(using ui_ctx: ^UI_Context)
+{
+	append(&content_size_fitters, Content_Size_Fitter{
+		rect = {},
+		layout_index_in_stack = len(layout_stack)-1,
+	});
+}
+
+pop_layout :: proc(using ui_ctx: ^UI_Context) -> Layout
 {
 	layout_index := len(layout_stack)-1;
 	current_layout := pop(&layout_stack);
@@ -227,6 +240,7 @@ pop_layout :: proc(using ui_ctx: ^UI_Context)
 	{
 		content_size_fitter.rect = join_rects(content_size_fitter.rect, current_layout.rect);
 	}
+	return current_layout;
 }
 
 current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
