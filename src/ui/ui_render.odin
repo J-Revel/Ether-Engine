@@ -131,6 +131,14 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 		texture_id = rect_command.texture_id,
 		clip_index = i32(clip_stack[len(clip_stack) - 1]),
 	};
+	switch radius in theme.corner_radius
+	{
+		case f32:
+			gpu_rect_command.corner_radius = i32(f32(rect.size.y) * radius);
+			break;
+		case int:
+			gpu_rect_command.corner_radius = i32(radius);
+	}
 
 	command_index: i32 = i32(rect_command_count);
 	commands[rect_command_count] = gpu_rect_command;
@@ -150,7 +158,16 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	gl.BindBufferBase(gl.SHADER_STORAGE_BUFFER, 3, primitive_buffer);
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 4, ubo);
 
-	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, int(len(draw_list.clips)) * size_of(util.Rect), &draw_list.clips[0]);
+	gpu_clips := make([]GPU_Rect, len(draw_list.clips), context.temp_allocator);
+	for clip, i in draw_list.clips
+	{
+		gpu_clips[i] = GPU_Rect {
+			pos = linalg.to_i32(clip.pos),
+			size = linalg.to_i32(clip.size),
+		};
+	}
+		
+	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, int(len(draw_list.clips)) * size_of(GPU_Rect), &gpu_clips[0]);
 	gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 256 * size_of(util.Rect), int(len(draw_list.commands)) * size_of(GPU_Rect_Command), &draw_list.commands[0]);
 	if len(draw_list.index) > 0
 	{

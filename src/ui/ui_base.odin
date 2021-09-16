@@ -66,28 +66,28 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 
 	ui_ctx.current_theme = {
 		window = {
-			fill_color = render.rgb(100, 100, 100),
+			header_color= render.rgb_hex("#3f0071"),
+			background_color = render.rgb_hex("282a2e"),
 		},
 		button = {
 			default_theme = {
-				fill_color = render.rgb(255, 255, 0),
+				fill_color = render.rgb(255, 5, 0),
 				border_color = render.rgb(0, 0, 0),
-				border_thickness = 2,
-				corner_radius = 1,
+				border_thickness = 1,
+				corner_radius = 0.5,
 			},
 			hovered_theme = {
 				fill_color = render.rgb(0, 255, 0),
 				border_color = render.rgb(0, 0, 0),
 				border_thickness = 5,
-				corner_radius = 1,
+				corner_radius = 50,
 			},
 			clicked_theme = {
 				fill_color = render.rgb(255, 255, 255),
 				border_color = render.rgb(0, 0, 0),
 				border_thickness = 1,
-				corner_radius = 1,
+				corner_radius = 50,
 			},
-			corner_radius_unit = Unit.Ratio,
 		},
 	};
 	log.info(ui_ctx.current_theme);
@@ -317,10 +317,16 @@ ui_element :: proc(
 	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_element_index, size_of(i32));
 	element_id:= UI_ID(hash.djb2(to_hash));
 	ctx.current_element = UI_Element{rect, element_id};
+	clip_index := ctx.ui_draw_list.clip_stack[len(ctx.ui_draw_list.clip_stack) - 1];
+	clip_rect := ctx.ui_draw_list.clips[clip_index];
 	mouse_over :=  ctx.input_state.cursor_pos.x > rect.pos.x 			\
 			&& ctx.input_state.cursor_pos.y > rect.pos.y 				\
 			&& ctx.input_state.cursor_pos.x < rect.pos.x + rect.size.x	\
-			&& ctx.input_state.cursor_pos.y < rect.pos.y + rect.size.y;
+			&& ctx.input_state.cursor_pos.y < rect.pos.y + rect.size.y  \
+			&& ctx.input_state.cursor_pos.x > clip_rect.pos.x			\
+			&& ctx.input_state.cursor_pos.y > clip_rect.pos.y			\
+			&& ctx.input_state.cursor_pos.x < clip_rect.pos.x + clip_rect.size.x \
+			&& ctx.input_state.cursor_pos.y < clip_rect.pos.y + clip_rect.size.y;
 	
 	available_interactions: Interactions;
 	switch ctx.input_state.cursor_state
@@ -609,7 +615,6 @@ button :: proc(
 	{
 		used_theme = default_theme;
 	}
-	if(corner_radius_unit == Unit.Ratio) do used_theme.corner_radius *= allocated_space.size.y / 2;
 	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
 	
 	return Interaction_Type.Click in element_state;

@@ -58,6 +58,32 @@ rgb :: proc(r: u8, g: u8, b: u8) -> Color
 	return 0x000000ff + 0x00000100 * Color(b) + 0x00010000 * Color(g) + 0x01000000 * Color(r);
 }
 
+hex_char_to_u8 :: proc(c: u8) -> u8
+{
+	int_value := u8(c - '0');
+	lower_char_value := u8(c - 'a');
+	upper_char_value := u8(c - 'A');
+	if int_value >= 0 && int_value < 10 do return int_value;
+	if lower_char_value >= 0 && lower_char_value < 6 do return lower_char_value + 10;
+	if upper_char_value >= 0 && upper_char_value < 6 do return upper_char_value + 10;
+	return 0;
+}
+
+rgb_hex :: proc(hex: string) -> Color
+{
+	parsed_hex := hex;
+	if len(hex) == 7 && hex[0] == '#' do parsed_hex= hex[1:];
+	if len(parsed_hex) == 6
+	{
+		r, g, b: u8;
+		r = hex_char_to_u8(parsed_hex[0]) << 4 + hex_char_to_u8(parsed_hex[1]);
+		g = hex_char_to_u8(parsed_hex[2]) << 4 + hex_char_to_u8(parsed_hex[3]);
+		b = hex_char_to_u8(parsed_hex[4]) << 4 + hex_char_to_u8(parsed_hex[5]);
+		return rgb(r, g, b);
+	}
+	return rgb(0, 0, 0);
+}
+
 init_color_renderer :: proc (result: ^Render_State) -> bool
 {
     vertexShader := gl.CreateShader(gl.VERTEX_SHADER);

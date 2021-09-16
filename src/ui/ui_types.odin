@@ -52,6 +52,11 @@ GPU_Rect_Command :: struct
 	clip_index: i32,
 }
 
+GPU_Rect :: struct
+{
+	pos, size : [2]i32,
+}
+
 Draw_Command_Data :: struct
 {
 	rect: Rect_Command,
@@ -236,27 +241,31 @@ Unit :: enum
 	Ratio,
 }
 
+Corner_Radius :: union
+{
+	int,
+	f32,
+}
+
 Rect_Theme :: struct
 {
 	fill_color: Color,
 	border_color: Color,
 	border_thickness: int,
-	corner_radius: int,
+	corner_radius: Corner_Radius,
 }
-
 
 Button_Theme :: struct
 {
 	default_theme: Rect_Theme,
 	hovered_theme: Rect_Theme,
 	clicked_theme: Rect_Theme,
-	round_ratio: f32, // 0 = rect, 1 = round
-	corner_radius_unit: Unit,
 }
 
 Window_Theme :: struct
 {
-	fill_color: Color,
+	header_color: Color,
+	background_color: Color,
 }
 
 UI_Theme :: struct

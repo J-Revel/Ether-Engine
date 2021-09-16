@@ -21,8 +21,8 @@ struct Draw_Command
 
 struct Rect
 {
-	vec2 pos;
-	vec2 size;
+	ivec2 pos;
+	ivec2 size;
 };
 
 layout(std430, binding=3) readonly buffer draw_commands
@@ -58,8 +58,8 @@ void main()
 
 	Rect clip = clip_rects[rect_command.clip_index];
 	vec2 pos = rect_command.pos + rect_command.size * pos_ratio;
-	//pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
-	//pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
+	pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
+	pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
 	
 	pos_ratio = (pos - rect_command.pos) / rect_command.size;
 

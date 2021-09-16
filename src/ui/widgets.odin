@@ -102,10 +102,10 @@ h_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #call
 	});
 }
 
-v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, width: int = 0, location := #caller_location, additional_location_index: int = 0)
+v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, cursor_height: int, location := #caller_location, additional_location_index: int = 0)
 {
 	parent_layout := current_layout(ctx)^;
-	widget_rect := allocate_element_space(ctx, {width, 0});
+	widget_rect := allocate_element_space(ctx, {0, 0});
 	log.info(widget_rect);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = widget_rect,
@@ -116,16 +116,15 @@ v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, width: int = 0, l
 		},
 	});
 	value_ratio := f32(value^ - min) / f32(max - min);
-	cursor_size : int = 20;
 	cursor_rect := UI_Rect {
-		pos = widget_rect.pos + UI_Vec{0, cursor_size / 2 + int(f32(widget_rect.size.y - cursor_size) * value_ratio) - cursor_size / 2},
-		size = UI_Vec{widget_rect.size.x, cursor_size},
+		pos = widget_rect.pos + UI_Vec{0, cursor_height / 2 + int(f32(widget_rect.size.y - cursor_height) * value_ratio) - cursor_height/ 2},
+		size = UI_Vec{widget_rect.size.x, cursor_height},
 	};
 	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Drag}, location, 0);
 	cursor_color: Color = render.rgb(200, 200, 200);
 	if Interaction_Type.Drag in cursor_state
 	{
-		new_ratio := f32(ctx.input_state.cursor_pos.y - widget_rect.pos.y - cursor_size / 2) / f32(widget_rect.size.y - cursor_size);
+		new_ratio := f32(ctx.input_state.cursor_pos.y - widget_rect.pos.y - cursor_height/ 2) / f32(widget_rect.size.y - cursor_height);
 		if new_ratio < 0 do new_ratio = 0;
 		if new_ratio > 1 do new_ratio = 1;
 		value^ = min + T(f32(max - min) * new_ratio);
@@ -156,9 +155,10 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		},
 		direction = {-1, 0},
 	};
+	theme := current_theme.window;
 
 	push_layout(ctx, header_layout);
-	layout_draw_rect(ctx, {}, {}, render.rgba(128, 128 ,128, 80), 0);
+	layout_draw_rect(ctx, {}, {}, theme.header_color, 0);
 	if(button("close button", {header_height, header_height}, ctx))
 	{
 
@@ -175,9 +175,14 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 	header_outline_rect := current_layout(ctx).rect;
 	header_outline_rect.pos -= {1, 1};
 	header_outline_rect.size += {2, 2};
+	drag_offset: [2]int;
+	if drag_box(UI_Rect{rect.pos, header_size}, &drag_state, ctx)
+	{
+		drag_offset = drag_state.drag_offset;
+		drag_state.drag_offset = {0, 0};
+	}
 	// Close button
 	pop_layout(ctx);
-	theme := current_theme.window;
 	if draw_content
 	{
 		// Body Layout
@@ -193,15 +198,16 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 
 		if last_frame_height != 0
 		{
+			view_height:= rect.size.y - header_height;
 			scrollbar_layout := Layout {
 				rect = UI_Rect {
 					pos = rect.pos + UI_Vec{body_layout.rect.size.x, header_height},
-					size = UI_Vec{scrollbar_width, rect.size.y - header_height},
+					size = UI_Vec{scrollbar_width, view_height},
 				},
 				direction = {0, 1},
 			};
 			push_layout(ctx, scrollbar_layout);
-			v_slider(ctx, &scroll, 0, 1, 0, location, 1);
+			v_slider(ctx, &scroll, 0, last_frame_height - view_height, view_height * view_height / last_frame_height, location, 1);
 			pop_layout(ctx);
 		}
 	}
@@ -210,33 +216,21 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 	if draw_content
 	{
 		push_clip(&ctx.ui_draw_list, layout_get_rect(ctx, {}, {}));
-		layout_draw_rect(ctx, {}, {}, theme.fill_color, 0);
+		layout_draw_rect(ctx, {}, {}, theme.background_color, 0);
 		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
 		scroll_content_rect := current_layout(ctx).rect;
 		scroll_content_rect.size.y = state.last_frame_height;
-		add_rect_command(&ctx.ui_draw_list, Rect_Command{
-			rect = {pos = scroll_content_rect.pos, size = scroll_content_rect.size/2},
-			theme = {
-				fill_color = render.rgba(255, 255, 255, 100),
-				corner_radius = 5,
-				border_thickness = 0,
-			},
-		});
-		push_layout(ctx, Layout{
+		content_layout := Layout{
 			rect =	scroll_content_rect,
 			direction = {0, 1},
-		});
+		};
+		content_layout.pos += UI_Vec{0, -scroll};
+		push_layout(ctx, content_layout);
 		add_content_size_fitter(ctx);
-		//rect_border(&ctx.draw_list, scroll_content_rect, render.rgba(255, 255, 255, 100), 1);
-		//log.info(scroll_content_rect);
 	}
-	// Handle drags at the end to keep a consistent rect.pos through the rendering of the window
-	if drag_box(UI_Rect{rect.pos, header_size}, &drag_state, ctx)
-	{
-		rect.pos += drag_state.drag_offset;
-		drag_state.drag_offset = {0, 0};
-	}
+	// Handle drag effects at the end to keep a consistent rect.pos through the rendering of the window
 	//rect_border(&ctx.draw_list, header_outline_rect, render.rgb(0, 0, 0), 1);
+	rect.pos += drag_offset;
 	return;
 }
 
