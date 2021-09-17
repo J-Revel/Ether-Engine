@@ -235,10 +235,26 @@ UI_Render_System :: struct
     current_texture: render.Texture_Handle,
 }
 
+Color_Picker_Mode :: enum
+{
+	rgb,
+}
+
+Color_Picker_State :: struct
+{
+	mode: Color_Picker_Mode,
+}
+
 Unit :: enum
 {
 	Pixels,
 	Ratio,
+}
+
+Slider_Direction :: enum
+{
+	Vertical,
+	Horizontal,
 }
 
 Corner_Radius :: union
@@ -268,8 +284,17 @@ Window_Theme :: struct
 	background_color: Color,
 }
 
+Slider_Theme :: struct
+{
+	background_theme: Rect_Theme,
+	foreground_theme: Button_Theme,
+}
+
 UI_Theme :: struct
 {
 	button: Button_Theme,
 	window: Window_Theme,
+	slider: Slider_Theme,
 }
+
+

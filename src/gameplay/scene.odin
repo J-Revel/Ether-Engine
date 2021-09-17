@@ -174,7 +174,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state));
 		drag_cache: ui.Drag_State;
 		ui.drag_int(&ui_ctx, &test_value);
-		ui.h_slider(&ui_ctx, &test_value, 0, 1000);
+		ui.slider(&ui_ctx, &test_value, 0, 1000, 20, int(ui_ctx.editor_config.line_height), ui.Slider_Direction.Horizontal);
 		if ui.button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

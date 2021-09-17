@@ -48,6 +48,15 @@ void main()
 INDEX_BUFFER_SIZE :: 50000;
 VERTEX_BUFFER_SIZE :: 20000;
 
+extract_rgba :: proc(color: Color) -> (r: u8, g: u8, b: u8, a: u8)
+{
+	r = u8((color & 0xff000000) / 0x01000000);
+	g = u8((color & 0x00ff0000) / 0x00010000);
+	b = u8((color & 0x0000ff00) / 0x00000100);
+	a = u8(color & 0x000000ff);
+	return;
+}
+
 rgba :: proc(r: u8, g: u8, b: u8, a: u8) -> Color
 {
 	return 0x00000001 * Color(a) + 0x00000100 * Color(b) + 0x00010000 * Color(g) + 0x01000000 * Color(r);

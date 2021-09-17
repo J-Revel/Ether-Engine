@@ -59,90 +59,59 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, location := #caller_location, ad
 	pop_layout(ctx);
 }
 
-h_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, location := #caller_location, additional_location_index: i32 = 0)
+slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, cursor_size: int, thickness: int, direction: Slider_Direction, location := #caller_location, additional_location_index: i32 = 0) -> (value_changed: bool)
 {
-	parent_layout := current_layout(ctx)^;
-	widget_rect := allocate_element_space(ctx, {0, int(ctx.editor_config.line_height)});
-	add_rect_command(&ctx.ui_draw_list, Rect_Command{
-		rect = widget_rect,
-		theme = {
-			fill_color = render.rgb(255, 255, 255),
-			corner_radius = 5,
-			border_thickness = 0,
-		},
-	});
-	value_ratio := f32(value^ - min) / f32(max - min);
-	cursor_size : int= 20;
-	cursor_rect := UI_Rect {
-		pos = widget_rect.pos + UI_Vec{cursor_size / 2 + int(f32(widget_rect.size.x - cursor_size) * value_ratio) - cursor_size / 2, 0},
-		size = UI_Vec{cursor_size, widget_rect.size.y},
-	};
-	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Drag}, location, 0);
-	cursor_color: Color = render.rgb(200, 200, 200);
-	if Interaction_Type.Drag in cursor_state
+	direction_vec: [2]int;
+	tangent_vec: [2]int;
+	switch direction
 	{
-		new_ratio := f32(ctx.input_state.cursor_pos.x - widget_rect.pos.x - cursor_size / 2) / f32(widget_rect.size.x - cursor_size);
-		if new_ratio < 0 do new_ratio = 0;
-		if new_ratio > 1 do new_ratio = 1;
-		value^ = min + T(f32(max - min) * new_ratio);
-		cursor_color = render.rgb(150, 150, 150);
+		case .Vertical:
+			direction_vec.y = 1;
+			tangent_vec.x = 1;
+		case .Horizontal:
+			direction_vec.x = 1;
+			tangent_vec.y = 1;
 	}
-	else if Interaction_Type.Hover in cursor_state
-	{
-		cursor_color = render.rgb(170, 170, 170);
-	}
-	add_rect_command(&ctx.ui_draw_list, Rect_Command{
-		rect = cursor_rect,
-		theme = {
-			fill_color = cursor_color,
-			corner_radius = 5,
-			border_thickness = 1,
-			border_color = render.rgb(128, 128, 128),
-		},
-	});
-}
 
-v_slider :: proc(ctx: ^UI_Context, value: ^$T, min: T, max: T, cursor_height: int, location := #caller_location, additional_location_index: int = 0)
-{
 	parent_layout := current_layout(ctx)^;
-	widget_rect := allocate_element_space(ctx, {0, 0});
-	log.info(widget_rect);
+	widget_rect := allocate_element_space(ctx, tangent_vec * thickness);
+	theme := ctx.current_theme.slider;
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = widget_rect,
-		theme = {
-			fill_color = render.rgb(255, 255, 255),
-			corner_radius = 5,
-			border_thickness = 0,
-		},
+		theme = theme.background_theme,
 	});
 	value_ratio := f32(value^ - min) / f32(max - min);
+
+	max_cursor_pos: int = linalg.vector_dot(widget_rect.size, direction_vec); 
 	cursor_rect := UI_Rect {
-		pos = widget_rect.pos + UI_Vec{0, cursor_height / 2 + int(f32(widget_rect.size.y - cursor_height) * value_ratio) - cursor_height/ 2},
-		size = UI_Vec{widget_rect.size.x, cursor_height},
+		pos = widget_rect.pos + direction_vec * (cursor_size / 2 + int(f32(max_cursor_pos - cursor_size) * value_ratio) - cursor_size / 2),
+		size = cursor_size * direction_vec + widget_rect.size * tangent_vec,
 	};
 	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Drag}, location, 0);
-	cursor_color: Color = render.rgb(200, 200, 200);
+	cursor_theme : Rect_Theme = theme.foreground_theme.default_theme;
 	if Interaction_Type.Drag in cursor_state
 	{
-		new_ratio := f32(ctx.input_state.cursor_pos.y - widget_rect.pos.y - cursor_height/ 2) / f32(widget_rect.size.y - cursor_height);
+		cursor_relative_pos := linalg.vector_dot(ctx.input_state.cursor_pos - widget_rect.pos, direction_vec) - cursor_size / 2;
+		new_ratio := f32(cursor_relative_pos) / f32(max_cursor_pos - cursor_size);
 		if new_ratio < 0 do new_ratio = 0;
 		if new_ratio > 1 do new_ratio = 1;
-		value^ = min + T(f32(max - min) * new_ratio);
-		cursor_color = render.rgb(150, 150, 150);
+		new_value := min + T(f32(max - min) * new_ratio);
+		if new_value != value^
+		{
+			value^ = new_value;
+			value_changed = true;
+		}
+		cursor_theme = theme.foreground_theme.clicked_theme;
 	}
 	else if Interaction_Type.Hover in cursor_state
 	{
-		cursor_color = render.rgb(170, 170, 170);
+		cursor_theme = theme.foreground_theme.hovered_theme;
 	}
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = cursor_rect,
-		theme = {
-			fill_color = cursor_color,
-			corner_radius = 5,
-			border_thickness = 1,
-			border_color = render.rgb(128, 128, 128),
-		},
+		theme = cursor_theme,
 	});
+	return;
 }
 
 window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height: int, location := #caller_location) -> (draw_content: bool)
@@ -207,7 +176,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 				direction = {0, 1},
 			};
 			push_layout(ctx, scrollbar_layout);
-			v_slider(ctx, &scroll, 0, last_frame_height - view_height, view_height * view_height / last_frame_height, location, 1);
+			slider(ctx, &scroll, 0, last_frame_height - view_height, view_height * view_height / last_frame_height, 0, Slider_Direction.Vertical, location, 1);
 			pop_layout(ctx);
 		}
 	}
@@ -242,4 +211,19 @@ window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 	// TODO : handle content height computation
 	state.last_frame_height = layout.size.y;
 	log.info(layout.size.y);
+}
+
+
+color_picker :: proc(using ctx: ^UI_Context, color: ^Color, location := #caller_location) -> bool
+{
+	parent_layout := current_layout(ctx);
+	
+	r, g, b, a := render.extract_rgba(color^);
+	value_changed := false;
+	value_changed |= slider(ctx, &r, 0, 255, 20, editor_config.line_height, Slider_Direction.Horizontal, location, 0);
+	value_changed |= slider(ctx, &g, 0, 255, 20, editor_config.line_height, Slider_Direction.Horizontal, location, 1);
+	value_changed |= slider(ctx, &b, 0, 255, 20, editor_config.line_height, Slider_Direction.Horizontal, location, 2);
+	value_changed |= slider(ctx, &a, 0, 255, 20, editor_config.line_height, Slider_Direction.Horizontal, location, 3);
+	if value_changed do color^ = render.rgba(r, g, b, a);
+	return value_changed;
 }
