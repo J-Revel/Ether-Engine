@@ -193,7 +193,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		}
 		if ui.button("test", {100, 60}, &ui_ctx)
 		{
-			log.info("BUTTON3");
+			log.info("Save Theme");
+			log.info(ui.save_theme("config/ui/base_theme.json", ui_ctx.current_theme));
 		}
 		ui.window_end(&ui_ctx, &window_state);
 	}

@@ -210,7 +210,6 @@ window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 	
 	// TODO : handle content height computation
 	state.last_frame_height = layout.size.y;
-	log.info(layout.size.y);
 }
 
 

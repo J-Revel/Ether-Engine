@@ -63,9 +63,11 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
 	ui_ctx.editor_config.line_height = int(ui_ctx.current_font.line_height) + 4;
 	init_renderer(&ui_ctx.renderer);
-
-	ui_ctx.current_theme = {
-		window = {
+	
+	error: Theme_Load_Error;
+	ui_ctx.current_theme, error = load_theme("config/ui/base_theme.json");
+	if error != nil do log.info("Error loading theme :", error);
+	/*	window = {
 			header_color= render.rgb_hex("#3f0071"),
 			background_color = render.rgb_hex("282a2e"),
 		},
@@ -117,7 +119,7 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 				},
 			},
 		},
-	};
+	};*/
 	log.info(ui_ctx.current_theme);
 }
 

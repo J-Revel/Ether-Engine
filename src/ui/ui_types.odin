@@ -296,5 +296,3 @@ UI_Theme :: struct
 	window: Window_Theme,
 	slider: Slider_Theme,
 }
-
-
