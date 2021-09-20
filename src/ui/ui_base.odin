@@ -14,6 +14,12 @@ import "../container"
 import "../render"
 import "../util"
 
+default_id :: proc(ui_id: UI_ID, location := #caller_location) -> UI_ID
+{
+	if ui_id == 0 do return id_from_location(location);
+	return ui_id;
+}
+
 join_rects :: proc(A: UI_Rect, B: UI_Rect) -> (result: UI_Rect)
 {
 	if A.size.x == 0
@@ -67,59 +73,6 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	error: Theme_Load_Error;
 	ui_ctx.current_theme, error = load_theme("config/ui/base_theme.json");
 	if error != nil do log.info("Error loading theme :", error);
-	/*	window = {
-			header_color= render.rgb_hex("#3f0071"),
-			background_color = render.rgb_hex("282a2e"),
-		},
-		button = {
-			default_theme = {
-				fill_color = render.rgb(255, 5, 0),
-				border_color = render.rgb(0, 0, 0),
-				border_thickness = 1,
-				corner_radius = 5,
-			},
-			hovered_theme = {
-				fill_color = render.rgb(0, 255, 0),
-				border_color = render.rgb(0, 0, 0),
-				border_thickness = 5,
-				corner_radius = 5,
-			},
-			clicked_theme = {
-				fill_color = render.rgb(255, 255, 255),
-				border_color = render.rgb(0, 0, 0),
-				border_thickness = 1,
-				corner_radius = 5,
-			},
-		},
-		slider = {
-			background_theme = {
-					fill_color = render.rgb(255, 5, 0),
-					border_color = render.rgb(0, 0, 0),
-					border_thickness = 1,
-					corner_radius = 5,
-				},
-			foreground_theme = {
-				default_theme = {
-					fill_color = render.rgb(255, 5, 0),
-					border_color = render.rgb(0, 0, 0),
-					border_thickness = 1,
-					corner_radius = 5,
-				},
-				hovered_theme = {
-					fill_color = render.rgb(0, 255, 0),
-					border_color = render.rgb(0, 0, 0),
-					border_thickness = 5,
-					corner_radius = 5,
-				},
-				clicked_theme = {
-					fill_color = render.rgb(255, 255, 255),
-					border_color = render.rgb(0, 0, 0),
-					border_thickness = 1,
-					corner_radius = 5,
-				},
-			},
-		},
-	};*/
 	log.info(ui_ctx.current_theme);
 }
 
@@ -223,12 +176,34 @@ scale_ui_vec :: proc
 	scale_ui_vec_2f,
 };
 
-push_layout :: proc(using ui_ctx: ^UI_Context, layout: Layout)
+push_layout :: proc(using ctx: ^UI_Context, layout: Layout)
 {
 	append(&layout_stack, layout);
 }
 
-replace_layout :: proc(using ui_ctx: ^UI_Context, layout: Layout)
+push_child_layout :: proc(using ctx: ^UI_Context, size: UI_Vec, direction: UI_Vec)
+{
+	layout := Layout {
+		rect = allocate_element_space(ctx, size),
+		direction = direction,
+	};
+	push_layout(ctx, layout);
+}
+
+push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, label_size: int)
+{
+	layout : Layout = current_layout(ctx)^;
+	layout.rect = allocate_element_space(ctx, {0, height});
+	line_height := ctx.current_font.line_height;
+	render_size := render.get_text_render_size(ctx.current_font, label);
+	text(label, 0xffffffff, layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, ctx.current_font, ctx);
+	layout.pos.x += label_size;
+	layout.size.x -= label_size;
+	layout.cursor = 0;
+	push_layout(ctx, layout);
+}
+
+replace_layout :: proc(using ctx: ^UI_Context, layout: Layout)
 {
 	layout_stack[len(layout_stack)-1] = layout;
 }
@@ -240,7 +215,7 @@ apply_anchor_padding :: proc(rect: UI_Rect, anchor: Anchor, padding: Padding) ->
 	return result;
 }
 
-add_content_size_fitter :: proc(using ui_ctx: ^UI_Context)
+add_content_size_fitter :: proc(using ctx: ^UI_Context)
 {
 	append(&content_size_fitters, Content_Size_Fitter{
 		rect = {},
@@ -248,7 +223,7 @@ add_content_size_fitter :: proc(using ui_ctx: ^UI_Context)
 	});
 }
 
-pop_layout :: proc(using ui_ctx: ^UI_Context) -> Layout
+pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 {
 	layout_index := len(layout_stack)-1;
 	current_layout := pop(&layout_stack);
@@ -331,13 +306,7 @@ textured_rect :: proc(
 	});
 }
 
-ui_element :: proc(
-	ctx: ^UI_Context,
-	rect: UI_Rect,
-	interactions: Interactions,
-	location := #caller_location,
-	additional_element_index: i32 = 0,
-) -> (out_state: Element_State)
+id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UI_ID
 {
 	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
 	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
@@ -345,7 +314,36 @@ ui_element :: proc(
 	additional_element_index := additional_element_index;
 	mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32));
 	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_element_index, size_of(i32));
-	element_id:= UI_ID(hash.djb2(to_hash));
+	return UI_ID(hash.djb2(to_hash));
+}
+
+child_id :: proc(id: UI_ID, location := #caller_location) -> UI_ID
+{
+	return id ~ id_from_location(location);
+}
+
+ui_element :: proc {
+	ui_element_sized,
+	ui_element_placed,
+}
+
+ui_element_sized :: proc(
+	ctx: ^UI_Context,
+	size: UI_Vec,
+	interactions: Interactions,
+	element_id: UI_ID,
+) -> (out_state: Element_State)
+{
+	return ui_element_placed(ctx, allocate_element_space(ctx, size), interactions, element_id);
+}
+
+ui_element_placed :: proc(
+	ctx: ^UI_Context,
+	rect: UI_Rect,
+	interactions: Interactions,
+	element_id: UI_ID,
+) -> (out_state: Element_State)
+{
 	ctx.current_element = UI_Element{rect, element_id};
 	clip_index := ctx.ui_draw_list.clip_stack[len(ctx.ui_draw_list.clip_stack) - 1];
 	clip_rect := ctx.ui_draw_list.clips[clip_index];
@@ -426,6 +424,20 @@ element_draw_themed_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padd
 		rect = rect,
 		theme = theme^,
 	});
+}
+
+draw_rect :: proc(ctx: ^UI_Context, rect: UI_Rect, color: Color, corner_radius: f32 = 0)
+{
+	add_rect_command(&ctx.ui_draw_list, Rect_Command{
+		rect = rect,
+		theme = {
+			fill_color = color,
+			corner_radius = 10,
+			border_color = 0x000000ff,
+			border_thickness = 1,
+		},
+	});
+	//append(&ctx.draw_list, Rect_Draw_Command{rect = rect, clip = clip, color = color, corner_radius = corner_radius});
 }
 
 element_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: f32 = 0)
@@ -580,10 +592,12 @@ drag_box :: proc(
 	drag_state: ^Drag_State,
 
 	ui_ctx: ^UI_Context,
+	ui_id: UI_ID,
 	location := #caller_location,
 ) -> (state_changed: bool)
 {
-	element_state := ui_element(ui_ctx, rect, {.Drag}, location);
+	ui_id := default_id(ui_id);
+	element_state := ui_element(ui_ctx, rect, {.Drag}, ui_id);
 	if Interaction_Type.Drag in element_state
 	{
 		drag_state.drag_offset += ui_ctx.input_state.delta_drag;
@@ -593,7 +607,7 @@ drag_box :: proc(
 	return false;
 }
 
-allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]int) -> UI_Rect
+allocate_element_space :: proc(ui_ctx: ^UI_Context, size: UI_Vec) -> UI_Rect
 {
 	layout := current_layout(ui_ctx);
 	result := UI_Rect{layout.pos + layout.direction * layout.cursor, size};
@@ -607,11 +621,11 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: [2]int) -> UI_Rect
 	}
 	if size.x == 0
 	{
-		result.size.x = layout.size.x;
+		result.size.x = layout.size.x - layout.direction.x * layout.cursor;
 	}
 	if size.y == 0
 	{
-		result.size.y = layout.size.y;
+		result.size.y = layout.size.y - layout.direction.y * layout.cursor;
 	}
 	layout.cursor += linalg.vector_dot(result.size, layout.direction);
 	use_rect_in_layout(ui_ctx, result);
@@ -623,16 +637,31 @@ button :: proc(
 	size: UI_Vec,
 
 	using ui_ctx: ^UI_Context,
+	ui_id: UI_ID = 0,
 	location := #caller_location,
 ) -> (clicked: bool)
 {
+	return button_themed(label, size, &current_theme.button, ui_ctx, ui_id, location);
+}
+
+button_themed :: proc(
+	label: string,
+	size: UI_Vec,
+	theme: ^Button_Theme,
+
+	using ui_ctx: ^UI_Context,
+	ui_id: UI_ID = 0,
+	location := #caller_location,
+) -> (clicked: bool)
+{
+	ui_id := default_id(ui_id, location);
 	layout := current_layout(ui_ctx);
 	allocated_space := allocate_element_space(ui_ctx, size);
-	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Press, .Click}, location);
+	element_state := ui_element(ui_ctx, allocated_space, {.Hover, .Press, .Click}, ui_id);
 	color: Color;
 
 	used_theme: Rect_Theme;
-	using current_theme.button;
+	using theme;
 	if Interaction_Type.Press in element_state
 	{
 		used_theme = clicked_theme;

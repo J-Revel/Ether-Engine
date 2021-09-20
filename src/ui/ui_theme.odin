@@ -33,7 +33,7 @@ load_theme :: proc(path: string) -> (out_theme: UI_Theme, error: Theme_Load_Erro
 {
 	file, file_read := os.read_entire_file(path, context.temp_allocator);
 	if !file_read do return out_theme, Theme_Error.Unavailable_File;
-	parsed_json := json.parse(file) or_return;
+	parsed_json := json.parse(data = file, parse_integers = true) or_return;
 	json_object := parsed_json.(json.Object);
 
 	load_compound_theme(json_object, out_theme);
@@ -43,6 +43,7 @@ load_theme :: proc(path: string) -> (out_theme: UI_Theme, error: Theme_Load_Erro
 load_color :: proc(json_object: json.Object, name: string, out_color: ^Color) -> bool
 {
 	json_value, json_value_found := json_object[name];
+	log.info("LOAD_COLOR", json_object, json_value_found);
 	if !json_value_found do return false;
 	value, is_integer := json_value.(json.Integer);
 	if !is_integer do return false;
@@ -74,9 +75,10 @@ load_corner_radius :: proc(json_object: json.Object, name: string, out_value: ^C
 load_rect_theme :: proc(json_root: json.Object, name: string, out_value: ^Rect_Theme) -> bool
 {
 	ok: bool;
-	load_color(json_root, "fill_color", &out_value.fill_color);
-	load_color(json_root, "border_color", &out_value.border_color);
-	load_int(json_root, "border_thickness", &out_value.border_thickness);
+	json_value, json_value_found := json_root[name];
+	load_color(json_value.(json.Object), "fill_color", &out_value.fill_color);
+	load_color(json_value.(json.Object), "border_color", &out_value.border_color);
+	load_int(json_value.(json.Object), "border_thickness", &out_value.border_thickness);
 	return true;
 }
 
@@ -125,25 +127,27 @@ load_root_compound_theme :: proc(json_root: json.Object, out_value: any) -> bool
 
 load_sub_compound_theme :: proc(json_root: json.Object, name: string, out_value: any) -> bool
 {
-	json_child := json_root[name].(json.Object);
+	json_child, ok := json_root[name].(json.Object);
+	log.info(out_value.id, json_child);
+	if !ok do return false;
 
 	type_info_struct := get_struct_type_info(type_info_of(out_value.id));
 	for i in 0..<len(type_info_struct.names)
 	{
 		using type_info_struct;
-		log.info(json_child, out_value.id);
 		switch types[i].id
 		{
 			case typeid_of(int):
 				load_int(json_child, names[i], cast(^int)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Color):
+				log.info("parse_color", names[i], json_child);
 				load_color(json_child, names[i], cast(^Color)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Rect_Theme):
 				load_rect_theme(json_child, names[i], cast(^Rect_Theme)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Corner_Radius):
 				load_corner_radius(json_child, names[i], cast(^Corner_Radius)(uintptr(out_value.data) + offsets[i]));
 			case:
-				load_compound_theme(json_child[names[i]].(json.Object), names[i], any{id = types[i].id, data = rawptr(uintptr(out_value.data) + offsets[i])});
+				load_compound_theme(json_child, names[i], any{id = types[i].id, data = rawptr(uintptr(out_value.data) + offsets[i])});
 		}
 	}
 	return true;

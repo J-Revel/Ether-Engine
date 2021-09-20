@@ -173,8 +173,9 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
 		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state));
 		drag_cache: ui.Drag_State;
-		ui.drag_int(&ui_ctx, &test_value);
-		ui.slider(&ui_ctx, &test_value, 0, 1000, 20, int(ui_ctx.editor_config.line_height), ui.Slider_Direction.Horizontal);
+		ui.drag_int(&ui_ctx, &test_value, ui.id_from_location());
+		ui.slider(&ui_ctx, &test_value, 0, 1000, 20, int(ui_ctx.editor_config.line_height));
+		ui.color_picker_rgb(&ui_ctx, &ui_ctx.current_theme.button.default_theme.fill_color);
 		if ui.button("test", {100, 100}, &ui_ctx)
 		{
 			log.info("BUTTON3");

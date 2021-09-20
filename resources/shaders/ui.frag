@@ -14,7 +14,6 @@ in vec2 frag_uv;
 
 layout (location = 0) out vec4 out_color;
 
-
 float rect_sdf(vec2 pos_from_center, vec2 half_rect_size)
 {
 	return length(max(abs(pos_from_center) - half_rect_size, 0));
