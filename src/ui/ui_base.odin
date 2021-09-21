@@ -187,6 +187,7 @@ push_child_layout :: proc(using ctx: ^UI_Context, size: UI_Vec, direction: UI_Ve
 		rect = allocate_element_space(ctx, size),
 		direction = direction,
 	};
+	current_layout := current_layout(ctx);
 	push_layout(ctx, layout);
 }
 
@@ -245,12 +246,23 @@ pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 	{
 		content_size_fitter.rect = join_rects(content_size_fitter.rect, current_layout.rect);
 	}
+	use_rect_in_layout(ctx, current_layout.rect);
 	return current_layout;
 }
 
 current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
 {
 	return &layout_stack[len(layout_stack)-1];
+}
+
+current_layout_rect :: proc(using ui_ctx: ^UI_Context) -> UI_Rect
+{
+	layout := &layout_stack[len(layout_stack)-1];
+	cursor_offset := layout.direction * layout.cursor;
+	return UI_Rect {
+		pos = layout.pos + cursor_offset,
+		size = layout.size - cursor_offset,
+	};
 }
 
 rect :: proc(draw_list: ^Draw_List, rect: UI_Rect, color: Color, corner_radius: int = 0)
@@ -684,28 +696,28 @@ vsplit :: proc{
 	vsplit_layout_weights,
 };
 
-vsplit_layout_ratio :: proc(using ui_ctx: ^UI_Context, parent: UI_Rect, split_ratio: f32) -> [2]UI_Rect
+vsplit_layout_ratio :: proc(using ui_ctx: ^UI_Context, split_ratio: f32) -> [2]UI_Rect
 {
-	parent_layout := current_layout(ui_ctx)^;
-	left_split_width := int(f32(parent_layout.size.x) * split_ratio);
-	out_layouts: [2]UI_Rect= {
+	rect := current_layout_rect(ui_ctx);
+	left_split_width := int(f32(rect.size.x) * split_ratio);
+	out_layouts: [2]UI_Rect = {
 		{
-			pos = parent.pos,
-			size = [2]int{left_split_width, parent_layout.size.y},
+			pos = rect.pos,
+			size = [2]int{left_split_width, rect.size.y},
 		},
 		{
-			pos = [2]int{parent_layout.pos. x + left_split_width, parent_layout.pos.y},
-			size = [2]int{parent_layout.size.x - left_split_width, parent_layout.size.y},
+			pos = [2]int{rect.pos. x + left_split_width, rect.pos.y},
+			size = [2]int{rect.size.x - left_split_width, rect.size.y},
 		},
 	};
 	return out_layouts;
 }
 
-vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, allocator := context.temp_allocator) -> []Layout
+vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, allocator := context.allocator) -> []UI_Rect
 {
-	parent_layout := current_layout(ui_ctx)^;
+	rect := current_layout_rect(ui_ctx);
 
-	result := make([]Layout, len(split_weights));
+	result := make([]UI_Rect, len(split_weights));
 
 	weights_sum: f32;
 	for i in 0..<len(split_weights)
@@ -713,16 +725,13 @@ vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, a
 		weights_sum += split_weights[i];
 	}
 
-	pos_cursor := parent_layout.pos;
+	pos_cursor := rect.pos;
 	for i in 0..<len(split_weights)
 	{
-		width := int(f32(parent_layout.size.x) * split_weights[i] / weights_sum);
-		result[i] = Layout {
-			rect = UI_Rect {
-				pos = pos_cursor,
-				size = {width, parent_layout.size.y},
-			},
-			direction = {0, 1},
+		width := int(f32(rect.size.x) * split_weights[i] / weights_sum);
+		result[i] = UI_Rect {
+			pos = pos_cursor,
+			size = {width, rect.size.y},
 		};
 		pos_cursor.x += width;
 	}

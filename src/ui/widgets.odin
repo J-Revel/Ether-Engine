@@ -213,7 +213,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 		layout_draw_rect(ctx, {}, {}, theme.background_color, 0);
 		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
 		scroll_content_rect := current_layout(ctx).rect;
-		scroll_content_rect.size.y = state.last_frame_height;
+		//scroll_content_rect.size.y = state.last_frame_height;
 		content_layout := Layout{
 			rect =	scroll_content_rect,
 			direction = {0, 1},
@@ -240,7 +240,7 @@ window_end :: proc(using ctx: ^UI_Context, using state: ^Window_State)
 
 color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50, ui_id: UI_ID = 0, location := #caller_location) -> bool
 {
-	ui_id := default_id(ui_id);
+	ui_id := default_id(ui_id, location);
 	parent_layout := current_layout(ctx);
 	color_display_rect := UI_Rect{
 		pos = parent_layout.pos,
@@ -267,7 +267,9 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 	value_changed |= slider(ctx, &b, 0, 255, 20, 0, child_id(ui_id));
 	pop_layout(ctx);
 	pop_layout(ctx);
-	button("", {height, height}, ctx, child_id(ui_id));
+	theme := ctx.current_theme.button;
+	theme.default_theme.fill_color = color^
+	button_themed("", {height, height}, &theme, ctx, child_id(ui_id));
 
 	pop_layout(ctx);
 	if value_changed do color^ = render.rgba(r, g, b, a);
