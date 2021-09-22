@@ -227,27 +227,28 @@ add_content_size_fitter :: proc(using ctx: ^UI_Context)
 pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 {
 	layout_index := len(layout_stack)-1;
-	current_layout := pop(&layout_stack);
+	popped_layout:= pop(&layout_stack);
 	if(len(content_size_fitters) > 0)
 	{
 		content_size_fitter := content_size_fitters[len(content_size_fitters)-1];
 		if content_size_fitter.layout_index_in_stack == layout_index
 		{
-			current_layout.rect = content_size_fitter.rect; 
+			popped_layout.rect = content_size_fitter.rect; 
 		}
 	}
-	for draw_command in current_layout.draw_commands
+	for draw_command in popped_layout.draw_commands
 	{
 		// TODO : handle anchor and padding properly
-		draw_command.final_cmd.pos = current_layout.rect.pos;
-		draw_command.final_cmd.size = current_layout.rect.size;
+		draw_command.final_cmd.pos = popped_layout.rect.pos;
+		draw_command.final_cmd.size = popped_layout.rect.size;
 	}
 	for content_size_fitter in &content_size_fitters
 	{
-		content_size_fitter.rect = join_rects(content_size_fitter.rect, current_layout.rect);
+		content_size_fitter.rect = join_rects(content_size_fitter.rect, popped_layout.rect);
 	}
-	use_rect_in_layout(ctx, current_layout.rect);
-	return current_layout;
+	use_rect_in_layout(ctx, popped_layout.rect);
+	allocate_rect(ctx, popped_layout.rect);
+	return popped_layout;
 }
 
 current_layout :: proc(using ui_ctx: ^UI_Context) -> ^Layout
@@ -318,6 +319,17 @@ textured_rect :: proc(
 	});
 }
 
+id_from_index :: proc(index: int = 0, location := #caller_location) -> UI_ID
+{
+	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
+	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
+	location_line := location.line;
+	index := index;
+	mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32));
+	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &index, size_of(i32));
+	return UI_ID(hash.djb2(to_hash));
+}
+
 id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UI_ID
 {
 	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
@@ -329,9 +341,9 @@ id_from_location :: proc(location := #caller_location, additional_element_index:
 	return UI_ID(hash.djb2(to_hash));
 }
 
-child_id :: proc(id: UI_ID, location := #caller_location) -> UI_ID
+child_id :: proc(id: UI_ID, location := #caller_location, element_index: int = 0) -> UI_ID
 {
-	return id ~ id_from_location(location);
+	return id ~ id_from_location(location, element_index);
 }
 
 ui_element :: proc {
@@ -617,6 +629,35 @@ drag_box :: proc(
 		return true;
 	}
 	return false;
+}
+
+allocate_rect :: proc(ui_ctx: ^UI_Context, rect: UI_Rect)
+{
+	layout := current_layout(ui_ctx);
+	if layout.direction.x < 0
+	{
+		rect_min := rect.pos.x;
+		rect_cursor := layout.pos.x + layout.size.x - rect_min;
+		if rect_cursor > layout.cursor do layout.cursor = rect_cursor;
+	}
+	else if layout.direction.x > 0
+	{
+		rect_max := rect.pos.x + rect.size.x;
+		rect_cursor := rect_max - layout.pos.x;
+		if rect_cursor > layout.cursor do layout.cursor = rect_cursor;
+	}
+	if layout.direction.y < 0
+	{
+		rect_min := rect.pos.y;
+		rect_cursor := layout.pos.y + layout.size.y - rect_min;
+		if rect_cursor > layout.cursor do layout.cursor = rect_cursor;
+	}
+	else if layout.direction.y > 0
+	{
+		rect_max := rect.pos.y + rect.size.y;
+		rect_cursor := rect_max - layout.pos.y;
+		if rect_cursor > layout.cursor do layout.cursor = rect_cursor;
+	}
 }
 
 allocate_element_space :: proc(ui_ctx: ^UI_Context, size: UI_Vec) -> UI_Rect

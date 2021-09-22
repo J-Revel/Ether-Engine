@@ -140,7 +140,7 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 			gpu_rect_command.corner_radius = i32(radius);
 	}
 
-	command_index: i32 = i32(rect_command_count);
+	command_index: u32 = u32(rect_command_count);
 	commands[rect_command_count] = gpu_rect_command;
 	append(&index, command_index * (1<<16) + 0);
 	append(&index, command_index * (1<<16) + 1);
@@ -173,6 +173,10 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	{
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.element_buffer);
 		gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) len(draw_list.index) * size_of(u32), &draw_list.index[0]);
+		for i in len(draw_list.index)-10..<len(draw_list.index)
+		{
+			log.info(draw_list.index[i]);
+		}
 	}
 
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo);

@@ -50,8 +50,9 @@ out vec2 frag_uv;
 
 void main()
 {
-	int command_index = (gl_VertexID >> 16) % (1 << 16);
-	vec2 pos_ratio = vec2(((gl_VertexID % 2) > 0 ? 0 : 1), ((gl_VertexID / 2) % 2 > 0 ? 0 : 1));
+	uint vertex_index = gl_VertexID;
+	uint command_index = (vertex_index>> 16) % (1 << 16);
+	vec2 pos_ratio = vec2(((vertex_index % 2) > 0 ? 0 : 1), ((vertex_index / 2) % 2 > 0 ? 0 : 1));
 
 	Draw_Command draw_command = commands[command_index];
 	Rect_Command rect_command = draw_command.rect_command;

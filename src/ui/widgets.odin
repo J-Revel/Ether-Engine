@@ -37,8 +37,9 @@ label :: proc(
 }
 
 
-drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID)
+drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID = 0, location := #caller_location)
 {
+	ui_id := default_id(ui_id, location);
 	parent_layout := current_layout(ctx)^;
 	widget_rect := allocate_element_space(ctx, {0, int(ctx.editor_config.line_height)});
 	state := ui_element(ctx, widget_rect, {.Hover, .Press, .Drag}, ui_id ~ id_from_location());
@@ -273,8 +274,6 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 
 	pop_layout(ctx);
 	if value_changed do color^ = render.rgba(r, g, b, a);
-	button("test", {50, 50},ctx, child_id(ui_id));
-	log.info(ctx.current_element);
 
 	return value_changed;
 }

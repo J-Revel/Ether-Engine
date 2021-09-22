@@ -139,7 +139,7 @@ time : f32 = 0;
 ui_ctx: ui.UI_Context;
 window_state := ui.Window_State {
 	rect = ui.UI_Rect{
-		size = {300, 200},
+		size = {1200, 800},
 	},
 };
 
@@ -177,24 +177,27 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.slider(&ui_ctx, &test_value, 0, 1000, 20, int(ui_ctx.editor_config.line_height));
 
 		split_weights := [3]f32 {1, 1, 1};
-		log.info(ui.current_layout(&ui_ctx));
 		columns : []ui.UI_Rect = ui.vsplit(&ui_ctx, split_weights[:], context.allocator);
 		defer delete(columns);
 		
-		log.info(columns);
-		// Todo use a function that reserves the space in the layout with a content size fitter
 		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[0], direction = [2]int{0, 1}});
-		ui.color_picker_rgb(&ui_ctx, &ui_ctx.current_theme.button.default_theme.fill_color);
+		ui.add_content_size_fitter(&ui_ctx);
+		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.default_theme);
 		ui.pop_layout(&ui_ctx);
 		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[1], direction = [2]int{0, 1}});
-		ui.color_picker_rgb(&ui_ctx, &ui_ctx.current_theme.button.hovered_theme.fill_color);
+		ui.add_content_size_fitter(&ui_ctx);
+		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.hovered_theme);
 		ui.pop_layout(&ui_ctx);
 		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[2], direction = [2]int{0, 1}});
-		ui.color_picker_rgb(&ui_ctx, &ui_ctx.current_theme.button.clicked_theme.fill_color);
+		ui.add_content_size_fitter(&ui_ctx);
+		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.clicked_theme);
 		ui.pop_layout(&ui_ctx);
-		if ui.button("test", {100, 100}, &ui_ctx)
+		for i in 0..3
 		{
-			log.info("BUTTON3");
+			if ui.button("test", {100, 100}, &ui_ctx, ui.id_from_index(i))
+			{
+				log.info("BUTTON3");
+			}
 		}
 		if ui.button("test", {150, 100}, &ui_ctx)
 		{

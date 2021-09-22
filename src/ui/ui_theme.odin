@@ -161,3 +161,21 @@ save_theme :: proc(path: string, theme: UI_Theme) -> Theme_Save_Error
 	if !os.write_entire_file(path, json_str) do return .Unavailable_File;
 	return nil;
 }
+
+rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_ID = 0, location := #caller_location)
+{
+	ui_id := default_id(ui_id, location);
+	color_picker_rgb(ctx, &theme.fill_color, 50, child_id(ui_id));
+	color_picker_rgb(ctx, &theme.border_color, 50, child_id(ui_id));
+	drag_int(ctx, &theme.border_thickness, child_id(ui_id));
+	log.info(theme.corner_radius);
+	if theme.corner_radius == nil do theme.corner_radius = f32(0);
+	switch value in theme.corner_radius
+	{
+		case int:
+			drag_int(ctx, &theme.corner_radius.(int), child_id(ui_id));
+		case f32:
+			slider(ctx, &theme.corner_radius.(f32), 0, 1, 20, 20, child_id(ui_id));
+	}
+
+}

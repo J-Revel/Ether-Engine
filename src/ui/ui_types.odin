@@ -66,7 +66,7 @@ Draw_Command_Data :: struct
 Draw_Command_List :: struct
 {
 	commands: [dynamic]GPU_Rect_Command,
-	index: [dynamic]i32,
+	index: [dynamic]u32,
 	rect_command_count: int,
 	clips: [dynamic]UI_Rect,
 	clip_stack: [dynamic]int,
