@@ -233,7 +233,8 @@ pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 		content_size_fitter := content_size_fitters[len(content_size_fitters)-1];
 		if content_size_fitter.layout_index_in_stack == layout_index
 		{
-			popped_layout.rect = content_size_fitter.rect; 
+			popped_layout.rect = content_size_fitter.rect;
+			pop(&content_size_fitters);
 		}
 	}
 	for draw_command in popped_layout.draw_commands
