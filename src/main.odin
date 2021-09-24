@@ -24,7 +24,7 @@ import "util";
 import "input"
 import "gameplay"
 import "editor"
-// import "audio"
+import "ui"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
@@ -137,7 +137,7 @@ main :: proc() {
 
             imgui.new_frame();
             {
-                info_overlay();
+                //info_overlay();
             }
 
             gl.Viewport(0, 0, mx, my);
@@ -147,11 +147,8 @@ main :: proc() {
             current_tick := time.tick_now();
             delta_time := f32(time.duration_seconds(time.tick_diff(last_frame_tick, current_tick)));
             sample_frame_times[frame_index % FRAME_SAMPLE_COUNT] = delta_time;
-            sample_time_sum: f32 = 0;
-            for i in 0..<FRAME_SAMPLE_COUNT do sample_time_sum += sample_frame_times[i];
-            frame_index += 1;
+			util.register_frame_sample(delta_time);
             last_frame_tick = current_tick;
-            imgui.text_unformatted(fmt.tprint(FRAME_SAMPLE_COUNT / sample_time_sum));
             
             viewport := render.Viewport{
                 {0, 0},

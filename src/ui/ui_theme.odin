@@ -128,7 +128,6 @@ load_root_compound_theme :: proc(json_root: json.Object, out_value: any) -> bool
 load_sub_compound_theme :: proc(json_root: json.Object, name: string, out_value: any) -> bool
 {
 	json_child, ok := json_root[name].(json.Object);
-	log.info(out_value.id, json_child);
 	if !ok do return false;
 
 	type_info_struct := get_struct_type_info(type_info_of(out_value.id));
@@ -140,7 +139,6 @@ load_sub_compound_theme :: proc(json_root: json.Object, name: string, out_value:
 			case typeid_of(int):
 				load_int(json_child, names[i], cast(^int)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Color):
-				log.info("parse_color", names[i], json_child);
 				load_color(json_child, names[i], cast(^Color)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Rect_Theme):
 				load_rect_theme(json_child, names[i], cast(^Rect_Theme)(uintptr(out_value.data) + offsets[i]));
@@ -168,7 +166,6 @@ rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_
 	color_picker_rgb(ctx, &theme.fill_color, 50, child_id(ui_id));
 	color_picker_rgb(ctx, &theme.border_color, 50, child_id(ui_id));
 	drag_int(ctx, &theme.border_thickness, child_id(ui_id));
-	log.info(theme.corner_radius);
 	if theme.corner_radius == nil do theme.corner_radius = f32(0);
 	switch value in theme.corner_radius
 	{
@@ -177,5 +174,4 @@ rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_
 		case f32:
 			slider(ctx, &theme.corner_radius.(f32), 0, 1, 20, 20, child_id(ui_id));
 	}
-
 }

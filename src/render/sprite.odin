@@ -537,7 +537,7 @@ render_sprite :: proc(
     using absolute_transform: Transform, 
     color: Color)
 {
-    imgui.text_unformatted(fmt.tprint("render_sprite", sprite.texture));
+    //imgui.text_unformatted(fmt.tprint("render_sprite", sprite.texture));
     start_index := cast(u32) len(render_system.buffer.vertex);
     texture_data := container.handle_get(texture);
     texture_size_i := texture_data.size;
@@ -546,7 +546,7 @@ render_sprite :: proc(
         index_count := len(render_system.buffer.index);
         if index_count > 0
         {
-            imgui.text_unformatted(fmt.tprint(index_count));
+            //imgui.text_unformatted(fmt.tprint(index_count));
             
             pass_texture: Texture_Handle = {};
             if container.is_valid(render_system.current_texture)
@@ -558,7 +558,7 @@ render_sprite :: proc(
                     index_count - render_system.current_pass_index,
             });
             render_system.current_pass_index = index_count;
-            imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
+            // imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
 
         }
 
@@ -814,7 +814,7 @@ render_sprite_buffer_content :: proc(render_system: ^Sprite_Render_System, camer
 		len(render_system.buffer.index) - index_cursor,
 	);
 	cleanup_buffer_render();
-    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
+    //imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
 
 }
 
@@ -841,7 +841,7 @@ render_ui_buffer_content :: proc(render_system: ^Sprite_Render_System, viewport:
 		len(render_system.buffer.index) - index_cursor,
 	);
 	cleanup_buffer_render();
-    imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
+    //imgui.text_unformatted(fmt.tprint("last pass", render_system.current_texture.id, len(render_system.buffer.index) - index_cursor));
 
 }
 
