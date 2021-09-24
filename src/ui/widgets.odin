@@ -10,6 +10,7 @@ import "../util"
 label :: proc(
 	ctx: ^UI_Context,
 	str: string,
+	alignment: Horizontal_Alignment = .Left,
 	color: Color = 0xffffffff,
 	ui_id: UI_ID = 0,
 	location := #caller_location,
@@ -28,9 +29,24 @@ label :: proc(
 	allocated_space := allocate_element_space(ctx, [2]int{allocated_length, int(f32(len(lines)) * line_height)});
 
 	first_line_pos := allocated_space.pos + UI_Vec{0, int(line_height)};
+
+	alignment_ratio: f32;
+	switch alignment
+	{
+		case .Left: alignment_ratio = 0;
+		case .Center: alignment_ratio = 0.5;
+		case .Right: alignment_ratio = 1;
+	}
 	for line, index in lines
 	{
-		text(line, color, first_line_pos + UI_Vec{0, int(line_height * f32(index))}, ctx.current_font, ctx);
+		text(
+			text = line,
+			color = color,
+			pos = first_line_pos + UI_Vec{int(f32(layout.size.x) * alignment_ratio), int(line_height * f32(index))},
+			alignment = alignment,
+			font = ctx.current_font,
+			ctx = ctx,
+		);
 	}
 	
 	return state;
@@ -63,8 +79,8 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID = 0, location := #c
 		direction = {1, 0},
 	};
 	push_layout(ctx, new_layout);
-	label(ctx, "drag editor ", text_color, ui_id ~ id_from_location());
-	label(ctx, fmt.tprint(value^), text_color, ui_id ~ id_from_location());
+	label(ctx, "drag editor ", .Left, text_color, ui_id ~ id_from_location());
+	label(ctx, fmt.tprint(value^), .Left, text_color, ui_id ~ id_from_location());
 	pop_layout(ctx);
 }
 

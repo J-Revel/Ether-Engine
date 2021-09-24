@@ -197,7 +197,13 @@ push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, la
 	layout.rect = allocate_element_space(ctx, {0, height});
 	line_height := ctx.current_font.line_height;
 	render_size := render.get_text_render_size(ctx.current_font, label);
-	text(label, 0xffffffff, layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, ctx.current_font, ctx);
+	text(
+		text = label, 
+		color = 0xffffffff,
+		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, 
+		alignment = .Left,
+		font = ctx.current_font,
+		ctx = ctx);
 	layout.pos.x += label_size;
 	layout.size.x -= label_size;
 	layout.cursor = 0;
@@ -511,10 +517,18 @@ text :: proc(
 	text: string,
 	color: Color,
 	pos: UI_Vec,
+	alignment: Horizontal_Alignment,
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
-	pos_cursor := linalg.to_int(pos);
+	alignment_ratio: f32;
+	switch alignment
+	{
+		case .Left: alignment_ratio = 0;
+		case .Center: alignment_ratio = 0.5;
+		case .Right: alignment_ratio = 1;
+	}
+	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratio * f32(render.get_text_render_size(ctx.current_font, text))), 0};
 	render.load_glyphs(&ctx.font_atlas, ctx.sprite_table, font, text);
 	for char in text
 	{
@@ -548,7 +562,13 @@ multiline_text :: proc(
 ) {
 	for substring, index in render.split_text_for_render(font, str, line_size)
 	{
-		text(substring, color, pos + UI_Vec{0, int(font.line_height * f32(index))}, font, ctx);
+		text(
+			text = substring, 
+			color = color,
+			pos = pos + UI_Vec{0, int(font.line_height * f32(index))},
+			alignment = .Left,
+			font = font,
+			ctx = ctx);
 	}
 }
 
@@ -755,7 +775,7 @@ vsplit_layout_ratio :: proc(using ui_ctx: ^UI_Context, split_ratio: f32) -> [2]U
 	return out_layouts;
 }
 
-vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, allocator := context.allocator) -> []UI_Rect
+vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, spacing: int = 0, allocator := context.allocator) -> []UI_Rect
 {
 	rect := current_layout_rect(ui_ctx);
 
@@ -768,14 +788,15 @@ vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, a
 	}
 
 	pos_cursor := rect.pos;
+	available_width := f32(rect.size.x - spacing * (len(split_weights) - 1));
 	for i in 0..<len(split_weights)
 	{
-		width := int(f32(rect.size.x) * split_weights[i] / weights_sum);
+		width := int(available_width * split_weights[i] / weights_sum);
 		result[i] = UI_Rect {
 			pos = pos_cursor,
 			size = {width, rect.size.y},
 		};
-		pos_cursor.x += width;
+		pos_cursor.x += width + spacing;
 	}
 	return result;
 }

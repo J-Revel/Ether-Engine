@@ -263,6 +263,13 @@ Corner_Radius :: union
 	f32,
 }
 
+Horizontal_Alignment :: enum
+{
+	Left,
+	Right,
+	Center,
+}
+
 Rect_Theme :: struct
 {
 	fill_color: Color,
