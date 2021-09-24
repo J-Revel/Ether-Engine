@@ -3,7 +3,6 @@ output/*
 .vs
 
 *.exe
-*.json
 *.sublime-project
 *.sublime-workspace
 *.pdb
