@@ -143,7 +143,11 @@ window_state := ui.Window_State {
 	},
 };
 
-test_value := 503;
+test_value : int = 50;
+test_slider_state: ui.Slider_State(int) = {
+	min = 0, max = 100,
+	cursor_size = 20,
+};
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
@@ -171,12 +175,11 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
 		//ui.ui_element(allocated_space, &ui_ctx);
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
-		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state), .Center);
-		ui.label(&ui_ctx, fmt.tprint(util.get_fps()));
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state), {.Center, .Top});
+		ui.label(&ui_ctx, fmt.tprint(util.get_fps()), {.Left, .Top});
 		ui.label(&ui_ctx, fmt.tprint(len(ui_ctx.content_size_fitters)));
 		drag_cache: ui.Drag_State;
-		ui.drag_int(&ui_ctx, &test_value, ui.id_from_location());
-		ui.slider(&ui_ctx, &test_value, 0, 1000, 20, int(ui_ctx.editor_config.line_height));
+		ui.slider(&ui_ctx, &test_value, &test_slider_state);
 
 		split_weights := [3]f32 {1, 1, 1};
 		columns : []ui.UI_Rect = ui.vsplit(&ui_ctx, split_weights[:], 20, context.allocator);
@@ -184,17 +187,17 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		
 		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[0], direction = [2]int{0, 1}});
 		ui.add_content_size_fitter(&ui_ctx);
-		ui.label(&ui_ctx, "default", .Center);
+		ui.label(&ui_ctx, "default", {.Center, .Middle});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.default_theme);
 		ui.pop_layout(&ui_ctx);
 		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[1], direction = [2]int{0, 1}});
 		ui.add_content_size_fitter(&ui_ctx);
-		ui.label(&ui_ctx, "hovered", .Center);
+		ui.label(&ui_ctx, "hovered", {.Center, .Top});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.hovered_theme);
 		ui.pop_layout(&ui_ctx);
 		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[2], direction = [2]int{0, 1}});
 		ui.add_content_size_fitter(&ui_ctx);
-		ui.label(&ui_ctx, "clicked", .Center);
+		ui.label(&ui_ctx, "clicked", {.Center, .Bottom});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.clicked_theme);
 		ui.pop_layout(&ui_ctx);
 		for i in 0..3

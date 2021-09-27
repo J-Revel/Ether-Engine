@@ -10,7 +10,7 @@ import "../util"
 label :: proc(
 	ctx: ^UI_Context,
 	str: string,
-	alignment: Horizontal_Alignment = .Left,
+	alignment: Alignment = {.Left, .Middle},
 	color: Color = 0xffffffff,
 	ui_id: UI_ID = 0,
 	location := #caller_location,
@@ -28,21 +28,27 @@ label :: proc(
 	}
 	allocated_space := allocate_element_space(ctx, [2]int{allocated_length, int(f32(len(lines)) * line_height)});
 
-	first_line_pos := allocated_space.pos + UI_Vec{0, int(line_height)};
+	first_line_pos := allocated_space.pos;
 
-	alignment_ratio: f32;
-	switch alignment
+	alignment_ratios: [2]f32;
+	switch alignment.horizontal
 	{
-		case .Left: alignment_ratio = 0;
-		case .Center: alignment_ratio = 0.5;
-		case .Right: alignment_ratio = 1;
+		case .Left: alignment_ratios.x = 0;
+		case .Center: alignment_ratios.x = 0.5;
+		case .Right: alignment_ratios.x = 1;
+	}
+	switch alignment.vertical
+	{
+		case .Top: alignment_ratios.y = 0;
+		case .Middle: alignment_ratios.y = 0.5;
+		case .Bottom: alignment_ratios.y = 1;
 	}
 	for line, index in lines
 	{
 		text(
 			text = line,
 			color = color,
-			pos = first_line_pos + UI_Vec{int(f32(layout.size.x) * alignment_ratio), int(line_height * f32(index))},
+			pos = first_line_pos + UI_Vec{int(f32(layout.size.x) * alignment_ratios.x), int(line_height * (f32(index) + alignment_ratios.y))},
 			alignment = alignment,
 			font = ctx.current_font,
 			ctx = ctx,
@@ -79,17 +85,15 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID = 0, location := #c
 		direction = {1, 0},
 	};
 	push_layout(ctx, new_layout);
-	label(ctx, "drag editor ", .Left, text_color, ui_id ~ id_from_location());
-	label(ctx, fmt.tprint(value^), .Left, text_color, ui_id ~ id_from_location());
+	label(ctx, "drag editor ", {.Left, .Middle}, text_color, ui_id ~ id_from_location());
+	label(ctx, fmt.tprint(value^), {.Left, .Middle}, text_color, ui_id ~ id_from_location());
 	pop_layout(ctx);
 }
 
 slider :: proc(
 	ctx: ^UI_Context,
 	value: ^$T,
-	min: T, max: T,
-	cursor_size: int,
-	thickness: int,
+	using state: ^Slider_State(T),
 	ui_id: UI_ID = 0,
 	location := #caller_location,
 ) -> (value_changed: bool)
@@ -129,11 +133,11 @@ slider :: proc(
 	cursor_theme : Rect_Theme = theme.foreground_theme.default_theme;
 	if Interaction_Type.Drag in cursor_state
 	{
-		cursor_relative_pos := linalg.vector_dot(ctx.input_state.cursor_pos - widget_rect.pos, direction_vec) - cursor_size / 2;
-		new_ratio := f32(cursor_relative_pos) / f32(max_cursor_pos - cursor_size);
-		if new_ratio < 0 do new_ratio = 0;
-		if new_ratio > 1 do new_ratio = 1;
-		new_value := min + T(f32(max - min) * new_ratio);
+		drag_offset := f32(linalg.vector_dot(ctx.input_state.delta_drag, direction_vec)) / f32(max_cursor_pos - cursor_size) * f32(max - min);
+		new_value : T = value^;
+		new_value += T(drag_offset);
+		if new_value < min do new_value = min;
+		if new_value > max do new_value = max;
 		if new_value != value^
 		{
 			value^ = new_value;
@@ -218,7 +222,10 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 			push_layout(ctx, scrollbar_layout);
 			scroll_max := last_frame_height - view_height;
 			cursor_size := view_height * view_height / last_frame_height;
-			slider(ctx, &scroll, 0, scroll_max, cursor_size, 0, child_id(ui_id));
+			scroll_state.min = 0;
+			scroll_state.max = scroll_max;
+			scroll_state.cursor_size = cursor_size;
+			slider(ctx, &scroll, &scroll_state, child_id(ui_id));
 			pop_layout(ctx);
 		}
 	}
@@ -292,4 +299,25 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 	if value_changed do color^ = render.rgba(r, g, b, a);
 
 	return value_changed;
+}
+
+number_editor :: proc(using ctx: ^UI_Context, value: ^$T, increment: T, ui_id: UI_ID = 0, location := #caller_location) -> (result: bool)
+{
+	ui_id := default_id(ui_id, location);
+	line_height := ctx.current_font.line_height;
+	button_size := UI_Vec{int(line_height), int(line_height)};
+	push_child_layout(ctx, {0, int(line_height)}, {1, 0});
+	if button("-", button_size, ctx, child_id(ui_id), location)
+	{
+		value^ -= increment;
+		result = true;
+	}
+	label(ctx, fmt.tprint(value^));
+	if button("+", button_size, ctx, child_id(ui_id), location)
+	{
+		value^ += increment;
+		result = true;
+	}
+	pop_layout(ctx);
+	return;
 }

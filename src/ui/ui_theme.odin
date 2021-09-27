@@ -170,8 +170,8 @@ rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_
 	switch value in theme.corner_radius
 	{
 		case int:
-			drag_int(ctx, &theme.corner_radius.(int), child_id(ui_id));
+			number_editor(ctx, &theme.corner_radius.(int), 1, child_id(ui_id));
 		case f32:
-			slider(ctx, &theme.corner_radius.(f32), 0, 1, 20, 20, child_id(ui_id));
+			number_editor(ctx, &theme.corner_radius.(f32), 0.01, child_id(ui_id));
 	}
 }

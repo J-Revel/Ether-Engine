@@ -29,6 +29,9 @@ load_font :: proc(path: string, size: int, allocator := context.allocator) -> (f
 	}
 	freetype.set_pixel_sizes(font.face, 0, u32(size));
 	font.line_height = f32(font.face.size.metrics.height)/64;
+	font.ascent = f32(font.face.size.metrics.ascender)/64;
+	font.descent = f32(font.face.size.metrics.descender)/64;
+	log.info(font.face.size.metrics);
 	return font, true;
 }
 

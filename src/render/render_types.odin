@@ -128,6 +128,8 @@ Font :: struct
 	face: freetype.Face,
 	glyphs: map[rune]Glyph,
 	line_height: f32,
+	ascent: f32,
+	descent: f32,
 }
 
 Font_Atlas :: struct

@@ -201,7 +201,7 @@ push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, la
 		text = label, 
 		color = 0xffffffff,
 		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, 
-		alignment = .Left,
+		alignment = {.Left, .Middle},
 		font = ctx.current_font,
 		ctx = ctx);
 	layout.pos.x += label_size;
@@ -517,18 +517,26 @@ text :: proc(
 	text: string,
 	color: Color,
 	pos: UI_Vec,
-	alignment: Horizontal_Alignment,
+	alignment: Alignment,
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
-	alignment_ratio: f32;
-	switch alignment
+	alignment_ratios: [2]f32;
+	switch alignment.horizontal
 	{
-		case .Left: alignment_ratio = 0;
-		case .Center: alignment_ratio = 0.5;
-		case .Right: alignment_ratio = 1;
+		case .Left: alignment_ratios.x = 0;
+		case .Center: alignment_ratios.x = 0.5;
+		case .Right: alignment_ratios.x = 1;
 	}
-	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratio * f32(render.get_text_render_size(ctx.current_font, text))), 0};
+	vertical_offset : int = 0;
+	switch alignment.vertical
+	{
+		case .Top: vertical_offset = -int(font.ascent);
+		case .Middle: vertical_offset = -int(font.ascent + font.descent) / 2;
+		case .Bottom: vertical_offset = -int(font.descent);
+	}
+	
+	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratios.x * f32(render.get_text_render_size(ctx.current_font, text))), vertical_offset};
 	render.load_glyphs(&ctx.font_atlas, ctx.sprite_table, font, text);
 	for char in text
 	{
@@ -557,6 +565,7 @@ multiline_text :: proc(
 	color: Color,
 	pos: UI_Vec,
 	line_size: int,
+	alignment: Alignment,
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
@@ -566,7 +575,7 @@ multiline_text :: proc(
 			text = substring, 
 			color = color,
 			pos = pos + UI_Vec{0, int(font.line_height * f32(index))},
-			alignment = .Left,
+			alignment = {.Left, .Middle},
 			font = font,
 			ctx = ctx);
 	}
@@ -576,12 +585,13 @@ element_draw_text :: proc(
 	padding: Padding,
 	text: string,
 	color: Color,
+	alignment: Alignment,
 	font: ^render.Font,
 	ctx: ^UI_Context,
 ) {
 	pos_cursor := ctx.current_element.pos + padding.top_left + UI_Vec{0, int(font.line_height)};
 	line_size := int(ctx.current_element.pos.x + ctx.current_element.size.x - pos_cursor.x - padding.bottom_right.x);
-	multiline_text(text, color, pos_cursor, line_size, font, ctx);
+	multiline_text(text, color, pos_cursor, line_size, alignment, font, ctx);
 }
 
 add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
@@ -749,6 +759,7 @@ button_themed :: proc(
 		used_theme = default_theme;
 	}
 	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
+	text(label, 0xffffffff, allocated_space.pos + allocated_space.size / 2, {.Center, .Middle}, ui_ctx.current_font, ui_ctx);
 	
 	return Interaction_Type.Click in element_state;
 }

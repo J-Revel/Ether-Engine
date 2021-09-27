@@ -192,6 +192,18 @@ UI_Context :: struct
 	ui_draw_list: Draw_Command_List,
 	current_theme: UI_Theme,
 	content_size_fitters: [dynamic]Content_Size_Fitter,
+	drag_state: Drag_State,
+}
+
+// TODO : enable custom drag state storage for the hovered element
+Slider_Dragged_Data :: struct
+{
+	
+}
+
+Dragged_Element_Data :: union
+{
+
 }
 
 Drag_State :: struct
@@ -199,6 +211,7 @@ Drag_State :: struct
 	drag_last_pos: UI_Vec,
 	dragging: bool,
 	drag_offset: UI_Vec,
+	dragged_element_data: ,
 }
 
 Window_State :: struct
@@ -207,6 +220,7 @@ Window_State :: struct
 	rect: UI_Rect,
 	folded: bool,
 	scroll: int,
+	scroll_state: Slider_State(int),
 	
 	last_frame_height: int,
 }
@@ -263,6 +277,19 @@ Corner_Radius :: union
 	f32,
 }
 
+Alignment :: struct
+{
+	horizontal: Horizontal_Alignment,
+	vertical: Vertical_Alignment,
+}
+
+Vertical_Alignment :: enum
+{
+	Top,
+	Middle,
+	Bottom,
+}
+
 Horizontal_Alignment :: enum
 {
 	Left,
@@ -302,4 +329,24 @@ UI_Theme :: struct
 	button: Button_Theme,
 	window: Window_Theme,
 	slider: Slider_Theme,
+}
+
+Text_Themes :: struct
+{
+	default: Text_Theme,
+	title: Text_Theme,
+}
+
+Text_Theme :: struct
+{
+	font: ^render.Font,
+	color: Color,
+}
+
+Slider_State :: struct($T: typeid)
+{
+	drag_value_offset: T,
+	min, max: T,
+	cursor_size: int,
+
 }

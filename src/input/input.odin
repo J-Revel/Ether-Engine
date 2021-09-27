@@ -29,6 +29,7 @@ State :: struct {
     quit: bool,
     mouse_states: [3]int,
     mouse_pos: ivec2,
+	mouse_offset: ivec2,
     key_states: [512]int,
     // TODO : migrate specific imgui code somewhere else
     cursor_handles: [imgui.Mouse_Cursor.Count]^sdl.Cursor,
@@ -170,7 +171,9 @@ update_mouse :: proc(state: ^State, window: ^sdl.Window) {
     // Set mouse pos if window is focused
     io.mouse_pos = imgui.Vec2{min(f32), min(f32)};
     if sdl.get_keyboard_focus() == window {
-        state.mouse_pos = [2]int{int(mx), int(my)};
+		new_mouse_pos := [2]int{int(mx), int(my)};
+		state.mouse_offset = new_mouse_pos - state.mouse_pos;
+        state.mouse_pos = new_mouse_pos;
         io.mouse_pos = imgui.Vec2{f32(mx), f32(my)};
     }
 
