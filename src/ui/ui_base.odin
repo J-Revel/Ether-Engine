@@ -107,12 +107,15 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 			drag_amount += cursor_offset;
 			delta_drag = cursor_offset;
 			max_down_distance: int= 10;
+			if ui_ctx.elements_under_cursor[Interaction_Type.Drag] != 0
+			{
+				drag_target = ui_ctx.elements_under_cursor[Interaction_Type.Drag];
+			}
 			if linalg.vector_length2(drag_amount) > max_down_distance * max_down_distance
 			{
 				cursor_state = Cursor_Input_State.Drag;
 				drag_amount = {};
 				delta_drag = {};
-				drag_target = ui_ctx.elements_under_cursor[Interaction_Type.Drag];
 			}
 			else if input.Key_State_Flags.Down not_in input.get_mouse_state(input_state, 0)
 			{
@@ -129,10 +132,12 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 			cursor_state = Cursor_Input_State.Normal;
 			drag_amount = {};
 			delta_drag= {};
+			drag_target = 0;
 		case .Drag_Release:
 			cursor_state = Cursor_Input_State.Normal;
 			drag_amount = {};
 			delta_drag= {};
+			drag_target = 0;
 	}
 }
 

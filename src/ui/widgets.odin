@@ -93,7 +93,9 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID = 0, location := #c
 slider :: proc(
 	ctx: ^UI_Context,
 	value: ^$T,
-	using state: ^Slider_State(T),
+	min, max: T,
+	cursor_size: int,
+	thickness: int,
 	ui_id: UI_ID = 0,
 	location := #caller_location,
 ) -> (value_changed: bool)
@@ -129,19 +131,31 @@ slider :: proc(
 		pos = widget_rect.pos + direction_vec * (cursor_size / 2 + int(f32(max_cursor_pos - cursor_size) * value_ratio) - cursor_size / 2),
 		size = cursor_size * direction_vec + widget_rect.size * tangent_vec,
 	};
-	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Drag}, child_id(ui_id));
+	cursor_state := ui_element(ctx, cursor_rect, {.Hover, .Press, .Drag}, child_id(ui_id));
 	cursor_theme : Rect_Theme = theme.foreground_theme.default_theme;
+	if Interaction_Type.Press in cursor_state
+	{
+		ctx.active_widget_data = value^;
+		log.info(value^);
+	}
 	if Interaction_Type.Drag in cursor_state
 	{
-		drag_offset := f32(linalg.vector_dot(ctx.input_state.delta_drag, direction_vec)) / f32(max_cursor_pos - cursor_size) * f32(max - min);
-		new_value : T = value^;
-		new_value += T(drag_offset);
-		if new_value < min do new_value = min;
-		if new_value > max do new_value = max;
-		if new_value != value^
+		drag_offset := f32(linalg.vector_dot(ctx.input_state.drag_amount, direction_vec)) / f32(max_cursor_pos - cursor_size) * f32(max - min);
+		drag_start_value, cast_ok := ctx.active_widget_data.(T);
+		if cast_ok
 		{
-			value^ = new_value;
-			value_changed = true;
+			new_value : T = drag_start_value + T(drag_offset);
+			if new_value < min do new_value = min;
+			if new_value > max do new_value = max;
+			if new_value != value^
+			{
+				value^ = new_value;
+				value_changed = true;
+			}
+		}
+		else
+		{
+			log.info("Error : slider dragged while not the active widget")
 		}
 		cursor_theme = theme.foreground_theme.clicked_theme;
 	}
@@ -222,10 +236,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 			push_layout(ctx, scrollbar_layout);
 			scroll_max := last_frame_height - view_height;
 			cursor_size := view_height * view_height / last_frame_height;
-			scroll_state.min = 0;
-			scroll_state.max = scroll_max;
-			scroll_state.cursor_size = cursor_size;
-			slider(ctx, &scroll, &scroll_state, child_id(ui_id));
+			slider(ctx, &scroll, 0, scroll_max, cursor_size, 0, child_id(ui_id));
 			pop_layout(ctx);
 		}
 	}

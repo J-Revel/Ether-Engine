@@ -176,6 +176,13 @@ Content_Size_Fitter :: struct
 	layout_index_in_stack: int,
 }
 
+Active_Widget_Data :: union
+{
+	u8,
+	int,
+	f32,
+}
+
 UI_Context :: struct
 {
 	elements_under_cursor: map[Interaction_Type]UI_ID,
@@ -192,17 +199,12 @@ UI_Context :: struct
 	ui_draw_list: Draw_Command_List,
 	current_theme: UI_Theme,
 	content_size_fitters: [dynamic]Content_Size_Fitter,
-	drag_state: Drag_State,
+	active_widget_data: Active_Widget_Data,
 }
 
-// TODO : enable custom drag state storage for the hovered element
-Slider_Dragged_Data :: struct
+Slider_Dragged_Data :: struct($T: typeid)
 {
-	
-}
-
-Dragged_Element_Data :: union
-{
+	start_value: T,
 
 }
 
@@ -211,7 +213,6 @@ Drag_State :: struct
 	drag_last_pos: UI_Vec,
 	dragging: bool,
 	drag_offset: UI_Vec,
-	dragged_element_data: ,
 }
 
 Window_State :: struct
@@ -345,8 +346,5 @@ Text_Theme :: struct
 
 Slider_State :: struct($T: typeid)
 {
-	drag_value_offset: T,
-	min, max: T,
-	cursor_size: int,
 
 }

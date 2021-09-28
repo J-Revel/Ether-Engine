@@ -173,10 +173,6 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	{
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_system.element_buffer);
 		gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, cast(int) len(draw_list.index) * size_of(u32), &draw_list.index[0]);
-		for i in len(draw_list.index)-10..<len(draw_list.index)
-		{
-			log.info(draw_list.index[i]);
-		}
 	}
 
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo);

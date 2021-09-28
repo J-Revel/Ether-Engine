@@ -144,10 +144,6 @@ window_state := ui.Window_State {
 };
 
 test_value : int = 50;
-test_slider_state: ui.Slider_State(int) = {
-	min = 0, max = 100,
-	cursor_size = 20,
-};
 
 update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^input.State, viewport: render.Viewport)
 {
@@ -178,8 +174,10 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state), {.Center, .Top});
 		ui.label(&ui_ctx, fmt.tprint(util.get_fps()), {.Left, .Top});
 		ui.label(&ui_ctx, fmt.tprint(len(ui_ctx.content_size_fitters)));
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.active_widget_data));
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.drag_target));
 		drag_cache: ui.Drag_State;
-		ui.slider(&ui_ctx, &test_value, &test_slider_state);
+		ui.slider(&ui_ctx, &test_value, 0, 100, 20, 20);
 
 		split_weights := [3]f32 {1, 1, 1};
 		columns : []ui.UI_Rect = ui.vsplit(&ui_ctx, split_weights[:], 20, context.allocator);
