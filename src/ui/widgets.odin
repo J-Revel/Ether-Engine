@@ -19,12 +19,14 @@ label :: proc(
 	ui_id := ui_id;
 	if ui_id == 0 do ui_id = id_from_location(location);
 	layout := current_layout(ctx);
-	line_height := ctx.current_font.line_height;
-	lines := render.split_text_for_render(ctx.current_font, str, int(layout.size.x));
+	text_theme:= ctx.current_theme.text.default;
+	font := ctx.font_loader.loaded_fonts[text_theme.font_asset];
+	line_height := font.line_height;
+	lines := render.split_text_for_render(font, str, int(layout.size.x));
 	allocated_length := layout.size.x;
 	if len(lines) == 1
 	{
-		allocated_length = render.get_text_render_size(ctx.current_font, str);
+		allocated_length = render.get_text_render_size(font, str);
 	}
 	allocated_space := allocate_element_space(ctx, [2]int{allocated_length, int(f32(len(lines)) * line_height)});
 
@@ -50,7 +52,7 @@ label :: proc(
 			color = color,
 			pos = first_line_pos + UI_Vec{int(f32(layout.size.x) * alignment_ratios.x), int(line_height * (f32(index) + alignment_ratios.y))},
 			alignment = alignment,
-			font = ctx.current_font,
+			font = font,
 			ctx = ctx,
 		);
 	}
@@ -316,7 +318,9 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 number_editor :: proc(using ctx: ^UI_Context, value: ^$T, increment: T, ui_id: UI_ID = 0, location := #caller_location) -> (result: bool)
 {
 	ui_id := default_id(ui_id, location);
-	line_height := ctx.current_font.line_height;
+	text_theme := ctx.current_theme.text.default;
+	font := ctx.font_loader.loaded_fonts[text_theme.font_asset];
+	line_height := font.line_height;
 	button_size := UI_Vec{int(line_height), int(line_height)};
 	push_child_layout(ctx, {0, int(line_height)}, {1, 0});
 	if button("-", button_size, ctx, child_id(ui_id), location)

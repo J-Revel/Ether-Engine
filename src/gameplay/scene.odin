@@ -60,7 +60,7 @@ Scene :: struct
 	font: render.Font,
 	test_sprite: render.Sprite_Handle,
 	rune_sprites: map[rune]render.Sprite_Handle,
-	editor_font: render.Font,
+	editor_font: ^render.Font,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
@@ -99,12 +99,12 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	init_empty_scene(scene, sprite_db);
 
 	font_load_ok: bool;
-	editor_font, font_load_ok = render.load_font("resources/fonts/Roboto-Regular.ttf", 12);
-	assert(font_load_ok);
+	//editor_font, font_load_ok = render.load_font("resources/fonts/Roboto-Regular.ttf", 12);
+	//assert(font_load_ok);
 
-	ui.init_ctx(&ui_ctx, sprite_database, &editor_font);
+	ui.init_ctx(&ui_ctx, sprite_database);
 	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
-		ui_ctx.font_atlas.texture_handle,
+		ui_ctx.font_loader.font_atlas.texture_handle,
 		"test",
 		render.Sprite_Data {
 			anchor = [2]f32{0, 0},
@@ -198,26 +198,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.label(&ui_ctx, "clicked", {.Center, .Bottom});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.clicked_theme);
 		ui.pop_layout(&ui_ctx);
-		for i in 0..3
-		{
-			if ui.button("test", {100, 100}, &ui_ctx, ui.id_from_index(i))
-			{
-				log.info("BUTTON3");
-			}
-		}
-		if ui.button("test", {150, 100}, &ui_ctx)
-		{
-			log.info("BUTTON2");
-		}
-		if ui.button("test", {100, 100}, &ui_ctx)
-		{
-			log.info("BUTTON3");
-		}
-		if ui.button("test", {100, 20}, &ui_ctx)
-		{
-			log.info("BUTTON3");
-		}
-		if ui.button("test", {100, 60}, &ui_ctx)
+		if ui.button("Save Theme", {100, 60}, &ui_ctx)
 		{
 			log.info("Save Theme");
 			log.info(ui.save_theme("config/ui/base_theme.json", ui_ctx.current_theme));

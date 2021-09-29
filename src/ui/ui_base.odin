@@ -62,16 +62,22 @@ simple_padding :: proc(value: int) -> Padding
 	return Padding{[2]int{value, value}, [2]int{value, value}};
 }
 
-init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, font: ^render.Font)
+init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
 {
 	ui_ctx.sprite_table = &sprite_database.sprites;
-	ui_ctx.current_font = font;
-	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_atlas); 
-	ui_ctx.editor_config.line_height = int(ui_ctx.current_font.line_height) + 4;
+	render.init_font_atlas(&sprite_database.textures, &ui_ctx.font_loader.font_atlas); 
 	init_renderer(&ui_ctx.renderer);
 	
 	error: Theme_Load_Error;
 	ui_ctx.current_theme, error = load_theme("config/ui/base_theme.json");
+	fonts := [?]render.Font_Asset{
+		ui_ctx.current_theme.text.default.font_asset, 
+		ui_ctx.current_theme.text.title.font_asset,
+	};
+	log.info("Fonts to load :", fonts);
+	load_fonts(&ui_ctx.font_loader, fonts[:]);
+	base_font := ui_ctx.loaded_fonts[ui_ctx.current_theme.text.default.font_asset];
+	ui_ctx.editor_config.line_height = int(base_font.line_height) + 4;
 	if error != nil do log.info("Error loading theme :", error);
 	log.info(ui_ctx.current_theme);
 }
@@ -82,10 +88,12 @@ load_fonts :: proc(loader: ^Font_Loader, assets: []render.Font_Asset)
 	{
 		render.free_font(loaded_font);
 	}
+	clear(&loader.loaded_fonts);
 	for font_asset in assets
 	{
-		loaded_font, font_load_ok = render.load_font(font_asset.font_path, font_asset.font_size);
+		loaded_font, font_load_ok := render.load_font(font_asset.path, font_asset.font_size, context.allocator);
 		if font_load_ok do loader.loaded_fonts[font_asset] = loaded_font;
+		else do log.info("Error loading font", font_asset);
 	}
 	
 }
@@ -213,14 +221,17 @@ push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, la
 {
 	layout : Layout = current_layout(ctx)^;
 	layout.rect = allocate_element_space(ctx, {0, height});
-	line_height := ctx.current_font.line_height;
-	render_size := render.get_text_render_size(ctx.current_font, label);
+	text_theme := ctx.current_theme.text.default;
+	font := ctx.font_loader.loaded_fonts[text_theme.font_asset];
+
+	line_height := font.line_height;
+	render_size := render.get_text_render_size(font, label);
 	text(
 		text = label, 
 		color = 0xffffffff,
 		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, 
 		alignment = {.Left, .Middle},
-		font = ctx.current_font,
+		font = font,
 		ctx = ctx);
 	layout.pos.x += label_size;
 	layout.size.x -= label_size;
@@ -554,7 +565,7 @@ text :: proc(
 		case .Bottom: vertical_offset = -int(font.descent);
 	}
 	
-	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratios.x * f32(render.get_text_render_size(ctx.current_font, text))), vertical_offset};
+	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratios.x * f32(render.get_text_render_size(font, text))), vertical_offset};
 	render.load_glyphs(&ctx.font_atlas, ctx.sprite_table, font, text);
 	for char in text
 	{
@@ -777,7 +788,9 @@ button_themed :: proc(
 		used_theme = default_theme;
 	}
 	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
-	text(label, 0xffffffff, allocated_space.pos + allocated_space.size / 2, {.Center, .Middle}, ui_ctx.current_font, ui_ctx);
+	text_theme:= ui_ctx.current_theme.text.default;
+	font := ui_ctx.font_loader.loaded_fonts[text_theme.font_asset];
+	text(label, 0xffffffff, allocated_space.pos + allocated_space.size / 2, {.Center, .Middle}, font, ui_ctx);
 	
 	return Interaction_Type.Click in element_state;
 }
@@ -958,3 +971,4 @@ render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Re
 	}
 	clear(draw_list);
 }
+

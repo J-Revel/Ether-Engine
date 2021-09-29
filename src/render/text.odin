@@ -19,8 +19,9 @@ init_font_render :: proc()
 	freetype.init(&lib);
 }
 
-load_font :: proc(path: string, size: int, allocator := context.allocator) -> (font: Font, ok: bool)
+load_font :: proc(path: string, size: int, allocator := context.allocator) -> (font: ^Font, ok: bool)
 {
+	font = new(Font, allocator);
 	error := freetype.new_face(lib, path, 0, &font.face);
 	if error != .OK
 	{
@@ -36,7 +37,7 @@ load_font :: proc(path: string, size: int, allocator := context.allocator) -> (f
 
 free_font :: proc(font: ^Font)
 {
-	freetype.done_face(font.face);
+	freetype.free_face(font.face);
 }
 
 load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, texture_id: u32, ok: bool)
