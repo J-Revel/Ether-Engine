@@ -31,8 +31,12 @@ load_font :: proc(path: string, size: int, allocator := context.allocator) -> (f
 	font.line_height = f32(font.face.size.metrics.height)/64;
 	font.ascent = f32(font.face.size.metrics.ascender)/64;
 	font.descent = f32(font.face.size.metrics.descender)/64;
-	log.info(font.face.size.metrics);
 	return font, true;
+}
+
+free_font :: proc(font: ^Font)
+{
+	freetype.done_face(font.face);
 }
 
 load_single_glyph :: proc(using font: Font, character: rune) -> (glyph: Glyph, texture_id: u32, ok: bool)

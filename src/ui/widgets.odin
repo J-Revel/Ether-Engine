@@ -290,7 +290,8 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 	});
 	
 	
-	r, g, b, a := render.extract_rgba(color^);
+	// using the extract to int version to fix potential overflow of the value modified with sliders
+	r, g, b, a : int = render.extract_rgba_int(color^);
 	value_changed := false;
 	push_label_layout(ctx, "r", height / 3, 20);
 	value_changed |= slider(ctx, &r, 0, 255, 20, 0, child_id(ui_id));
@@ -307,7 +308,7 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 	button_themed("", {height, height}, &theme, ctx, child_id(ui_id));
 
 	pop_layout(ctx);
-	if value_changed do color^ = render.rgba(r, g, b, a);
+	if value_changed do color^ = render.rgba(u8(r), u8(g), u8(b), u8(a));
 
 	return value_changed;
 }

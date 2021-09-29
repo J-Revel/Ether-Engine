@@ -76,6 +76,20 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database, 
 	log.info(ui_ctx.current_theme);
 }
 
+load_fonts :: proc(loader: ^Font_Loader, assets: []render.Font_Asset)
+{
+	for loaded_font_asset, loaded_font in &loader.loaded_fonts
+	{
+		render.free_font(loaded_font);
+	}
+	for font_asset in assets
+	{
+		loaded_font, font_load_ok = render.load_font(font_asset.font_path, font_asset.font_size);
+		if font_load_ok do loader.loaded_fonts[font_asset] = loaded_font;
+	}
+	
+}
+
 update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 {
 	using ui_ctx.input_state;
@@ -114,7 +128,6 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 			if linalg.vector_length2(drag_amount) > max_down_distance * max_down_distance
 			{
 				cursor_state = Cursor_Input_State.Drag;
-				drag_amount = {};
 				delta_drag = {};
 			}
 			else if input.Key_State_Flags.Down not_in input.get_mouse_state(input_state, 0)

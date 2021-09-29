@@ -202,10 +202,10 @@ UI_Context :: struct
 	active_widget_data: Active_Widget_Data,
 }
 
-Slider_Dragged_Data :: struct($T: typeid)
+Font_Loader:: struct
 {
-	start_value: T,
-
+	loaded_fonts: map[render.Font_Asset]^render.Font,
+	font_atlas: render.Font_Atlas,
 }
 
 Drag_State :: struct
@@ -221,7 +221,6 @@ Window_State :: struct
 	rect: UI_Rect,
 	folded: bool,
 	scroll: int,
-	scroll_state: Slider_State(int),
 	
 	last_frame_height: int,
 }
@@ -330,6 +329,7 @@ UI_Theme :: struct
 	button: Button_Theme,
 	window: Window_Theme,
 	slider: Slider_Theme,
+	text: Text_Themes,
 }
 
 Text_Themes :: struct
@@ -340,11 +340,6 @@ Text_Themes :: struct
 
 Text_Theme :: struct
 {
-	font: ^render.Font,
+	font_asset: render.Font_Asset,
 	color: Color,
-}
-
-Slider_State :: struct($T: typeid)
-{
-
 }

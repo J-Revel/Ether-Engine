@@ -139,6 +139,12 @@ Font_Atlas :: struct
 	pack_tree: Atlas_Tree,
 }
 
+Font_Asset :: struct
+{
+	path: string,
+	font_size: int,
+}
+
 /*-------------------------
 		Atlas
 ---------------------------*/
