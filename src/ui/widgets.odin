@@ -336,7 +336,7 @@ number_editor :: proc(
 
 	
 	//push_child_layout(ctx, {0, used_theme.height}, {1, 0});
-	if button(ctx, "-", UI_Rect{allocated_rect.pos, button_size}, nil, child_id(ui_id), location)
+	if button(ctx, "-", UI_Rect{allocated_rect.pos, button_size}, nil, child_id(ui_id, location, 0), location)
 	{
 		value^ -= increment;
 		result = true;
@@ -348,7 +348,7 @@ number_editor :: proc(
 		theme = text_theme,
 		ctx = ctx,
 	);
-	if button(ctx, "+", UI_Rect{allocated_rect.pos + UI_Vec{allocated_rect.size.x - button_size.x, 0}, button_size}, nil, child_id(ui_id), location)
+	if button(ctx, "+", UI_Rect{allocated_rect.pos + UI_Vec{allocated_rect.size.x - button_size.x, 0}, button_size}, nil, child_id(ui_id, location, 1), location)
 	{
 		value^ += increment;
 		result = true;

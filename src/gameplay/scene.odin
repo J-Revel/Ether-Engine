@@ -182,6 +182,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		drag_cache: ui.Drag_State;
 		ui.slider(&ui_ctx, &test_value, 0, 100, 20, 20);
 
+		ui.theme_editor(&ui_ctx, ui_ctx.current_theme);
+
 		split_weights := [3]f32 {1, 1, 1};
 		columns : []ui.UI_Rect = ui.vsplit(&ui_ctx, split_weights[:], 20, context.allocator);
 		defer delete(columns);
