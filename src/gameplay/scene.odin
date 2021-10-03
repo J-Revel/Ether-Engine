@@ -171,11 +171,14 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
 		//ui.ui_element(allocated_space, &ui_ctx);
 		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
-		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state), {.Center, .Top});
-		ui.label(&ui_ctx, fmt.tprint(util.get_fps()), {.Left, .Top});
-		ui.label(&ui_ctx, fmt.tprint(len(ui_ctx.content_size_fitters)));
-		ui.label(&ui_ctx, fmt.tprint(ui_ctx.active_widget_data));
-		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.drag_target));
+		theme := &ui_ctx.current_theme;
+
+		ui.label(&ui_ctx, fmt.tprint(theme.text.title), {.Left, .Top});
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.cursor_state), {.Center, .Top}, &theme.text.title);
+		ui.label(&ui_ctx, fmt.tprint(util.get_fps()), {.Left, .Top}, &theme.text.title);
+		ui.label(&ui_ctx, fmt.tprint(len(ui_ctx.content_size_fitters)), {.Left, .Top});
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.active_widget_data), {.Left, .Top});
+		ui.label(&ui_ctx, fmt.tprint(ui_ctx.input_state.drag_target), {.Left, .Top});
 		drag_cache: ui.Drag_State;
 		ui.slider(&ui_ctx, &test_value, 0, 100, 20, 20);
 
@@ -198,7 +201,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.label(&ui_ctx, "clicked", {.Center, .Bottom});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.clicked_theme);
 		ui.pop_layout(&ui_ctx);
-		if ui.button("Save Theme", {100, 60}, &ui_ctx)
+		if ui.button(&ui_ctx, "Save Theme", ui.UI_Vec{100, 60})
 		{
 			log.info("Save Theme");
 			log.info(ui.save_theme("config/ui/base_theme.json", ui_ctx.current_theme));

@@ -11,22 +11,24 @@ label :: proc(
 	ctx: ^UI_Context,
 	str: string,
 	alignment: Alignment = {.Left, .Middle},
-	color: Color = 0xffffffff,
+	theme: ^Text_Theme = nil,
 	ui_id: UI_ID = 0,
 	location := #caller_location,
 ) -> (state: Element_State)
 {
 	ui_id := ui_id;
 	if ui_id == 0 do ui_id = id_from_location(location);
-	layout := current_layout(ctx);
-	text_theme:= ctx.current_theme.text.default;
-	font := ctx.font_loader.loaded_fonts[text_theme.font_asset];
-	line_height := font.line_height;
-	lines := render.split_text_for_render(font, str, int(layout.size.x));
-	allocated_length := layout.size.x;
+	layout_rect := current_layout_rect(ctx);
+
+	font := theme != nil ? theme.font_asset : ctx.current_theme.text.default.font_asset;
+
+	font_data := ctx.font_loader.loaded_fonts[font];
+	line_height := font_data.line_height;
+	lines := render.split_text_for_render(font_data, str, int(layout_rect.size.x));
+	allocated_length := layout_rect.size.x;
 	if len(lines) == 1
 	{
-		allocated_length = render.get_text_render_size(font, str);
+		allocated_length = render.get_text_render_size(font_data, str);
 	}
 	allocated_space := allocate_element_space(ctx, [2]int{allocated_length, int(f32(len(lines)) * line_height)});
 
@@ -49,17 +51,15 @@ label :: proc(
 	{
 		text(
 			text = line,
-			color = color,
-			pos = first_line_pos + UI_Vec{int(f32(layout.size.x) * alignment_ratios.x), int(line_height * (f32(index) + alignment_ratios.y))},
+			pos = first_line_pos + UI_Vec{int(f32(allocated_space.size.x) * alignment_ratios.x), int(f32(allocated_space.size.y) * (f32(index) + alignment_ratios.y))},
 			alignment = alignment,
-			font = font,
+			theme = theme,
 			ctx = ctx,
 		);
 	}
 	
 	return state;
 }
-
 
 drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID = 0, location := #caller_location)
 {
@@ -87,8 +87,10 @@ drag_int :: proc(ctx: ^UI_Context, value: ^int, ui_id: UI_ID = 0, location := #c
 		direction = {1, 0},
 	};
 	push_layout(ctx, new_layout);
-	label(ctx, "drag editor ", {.Left, .Middle}, text_color, ui_id ~ id_from_location());
-	label(ctx, fmt.tprint(value^), {.Left, .Middle}, text_color, ui_id ~ id_from_location());
+	text_theme := ctx.current_theme.text.default;
+	text_theme.color = text_color;
+	label(ctx, "drag editor ", {.Left, .Middle}, &text_theme, ui_id ~ id_from_location());
+	label(ctx, fmt.tprint(value^), {.Left, .Middle}, &text_theme, ui_id ~ id_from_location());
 	pop_layout(ctx);
 }
 
@@ -138,7 +140,6 @@ slider :: proc(
 	if Interaction_Type.Press in cursor_state
 	{
 		ctx.active_widget_data = value^;
-		log.info(value^);
 	}
 	if Interaction_Type.Drag in cursor_state
 	{
@@ -188,14 +189,14 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 
 	push_layout(ctx, header_layout);
 	layout_draw_rect(ctx, {}, {}, theme.header_color, 0);
-	if button("close button", {header_height, header_height}, ctx, child_id(ui_id))
+	if button(ctx, "close button", UI_Vec{header_height, header_height}, nil, child_id(ui_id))
 	{
 
 	}
 	pop_layout(ctx);
 	header_layout.direction.x = 1;
 	push_layout(ctx, header_layout);
-	if button("fold button", {header_height, header_height}, ctx, child_id(ui_id))
+	if button(ctx, "fold button", UI_Vec{header_height, header_height}, nil, child_id(ui_id))
 	{
 		state.folded = !state.folded;
 	}
@@ -307,7 +308,7 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 	pop_layout(ctx);
 	theme := ctx.current_theme.button;
 	theme.default_theme.fill_color = color^
-	button_themed("", {height, height}, &theme, ctx, child_id(ui_id));
+	button_themed(ctx, "", UI_Vec{height, height}, &theme, child_id(ui_id));
 
 	pop_layout(ctx);
 	if value_changed do color^ = render.rgba(u8(r), u8(g), u8(b), u8(a));
@@ -315,25 +316,43 @@ color_picker_rgb :: proc(using ctx: ^UI_Context, color: ^Color, height: int = 50
 	return value_changed;
 }
 
-number_editor :: proc(using ctx: ^UI_Context, value: ^$T, increment: T, ui_id: UI_ID = 0, location := #caller_location) -> (result: bool)
+number_editor :: proc(
+	using ctx: ^UI_Context, 
+	value: ^$T,
+	increment: T,
+	theme: ^Number_Editor_Theme = nil,
+	ui_id: UI_ID = 0,
+	location := #caller_location,
+) -> (result: bool)
 {
 	ui_id := default_id(ui_id, location);
-	text_theme := ctx.current_theme.text.default;
+	used_theme := theme;
+	if theme == nil do used_theme = &ctx.current_theme.number_editor;
+	text_theme := used_theme.text;
 	font := ctx.font_loader.loaded_fonts[text_theme.font_asset];
-	line_height := font.line_height;
-	button_size := UI_Vec{int(line_height), int(line_height)};
-	push_child_layout(ctx, {0, int(line_height)}, {1, 0});
-	if button("-", button_size, ctx, child_id(ui_id), location)
+	button_size := UI_Vec{int(used_theme.button_width), int(used_theme.height)};
+	layout_rect := current_layout_rect(ctx);
+	allocated_rect := allocate_element_space(ctx, UI_Vec{0, used_theme.height});
+
+	
+	//push_child_layout(ctx, {0, used_theme.height}, {1, 0});
+	if button(ctx, "-", UI_Rect{allocated_rect.pos, button_size}, nil, child_id(ui_id), location)
 	{
 		value^ -= increment;
 		result = true;
 	}
-	label(ctx, fmt.tprint(value^));
-	if button("+", button_size, ctx, child_id(ui_id), location)
+	text(
+		text = fmt.tprint(value^),
+		pos = allocated_rect.pos + allocated_rect.size / 2,
+		alignment = {.Center, .Middle},
+		theme = text_theme,
+		ctx = ctx,
+	);
+	if button(ctx, "+", UI_Rect{allocated_rect.pos + UI_Vec{allocated_rect.size.x - button_size.x, 0}, button_size}, nil, child_id(ui_id), location)
 	{
 		value^ += increment;
 		result = true;
 	}
-	pop_layout(ctx);
+	//pop_layout(ctx);
 	return;
 }

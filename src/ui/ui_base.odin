@@ -80,6 +80,12 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
 	ui_ctx.editor_config.line_height = int(base_font.line_height) + 4;
 	if error != nil do log.info("Error loading theme :", error);
 	log.info(ui_ctx.current_theme);
+
+	ui_ctx.current_theme.number_editor.text = &ui_ctx.current_theme.text.default;
+	ui_ctx.current_theme.number_editor.buttons = &ui_ctx.current_theme.button;
+	ui_ctx.current_theme.number_editor.height = 50;
+	ui_ctx.current_theme.number_editor.button_width = 50;
+
 }
 
 load_fonts :: proc(loader: ^Font_Loader, assets: []render.Font_Asset)
@@ -221,17 +227,16 @@ push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, la
 {
 	layout : Layout = current_layout(ctx)^;
 	layout.rect = allocate_element_space(ctx, {0, height});
-	text_theme := ctx.current_theme.text.default;
+	text_theme := &ctx.current_theme.text.default;
 	font := ctx.font_loader.loaded_fonts[text_theme.font_asset];
 
 	line_height := font.line_height;
 	render_size := render.get_text_render_size(font, label);
 	text(
 		text = label, 
-		color = 0xffffffff,
 		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, 
 		alignment = {.Left, .Middle},
-		font = font,
+		theme = text_theme,
 		ctx = ctx);
 	layout.pos.x += label_size;
 	layout.size.x -= label_size;
@@ -544,13 +549,17 @@ element_draw_textured_rect :: proc(
 
 text :: proc(
 	text: string,
-	color: Color,
 	pos: UI_Vec,
 	alignment: Alignment,
-	font: ^render.Font,
+	theme: ^Text_Theme,
 	ctx: ^UI_Context,
 ) {
+	used_theme := theme == nil ? &ctx.current_theme.text.default : theme;
+	font := used_theme.font_asset;
+	font_data := ctx.font_loader.loaded_fonts[font];
+
 	alignment_ratios: [2]f32;
+
 	switch alignment.horizontal
 	{
 		case .Left: alignment_ratios.x = 0;
@@ -560,16 +569,16 @@ text :: proc(
 	vertical_offset : int = 0;
 	switch alignment.vertical
 	{
-		case .Top: vertical_offset = -int(font.ascent);
-		case .Middle: vertical_offset = -int(font.ascent + font.descent) / 2;
-		case .Bottom: vertical_offset = -int(font.descent);
+		case .Top: vertical_offset = -int(font_data.ascent);
+		case .Middle: vertical_offset = -int(font_data.ascent + font_data.descent) / 2;
+		case .Bottom: vertical_offset = -int(font_data.descent);
 	}
 	
-	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratios.x * f32(render.get_text_render_size(font, text))), vertical_offset};
-	render.load_glyphs(&ctx.font_atlas, ctx.sprite_table, font, text);
+	pos_cursor := linalg.to_int(pos) - UI_Vec{int(alignment_ratios.x * f32(render.get_text_render_size(font_data, text))), vertical_offset};
+	render.load_glyphs(&ctx.font_atlas, ctx.sprite_table, font_data, text);
 	for char in text
 	{
-		glyph, glyph_found := font.glyphs[char]; 
+		glyph, glyph_found := font_data.glyphs[char]; 
 		assert(glyph_found);
 		rect := UI_Rect{ pos = pos_cursor + glyph.bearing, size = glyph.size };
 		//textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
@@ -581,7 +590,7 @@ text :: proc(
 			rect = rect,
 			uv_clip = glyph_sprite.clip,
 			theme = {
-				fill_color = color,
+				fill_color = used_theme.color,
 			},
 			texture_id = texture.bindless_id,
 		});
@@ -591,21 +600,21 @@ text :: proc(
 
 multiline_text :: proc(
 	str: string,
-	color: Color,
 	pos: UI_Vec,
 	line_size: int,
 	alignment: Alignment,
-	font: ^render.Font,
+	theme: ^Text_Theme,
 	ctx: ^UI_Context,
 ) {
-	for substring, index in render.split_text_for_render(font, str, line_size)
+	font := theme.font_asset;
+	font_data := ctx.font_loader.loaded_fonts[font];
+	for substring, index in render.split_text_for_render(font_data, str, line_size)
 	{
 		text(
 			text = substring, 
-			color = color,
-			pos = pos + UI_Vec{0, int(font.line_height * f32(index))},
+			pos = pos + UI_Vec{0, int(font_data.line_height * f32(index))},
 			alignment = {.Left, .Middle},
-			font = font,
+			theme = theme,
 			ctx = ctx);
 	}
 }
@@ -613,14 +622,15 @@ multiline_text :: proc(
 element_draw_text :: proc(
 	padding: Padding,
 	text: string,
-	color: Color,
 	alignment: Alignment,
-	font: ^render.Font,
+	theme: ^Text_Theme,
 	ctx: ^UI_Context,
 ) {
-	pos_cursor := ctx.current_element.pos + padding.top_left + UI_Vec{0, int(font.line_height)};
+	font := theme.font_asset;
+	font_data := ctx.font_loader.loaded_fonts[font];
+	pos_cursor := ctx.current_element.pos + padding.top_left + UI_Vec{0, int(font_data.line_height)};
 	line_size := int(ctx.current_element.pos.x + ctx.current_element.size.x - pos_cursor.x - padding.bottom_right.x);
-	multiline_text(text, color, pos_cursor, line_size, alignment, font, ctx);
+	multiline_text(text, pos_cursor, line_size, alignment, theme, ctx);
 }
 
 add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
@@ -745,28 +755,20 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: UI_Vec) -> UI_Rect
 	return result;
 }
 
-button :: proc(
-	label: string,
-	size: UI_Vec,
-
-	using ui_ctx: ^UI_Context,
-	ui_id: UI_ID = 0,
-	location := #caller_location,
-) -> (clicked: bool)
-{
-	return button_themed(label, size, &current_theme.button, ui_ctx, ui_id, location);
-}
+button :: proc{ button_themed, button_placed };
 
 button_themed :: proc(
+	using ui_ctx: ^UI_Context,
 	label: string,
 	size: UI_Vec,
-	theme: ^Button_Theme,
+	theme: ^Button_Theme = nil,
 
-	using ui_ctx: ^UI_Context,
 	ui_id: UI_ID = 0,
 	location := #caller_location,
 ) -> (clicked: bool)
 {
+	button_theme := theme;
+	if theme == nil do button_theme = &ui_ctx.current_theme.button;
 	ui_id := default_id(ui_id, location);
 	layout := current_layout(ui_ctx);
 	allocated_space := allocate_element_space(ui_ctx, size);
@@ -774,7 +776,7 @@ button_themed :: proc(
 	color: Color;
 
 	used_theme: Rect_Theme;
-	using theme;
+	using button_theme;
 	if Interaction_Type.Press in element_state
 	{
 		used_theme = clicked_theme;
@@ -788,9 +790,47 @@ button_themed :: proc(
 		used_theme = default_theme;
 	}
 	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
-	text_theme:= ui_ctx.current_theme.text.default;
+	text_theme := &ui_ctx.current_theme.text.default;
 	font := ui_ctx.font_loader.loaded_fonts[text_theme.font_asset];
-	text(label, 0xffffffff, allocated_space.pos + allocated_space.size / 2, {.Center, .Middle}, font, ui_ctx);
+	text(label, allocated_space.pos + allocated_space.size / 2, {.Center, .Middle}, text_theme, ui_ctx);
+	
+	return Interaction_Type.Click in element_state;
+}
+
+button_placed :: proc(
+	using ui_ctx: ^UI_Context,
+	label: string,
+	rect: UI_Rect,
+	theme: ^Button_Theme,
+
+	ui_id: UI_ID = 0,
+	location := #caller_location,
+) -> (clicked: bool)
+{
+	button_theme := theme;
+	if theme == nil do button_theme = &ui_ctx.current_theme.button;
+	ui_id := default_id(ui_id, location);
+	element_state := ui_element(ui_ctx, rect, {.Hover, .Press, .Click}, ui_id);
+	color: Color;
+
+	used_theme: Rect_Theme;
+	using button_theme;
+	if Interaction_Type.Press in element_state
+	{
+		used_theme = clicked_theme;
+	}
+	else if Interaction_Type.Hover in element_state 
+	{
+		used_theme = hovered_theme;
+	}
+	else
+	{
+		used_theme = default_theme;
+	}
+	element_draw_themed_rect(ui_ctx, {{0, 0}, {1, 1}, 0, 0, 0, 0}, {}, &used_theme);
+	text_theme := &ui_ctx.current_theme.text.default;
+	font := ui_ctx.font_loader.loaded_fonts[text_theme.font_asset];
+	text(label, rect.pos + rect.size / 2, {.Center, .Middle}, text_theme, ui_ctx);
 	
 	return Interaction_Type.Click in element_state;
 }

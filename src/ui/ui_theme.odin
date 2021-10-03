@@ -61,6 +61,14 @@ load_int :: proc(json_object: json.Object, name: string, out_value: ^int) -> boo
 	return true;
 }
 
+load_string :: proc(json_object: json.Object, name: string, out_value: ^string) -> bool
+{
+	json_value, json_value_found := json_object[name];
+	if !json_value_found do return false;
+	out_value^ = json_value.(json.String);
+	return true;
+}
+
 load_corner_radius :: proc(json_object: json.Object, name: string, out_value: ^Corner_Radius) -> bool
 {
 	json_value, json_value_found := json_object[name];
@@ -110,6 +118,8 @@ load_root_compound_theme :: proc(json_root: json.Object, out_value: any) -> bool
 		json_child := json_root;
 		switch types[i].id
 		{
+			case typeid_of(string):
+				load_string(json_child, names[i], cast(^string)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(int):
 				load_int(json_child, names[i], cast(^int)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Color):
@@ -136,6 +146,8 @@ load_sub_compound_theme :: proc(json_root: json.Object, name: string, out_value:
 		using type_info_struct;
 		switch types[i].id
 		{
+			case typeid_of(string):
+				load_string(json_child, names[i], cast(^string)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(int):
 				load_int(json_child, names[i], cast(^int)(uintptr(out_value.data) + offsets[i]));
 			case typeid_of(Color):
@@ -170,8 +182,8 @@ rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_
 	switch value in theme.corner_radius
 	{
 		case int:
-			number_editor(ctx, &theme.corner_radius.(int), 1, child_id(ui_id));
+			number_editor(ctx, &theme.corner_radius.(int), 1, nil, child_id(ui_id));
 		case f32:
-			number_editor(ctx, &theme.corner_radius.(f32), 0.01, child_id(ui_id));
+			number_editor(ctx, &theme.corner_radius.(f32), 0.01, nil, child_id(ui_id));
 	}
 }

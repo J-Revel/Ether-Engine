@@ -5,6 +5,15 @@ import "../render"
 import "../util"
 import "../container"
 
+/*
+	TODO : different layers to implement properly
+	render -> uses assets to do the actual rendering
+	ui_elements -> uses Rect_Theme an Text_Theme and handles basic ui events
+	widgets -> handles more complex ui elements, uses widget themes
+
+	TODO : handle more primitives : gradients, nine slices
+*/
+
 INDEX_BUFFER_SIZE :: 50000;
 SSBO_SIZE :: 10000;
 
@@ -329,6 +338,7 @@ UI_Theme :: struct
 	window: Window_Theme,
 	slider: Slider_Theme,
 	text: Text_Themes,
+	number_editor: Number_Editor_Theme,
 }
 
 Text_Themes :: struct
@@ -341,4 +351,12 @@ Text_Theme :: struct
 {
 	font_asset: render.Font_Asset,
 	color: Color,
+}
+
+Number_Editor_Theme :: struct
+{
+	text: ^Text_Theme,
+	buttons: ^Button_Theme,
+	height: int,
+	button_width: int,
 }
