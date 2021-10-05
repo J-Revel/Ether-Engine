@@ -356,3 +356,33 @@ number_editor :: proc(
 	//pop_layout(ctx);
 	return;
 }
+
+fold :: proc(
+	ctx: ^UI_Context,
+	label: string,
+	folded: ^bool,
+	ui_id: UI_ID = 0,
+	location := #caller_location,
+) -> (display_content: bool)
+{
+	// TODO : looks like it bugs when the content is empty => maybe because empty content size fitter ?
+	if button(ctx, label, UI_Vec{200, 20}, nil, child_id(ui_id))
+	{
+		folded^ = !folded^;
+	}
+
+	if !folded^
+	{
+		layout := current_layout(ctx)^;
+		layout.rect.pos.x += 50;
+		layout.rect.size.x -= 50;
+		push_layout(ctx, layout);
+		add_content_size_fitter(ctx);
+	}
+	return !folded^;
+}
+
+fold_end :: proc(ctx: ^UI_Context)
+{
+	pop_layout(ctx);
+}

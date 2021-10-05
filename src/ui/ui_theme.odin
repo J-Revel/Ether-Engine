@@ -191,31 +191,45 @@ rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_
 	}
 }
 
-theme_editor :: proc(ctx: ^UI_Context, theme: any, ui_id: UI_ID = 0, location := #caller_location) -> bool
+theme_editor :: proc(
+	ctx: ^UI_Context, 
+	theme: any, 
+	editor_state: ^Theme_Editor_State,
+	ui_id: UI_ID = 0, 
+	location := #caller_location,
+) -> bool
 {
 	ui_id := default_id(ui_id, location);
 	type_info_struct := get_struct_type_info(type_info_of(theme.id));
 	for i in 0..<len(type_info_struct.names)
 	{
-		label(ctx, type_info_struct.names[i]);
 		using type_info_struct;
-		data_ptr := uintptr(theme.data) + offsets[i];
-		switch types[i].id
+		id_child := child_id(id = ui_id, element_index = i);
+		fold_state, ok := editor_state.fold_states[id_child];
+		if !ok do fold_state = true;
+		if fold(ctx, names[i], &fold_state, child_id(id_child))
 		{
-			case typeid_of(string):
-				value := cast(^string)data_ptr;
-				label(ctx, value^);
-			case typeid_of(int):
-				value := cast(^int)data_ptr;
-				number_editor(ctx, value, 1, nil, child_id(id = ui_id, element_index = i));
-			case typeid_of(Color):
-				value := cast(^Color)data_ptr;
-				color_picker_rgb(ctx, value, 50, child_id(id = ui_id, element_index = i));
-			case typeid_of(Corner_Radius):
-				
-			case:
-				theme_editor(ctx, any{id = types[i].id, data = rawptr(data_ptr)}, child_id(id = ui_id, element_index = i), location);
+			data_ptr := uintptr(theme.data) + offsets[i];
+			switch types[i].id
+			{
+				case typeid_of(string):
+					value := cast(^string)data_ptr;
+					label(ctx, value^);
+				case typeid_of(int):
+					value := cast(^int)data_ptr;
+					number_editor(ctx, value, 1, nil, id_child);
+				case typeid_of(Color):
+					value := cast(^Color)data_ptr;
+					color_picker_rgb(ctx, value, 50, id_child);
+				case typeid_of(Corner_Radius):
+					label(ctx, names[i]);
+					
+				case:
+					theme_editor(ctx, any{id = types[i].id, data = rawptr(data_ptr)}, editor_state, id_child, location);
+			}
+			fold_end(ctx);
 		}
+		editor_state.fold_states[id_child] = fold_state;
 	}
 	return true;
 }

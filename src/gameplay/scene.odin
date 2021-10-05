@@ -61,6 +61,7 @@ Scene :: struct
 	test_sprite: render.Sprite_Handle,
 	rune_sprites: map[rune]render.Sprite_Handle,
 	editor_font: ^render.Font,
+	theme_editor_state: ui.Theme_Editor_State,
 }
 
 init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
@@ -139,7 +140,7 @@ time : f32 = 0;
 ui_ctx: ui.UI_Context;
 window_state := ui.Window_State {
 	rect = ui.UI_Rect{
-		size = {1200, 800},
+		size = {800, 600},
 	},
 };
 
@@ -182,7 +183,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		drag_cache: ui.Drag_State;
 		ui.slider(&ui_ctx, &test_value, 0, 100, 20, 20);
 
-		ui.theme_editor(&ui_ctx, ui_ctx.current_theme);
+		ui.theme_editor(&ui_ctx, ui_ctx.current_theme, &theme_editor_state);
 
 		split_weights := [3]f32 {1, 1, 1};
 		columns : []ui.UI_Rect = ui.vsplit(&ui_ctx, split_weights[:], 20, context.allocator);

@@ -360,31 +360,21 @@ textured_rect :: proc(
 	});
 }
 
-id_from_index :: proc(index: int = 0, location := #caller_location) -> UI_ID
-{
-	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
-	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
-	location_line := location.line;
-	index := index;
-	mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32));
-	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &index, size_of(i32));
-	return UI_ID(hash.djb2(to_hash));
-}
-
 id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UI_ID
 {
-	to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2);
+	file_path := transmute([]byte)location.file_path;
+	to_hash := make([]byte, len(file_path) + size_of(int) * 2);
 	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
 	location_line := location.line;
-	additional_element_index := additional_element_index;
-	mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32));
-	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_element_index, size_of(i32));
-	return UI_ID(hash.djb2(to_hash));
+	additional_element_index : int = additional_element_index;
+	mem.copy(&to_hash[len(file_path)], &location_line, size_of(int));
+	mem.copy(&to_hash[len(file_path) + size_of(int)], &additional_element_index, size_of(int));
+	return UI_ID(hash.fnv32(to_hash));
 }
 
 child_id :: proc(id: UI_ID, location := #caller_location, element_index: int = 0) -> UI_ID
 {
-	return id ~ id_from_location(location, element_index);
+	return id_from_location(location, element_index ~ int(id));
 }
 
 ui_element :: proc {

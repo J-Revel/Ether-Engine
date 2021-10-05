@@ -360,3 +360,8 @@ Number_Editor_Theme :: struct
 	height: int,
 	button_width: int,
 }
+
+Theme_Editor_State :: struct
+{
+	fold_states: map[UI_ID]bool,
+}
