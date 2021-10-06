@@ -47,18 +47,16 @@ relative_to_world :: proc(rect: Rect, pos: [2]f32) -> [2]f32
 {
     if array == nil do return nil;
 
-    n := len(array);
-    resize(array, n+1);
+    append(array, E{});
 
-    return len(array) == n+1 ? &array[len(array)-1] : nil;
+    return &array[len(array)-1];
 }
 
 append_and_get_index :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> int 
 {
     if array == nil do return -1;
 
-    n := len(array);
-    resize(array, n+1);
+    append(array, E{});
 
-    return len(array) == n+1 ? len(array)-1 : -1;
+    return len(array)-1;
 }

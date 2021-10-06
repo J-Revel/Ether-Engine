@@ -326,7 +326,7 @@ number_editor :: proc(
 ) -> (result: bool)
 {
 	ui_id := default_id(ui_id, location);
-	push_group(ctx, ctx.current_theme.button.default_theme, Padding{{10, 10}, {10, 10}});
+	push_group(ctx, ctx.current_theme.button.default_theme, Padding{{20, 10}, {50, 10}});
 	used_theme := theme;
 	if theme == nil do used_theme = &ctx.current_theme.number_editor;
 	text_theme := used_theme.text;
@@ -395,6 +395,7 @@ push_group :: proc(ctx: ^UI_Context, theme: Rect_Theme, padding: Padding)
 	layout_draw_rect(ctx, {}, {}, theme);
 	push_layout(ctx, current_layout(ctx)^);
 	current_layout(ctx).rect.pos += padding.top_left;
+	current_layout(ctx).rect.size -= padding.top_left;
 	add_content_size_fitter(ctx, padding.bottom_right);
 }
 

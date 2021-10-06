@@ -185,6 +185,7 @@ Content_Size_Fitter :: struct
 	rect: UI_Rect,
 	layout_index_in_stack: int,
 	max_padding: UI_Vec,
+	directions: bit_set[UI_Direction],
 }
 
 Active_Widget_Data :: union
@@ -273,6 +274,12 @@ Unit :: enum
 {
 	Pixels,
 	Ratio,
+}
+
+UI_Direction :: enum
+{
+	Vertical,
+	Horizontal,
 }
 
 Slider_Direction :: enum
