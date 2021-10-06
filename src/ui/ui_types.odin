@@ -98,8 +98,8 @@ Anchor :: struct
 
 Padding :: struct
 {
-	top_left: [2]int,
-	bottom_right: [2]int,
+	top_left: UI_Vec,
+	bottom_right: UI_Vec,
 }
 
 Rect_Draw_Command :: struct
@@ -118,7 +118,7 @@ Clip_Draw_Command :: struct
 
 Layout_Draw_Command :: struct
 {
-	final_cmd: ^Rect_Draw_Command,
+	final_cmd: ^Rect_Command,
 	anchor: Anchor,
 	padding: Padding,
 }
@@ -129,6 +129,7 @@ Draw_Command :: union
 	Clip_Draw_Command,
 }
 
+// DEPRECATED
 Draw_List :: [dynamic]Draw_Command;
 
 Layout :: struct
@@ -136,7 +137,7 @@ Layout :: struct
 	using rect: UI_Rect,
 	cursor: int,
 	direction: [2]int,
-	draw_commands: [dynamic]Layout_Draw_Command,
+	draw_commands: [dynamic]^GPU_Rect_Command,
 }
 
 Layout_Stack :: [dynamic]Layout;
@@ -183,6 +184,7 @@ Content_Size_Fitter :: struct
 {
 	rect: UI_Rect,
 	layout_index_in_stack: int,
+	max_padding: UI_Vec,
 }
 
 Active_Widget_Data :: union

@@ -234,7 +234,7 @@ push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, la
 	render_size := render.get_text_render_size(font, label);
 	text(
 		text = label, 
-		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2 + int(line_height) / 2}, 
+		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2}, 
 		alignment = {.Left, .Middle},
 		theme = text_theme,
 		ctx = ctx);
@@ -256,11 +256,12 @@ apply_anchor_padding :: proc(rect: UI_Rect, anchor: Anchor, padding: Padding) ->
 	return result;
 }
 
-add_content_size_fitter :: proc(using ctx: ^UI_Context)
+add_content_size_fitter :: proc(using ctx: ^UI_Context, max_padding: UI_Vec = {})
 {
 	append(&content_size_fitters, Content_Size_Fitter{
 		rect = {},
 		layout_index_in_stack = len(layout_stack)-1,
+		max_padding = max_padding,
 	});
 }
 
@@ -274,14 +275,16 @@ pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 		if content_size_fitter.layout_index_in_stack == layout_index
 		{
 			popped_layout.rect = content_size_fitter.rect;
+			popped_layout.rect.size += content_size_fitter.max_padding;
 			pop(&content_size_fitters);
 		}
 	}
 	for draw_command in popped_layout.draw_commands
 	{
 		// TODO : handle anchor and padding properly
-		draw_command.final_cmd.pos = popped_layout.rect.pos;
-		draw_command.final_cmd.size = popped_layout.rect.size;
+		draw_command.pos = linalg.to_i32(popped_layout.rect.pos);
+		draw_command.size= linalg.to_i32(popped_layout.rect.size);
+		log.info(draw_command);
 	}
 	for content_size_fitter in &content_size_fitters
 	{
@@ -630,13 +633,6 @@ add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
 	return cast(^T)added_cmd;
 }
 
-layout_draw_used_rect :: proc(anchor: Anchor, padding: Padding, color: Color, ctx: ^UI_Context)
-{
-	draw_cmd := add_and_get_draw_command(&ctx.draw_list, Rect_Draw_Command{color=color});
-	layout_cmd := Layout_Draw_Command{draw_cmd, anchor, padding};
-	append(&current_layout(ctx).draw_commands, layout_cmd);
-}
-
 // TODO : utility functions to get an anchored / padded sub rect ?
 layout_get_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding) -> UI_Rect
 {
@@ -644,29 +640,17 @@ layout_get_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding) -> U
 	return {pos = layout.pos, size = layout.size};
 }
 
-layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, color: Color, corner_radius: int)
+layout_draw_rect :: proc(ctx: ^UI_Context, anchor: Anchor, padding: Padding, theme: Rect_Theme)
 {
 	layout := current_layout(ctx);
-	draw_cmd := Rect_Draw_Command{
-		rect = {
-			pos = layout.pos,
-			size = layout.size,
-		},
-		color = color,
-		corner_radius = corner_radius,
-	};
-	append(&ctx.draw_list, draw_cmd);
-
 	layout_rect := layout_get_rect(ctx, anchor, padding);
-	add_rect_command(&ctx.ui_draw_list, Rect_Command {
+	new_command := add_rect_command(&ctx.ui_draw_list, Rect_Command {
 		rect = UI_Rect{pos = layout.pos, size = layout.size},
 		uv_clip = {{0, 0}, {1, 1}},
-		theme = {
-			fill_color = color,
-			border_color = render.rgb(0, 0, 0),
-			border_thickness = 1,
-		},
+		theme = theme,
 	});
+
+	append(&layout.draw_commands, new_command);
 }
 
 default_anchor :: Anchor{{0, 0}, {1, 1}, 0, 0, 0, 0};

@@ -188,7 +188,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 	theme := current_theme.window;
 
 	push_layout(ctx, header_layout);
-	layout_draw_rect(ctx, {}, {}, theme.header_color, 0);
+	layout_draw_rect(ctx, {}, {}, {fill_color = theme.header_color});
 	if button(ctx, "close button", UI_Vec{header_height, header_height}, nil, child_id(ui_id))
 	{
 
@@ -248,7 +248,7 @@ window :: proc(using ctx: ^UI_Context, using state: ^Window_State, header_height
 	if draw_content
 	{
 		push_clip(&ctx.ui_draw_list, layout_get_rect(ctx, {}, {}));
-		layout_draw_rect(ctx, {}, {}, theme.background_color, 0);
+		layout_draw_rect(ctx, {}, {}, {fill_color = theme.background_color});
 		header_outline_rect.size.y += current_layout(ctx).rect.size.y;
 		scroll_content_rect := current_layout(ctx).rect;
 		//scroll_content_rect.size.y = state.last_frame_height;
@@ -326,6 +326,7 @@ number_editor :: proc(
 ) -> (result: bool)
 {
 	ui_id := default_id(ui_id, location);
+	push_group(ctx, ctx.current_theme.button.default_theme, Padding{{10, 10}, {10, 10}});
 	used_theme := theme;
 	if theme == nil do used_theme = &ctx.current_theme.number_editor;
 	text_theme := used_theme.text;
@@ -353,7 +354,7 @@ number_editor :: proc(
 		value^ += increment;
 		result = true;
 	}
-	//pop_layout(ctx);
+	pop_group(ctx);
 	return;
 }
 
@@ -384,5 +385,21 @@ fold :: proc(
 
 fold_end :: proc(ctx: ^UI_Context)
 {
+	pop_layout(ctx);
+}
+
+push_group :: proc(ctx: ^UI_Context, theme: Rect_Theme, padding: Padding)
+{
+	push_layout(ctx, current_layout(ctx)^);
+	add_content_size_fitter(ctx);
+	layout_draw_rect(ctx, {}, {}, theme);
+	push_layout(ctx, current_layout(ctx)^);
+	current_layout(ctx).rect.pos += padding.top_left;
+	add_content_size_fitter(ctx, padding.bottom_right);
+}
+
+pop_group :: proc(ctx: ^UI_Context)
+{
+	pop_layout(ctx);
 	pop_layout(ctx);
 }

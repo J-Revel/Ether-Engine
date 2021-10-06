@@ -189,7 +189,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		columns : []ui.UI_Rect = ui.vsplit(&ui_ctx, split_weights[:], 20, context.allocator);
 		defer delete(columns);
 		
-		ui.push_layout(&ui_ctx, ui.Layout{rect = columns[0], direction = [2]int{0, 1}});
+		/*ui.push_layout(&ui_ctx, ui.Layout{rect = columns[0], direction = [2]int{0, 1}});
 		ui.add_content_size_fitter(&ui_ctx);
 		ui.label(&ui_ctx, "default", {.Center, .Middle});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.default_theme);
@@ -204,6 +204,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 		ui.label(&ui_ctx, "clicked", {.Center, .Bottom});
 		ui.rect_theme_editor(&ui_ctx, &ui_ctx.current_theme.button.clicked_theme);
 		ui.pop_layout(&ui_ctx);
+		*/
 		if ui.button(&ui_ctx, "Save Theme", ui.UI_Vec{100, 60})
 		{
 			log.info("Save Theme");

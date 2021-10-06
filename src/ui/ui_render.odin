@@ -112,7 +112,7 @@ pop_clip :: proc(using draw_list: ^Draw_Command_List)
 	pop(&clip_stack);
 }
 
-add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command)
+add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command) -> ^GPU_Rect_Command
 {
 	if rect_command_count >= len(commands)
 	{
@@ -141,7 +141,8 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 	}
 
 	command_index: u32 = u32(rect_command_count);
-	commands[rect_command_count] = gpu_rect_command;
+	new_command := &commands[rect_command_count];
+	new_command^ = gpu_rect_command;
 	append(&index, command_index * (1<<16) + 0);
 	append(&index, command_index * (1<<16) + 1);
 	append(&index, command_index * (1<<16) + 2);
@@ -149,6 +150,7 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 	append(&index, command_index * (1<<16) + 3);
 	append(&index, command_index * (1<<16) + 2);
 	rect_command_count += 1;
+	return new_command;
 }
 
 render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Draw_Command_List, viewport: render.Viewport, texture: ^render.Texture)
