@@ -21,7 +21,7 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, element_buffer);
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
 	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, primitive_buffer);
-	gl.BufferData(gl.SHADER_STORAGE_BUFFER, SSBO_SIZE * size_of(Draw_Command_Data), nil, gl.DYNAMIC_DRAW);
+	gl.BufferData(gl.SHADER_STORAGE_BUFFER, SSBO_SIZE * size_of(GPU_Rect_Command), nil, gl.DYNAMIC_DRAW);
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo);
 	gl.BufferData(gl.UNIFORM_BUFFER, size_of(Ubo_Data), nil, gl.DYNAMIC_DRAW);
 	
@@ -112,48 +112,55 @@ pop_clip :: proc(using draw_list: ^Draw_Command_List)
 	pop(&clip_stack);
 }
 
-add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command) -> ^GPU_Rect_Command
+add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command) -> ^Computed_Rect_Command
 {
-	if rect_command_count >= len(commands)
-	{
-		append(&commands, GPU_Rect_Command{});
-	}
-
-	using rect_command;
-	gpu_rect_command: GPU_Rect_Command = {
-		pos = linalg.to_i32(rect_command.rect.pos),
-		size = linalg.to_i32(rect_command.rect.size),
-		uv_pos = uv_clip.pos,
-		uv_size = uv_clip.size,
-		color = u32(theme.fill_color),
-		border_color = u32(theme.border_color),
-		border_thickness = i32(theme.border_thickness),
-		texture_id = rect_command.texture_id,
-		clip_index = i32(clip_stack[len(clip_stack) - 1]),
-	};
-	switch radius in theme.corner_radius
-	{
-		case f32:
-			gpu_rect_command.corner_radius = i32(f32(rect.size.y) * radius);
-			break;
-		case int:
-			gpu_rect_command.corner_radius = i32(radius);
-	}
-
-	command_index: u32 = u32(rect_command_count);
-	new_command := &commands[rect_command_count];
-	new_command^ = gpu_rect_command;
-	append(&index, command_index * (1<<16) + 0);
-	append(&index, command_index * (1<<16) + 1);
-	append(&index, command_index * (1<<16) + 2);
-	append(&index, command_index * (1<<16) + 1);
-	append(&index, command_index * (1<<16) + 3);
-	append(&index, command_index * (1<<16) + 2);
-	rect_command_count += 1;
-	return new_command;
+	append(&commands, Computed_Rect_Command{
+		command = rect_command,
+		clip_index = clip_stack[len(clip_stack) - 1],
+	});
+	return &commands[len(commands) - 1];
 }
 
-render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Draw_Command_List, viewport: render.Viewport, texture: ^render.Texture)
+compute_gpu_commands :: proc(draw_list: ^Draw_Command_List, allocator := context.allocator) -> GPU_Command_List
+{
+	result: GPU_Command_List;
+	result.commands = make([]GPU_Rect_Command, len(draw_list.commands), allocator);
+	result.index = make([]u32, len(draw_list.commands) * 6, allocator);
+	for i in 0..<len(draw_list.commands)
+	{
+		rect_command := &draw_list.commands[i];
+		result.commands[i] = GPU_Rect_Command {
+			pos = linalg.to_i32(rect_command.rect.pos),
+			size = linalg.to_i32(rect_command.rect.size),
+			uv_pos = rect_command.uv_clip.pos,
+			uv_size = rect_command.uv_clip.size,
+			color = u32(rect_command.theme.fill_color),
+			border_color = u32(rect_command.theme.border_color),
+			border_thickness = i32(rect_command.theme.border_thickness),
+			texture_id = rect_command.texture_id,
+			clip_index = i32(rect_command.clip_index),
+		};
+
+		switch radius in rect_command.theme.corner_radius
+		{
+			case f32:
+				result.commands[i].corner_radius = i32(f32(rect_command.rect.size.y) * radius);
+			case int:
+				result.commands[i].corner_radius = i32(radius);
+		}
+		
+		result.index[i * 6 + 0] = u32(i) * (1<<16) + 0;
+		result.index[i * 6 + 1] = u32(i) * (1<<16) + 1;
+		result.index[i * 6 + 2] = u32(i) * (1<<16) + 2;
+		result.index[i * 6 + 3] = u32(i) * (1<<16) + 1;
+		result.index[i * 6 + 4] = u32(i) * (1<<16) + 3;
+		result.index[i * 6 + 5] = u32(i) * (1<<16) + 2;
+	}
+	result.clips = draw_list.clips[:];
+	return result;
+}
+
+render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^GPU_Command_List, viewport: render.Viewport, texture: ^render.Texture)
 {
 	gl.BindVertexArray(render_system.vao);
 	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, render_system.primitive_buffer);
@@ -194,8 +201,4 @@ render_ui_draw_list :: proc(using render_system: ^Render_System, draw_list: ^Dra
 	gl.DrawElements(gl.TRIANGLES, cast(i32) len(draw_list.index), gl.UNSIGNED_INT, nil);
 	gl.BindVertexArray(0);
 	gl.UseProgram(0);
-
-	clear(&draw_list.commands);
-	clear(&draw_list.index);
-	draw_list.rect_command_count = 0;
 }

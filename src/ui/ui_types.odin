@@ -41,12 +41,22 @@ UV_Vec :: [2]f32;
 
 UV_Rect :: util.Rect; 
 
+// A command to draw a themed rect, as seen from the outside of the UI system
 Rect_Command :: struct
 {
+	// rect is local to the layout => it will move with it if needed
 	rect: UI_Rect,
 	uv_clip: util.Rect,
 	using theme: Rect_Theme,
 	texture_id: u64,
+}
+
+// A rect command once it has been pushed, with 
+Computed_Rect_Command :: struct
+{
+	using command: Rect_Command,
+	clip_index: int,
+
 }
 
 GPU_Rect_Command :: struct
@@ -66,19 +76,18 @@ GPU_Rect :: struct
 	pos, size : [2]i32,
 }
 
-Draw_Command_Data :: struct
-{
-	rect: Rect_Command,
-	clip_index: int,
-}
-
 Draw_Command_List :: struct
 {
-	commands: [dynamic]GPU_Rect_Command,
-	index: [dynamic]u32,
-	rect_command_count: int,
+	commands: [dynamic]Computed_Rect_Command,
 	clips: [dynamic]UI_Rect,
 	clip_stack: [dynamic]int,
+}
+
+GPU_Command_List :: struct
+{
+	commands: []GPU_Rect_Command,
+	index: []u32,
+	clips: []UI_Rect,
 }
 
 Ubo_Data :: struct
@@ -137,7 +146,7 @@ Layout :: struct
 	using rect: UI_Rect,
 	cursor: int,
 	direction: [2]int,
-	draw_commands: [dynamic]^GPU_Rect_Command,
+	draw_commands: [dynamic]^Computed_Rect_Command,
 }
 
 Layout_Stack :: [dynamic]Layout;

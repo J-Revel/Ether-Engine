@@ -231,14 +231,22 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
 	font_texture := container.handle_get(ui_ctx.font_atlas.texture_handle);
-	if scene.ui_draw_list.rect_command_count> 0
+	if len(scene.ui_draw_list.commands) > 0
 	{
-		ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &scene.ui_draw_list, viewport, font_texture);
+		gpu_draw_list := ui.compute_gpu_commands(&scene.ui_draw_list, context.temp_allocator);
+		ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &gpu_draw_list, viewport, font_texture);
 	}
-	if ui_ctx.ui_draw_list.rect_command_count > 0
+	if len(ui_ctx.ui_draw_list.commands) > 0
 	{
-		ui.render_ui_draw_list(&ui_ctx.renderer, &ui_ctx.ui_draw_list, viewport, font_texture);
+		gpu_draw_list := ui.compute_gpu_commands(&ui_ctx.ui_draw_list, context.temp_allocator);
+		ui.render_ui_draw_list(&ui_ctx.renderer, &gpu_draw_list, viewport, font_texture);
 	}
+	clear(&ui_ctx.ui_draw_list.commands);
+	clear(&ui_ctx.ui_draw_list.clips);
+	clear(&ui_ctx.ui_draw_list.clip_stack);
+	clear(&scene.ui_draw_list.commands);
+	clear(&scene.ui_draw_list.clips);
+	clear(&scene.ui_draw_list.clip_stack);
 
 	ui_camera := render.Camera{
 		world_pos = linalg.to_f32(viewport.size / 2),
