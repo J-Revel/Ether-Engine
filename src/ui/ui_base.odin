@@ -256,12 +256,17 @@ apply_anchor_padding :: proc(rect: UI_Rect, anchor: Anchor, padding: Padding) ->
 	return result;
 }
 
-add_content_size_fitter :: proc(using ctx: ^UI_Context, max_padding: UI_Vec = {})
+add_content_size_fitter :: proc(
+	using ctx: ^UI_Context,
+	max_padding: UI_Vec = {},
+	directions: bit_set[UI_Direction] = {.Horizontal, .Vertical},
+)
 {
 	append(&content_size_fitters, Content_Size_Fitter{
 		rect = {},
 		layout_index_in_stack = len(layout_stack)-1,
 		max_padding = max_padding,
+		directions = directions,
 	});
 }
 
@@ -274,7 +279,17 @@ pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 		content_size_fitter := content_size_fitters[len(content_size_fitters)-1];
 		if content_size_fitter.layout_index_in_stack == layout_index
 		{
-			popped_layout.rect = content_size_fitter.rect;
+			if UI_Direction.Horizontal in content_size_fitter.directions
+			{
+				popped_layout.pos.x = content_size_fitter.rect.pos.x;
+				popped_layout.size.x = content_size_fitter.rect.size.x;
+
+			}
+			if UI_Direction.Vertical in content_size_fitter.directions
+			{
+				popped_layout.pos.y = content_size_fitter.rect.pos.y;
+				popped_layout.size.y = content_size_fitter.rect.size.y;
+			}
 			popped_layout.rect.size += content_size_fitter.max_padding;
 			pop(&content_size_fitters);
 		}

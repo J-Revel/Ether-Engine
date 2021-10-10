@@ -9,7 +9,7 @@
         "state": {
           "type": "markdown",
           "state": {
-            "file": "Todo Imgui.md",
+            "file": "Layouts avancés.md",
             "mode": "source"
           }
         }
@@ -68,7 +68,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Todo Imgui.md",
+                "file": "Layouts avancés.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -88,6 +88,7 @@
   },
   "active": "0a9e5cd7c118943e",
   "lastOpenFiles": [
+    "Layouts avancés.md",
     "Todo Imgui.md",
     "Untitled.md"
   ]
