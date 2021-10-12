@@ -126,11 +126,14 @@ compute_gpu_commands :: proc(draw_list: ^Draw_Command_List, allocator := context
 	result: GPU_Command_List;
 	result.commands = make([]GPU_Rect_Command, len(draw_list.commands), allocator);
 	result.index = make([]u32, len(draw_list.commands) * 6, allocator);
+	absolute_positions := make([]GPU_Rect, len(draw_list.commands), context.allocator);
 	for i in 0..<len(draw_list.commands)
 	{
 		rect_command := &draw_list.commands[i];
+		parent_position : [2]i32;
+		if rect_command.parent >= 0 do parent_position = result.commands[i].pos; 
 		result.commands[i] = GPU_Rect_Command {
-			pos = linalg.to_i32(rect_command.rect.pos),
+			pos = parent_position + linalg.to_i32(rect_command.rect.pos),
 			size = linalg.to_i32(rect_command.rect.size),
 			uv_pos = rect_command.uv_clip.pos,
 			uv_size = rect_command.uv_clip.size,
@@ -157,6 +160,7 @@ compute_gpu_commands :: proc(draw_list: ^Draw_Command_List, allocator := context
 		result.index[i * 6 + 5] = u32(i) * (1<<16) + 2;
 	}
 	result.clips = draw_list.clips[:];
+	delete(absolute_positions);
 	return result;
 }
 

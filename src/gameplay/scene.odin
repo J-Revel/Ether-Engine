@@ -151,27 +151,13 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	time += delta_time;
 	animation.update_animations(&animation_players, delta_time);
 
-	// spaceship_sprite, sprite_found := render.get_sprite_any_texture(&sprite_database, "spaceship");
-	
-
-	// spaceship_sprite_data := container.handle_get(spaceship_sprite);
-	//render.render_sprite(&scene.sprite_renderer.buffer, spaceship_sprite_data, {0, 0}, render.Color{1, 1, 1, 1}, 100);
 	render_sprite_components(&transform_hierarchy, &sprite_renderer, &sprite_components);
 
 	ui.reset_ctx(&ui_ctx, viewport.size);
 	ui.update_input_state(&ui_ctx, input_state);
 	
-	//ui.rect(&draw_list, {0, 0}, {200, 200}, {1, 1, 1, 1});
-
-	
-	//ui.layout_draw_rect(&ui_ctx, {}, {}, render.rgb(128, 255, 128), 20);
 	if ui.window(&ui_ctx, &window_state, 40)
 	{
-		//log.info(container.handle_get(rune_sprites['a']));
-		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['a'], &ui_ctx);
-		//allocated_space = ui.allocate_element_space(&ui_ctx, [2]f32{50, 50});
-		//ui.ui_element(allocated_space, &ui_ctx);
-		//ui.element_draw_textured_rect(ui.default_anchor, {}, {1, 1, 1, 1}, rune_sprites['e'], &ui_ctx);
 		theme := &ui_ctx.current_theme;
 
 		ui.label(&ui_ctx, fmt.tprint(theme.text.title), {.Left, .Top});

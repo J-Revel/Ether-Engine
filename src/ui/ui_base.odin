@@ -57,7 +57,7 @@ join_rects :: proc(A: UI_Rect, B: UI_Rect) -> (result: UI_Rect)
 	return result;
 }
 
-simple_padding :: proc(value: int) -> Padding
+simple_padding :: #force_inline proc(value: int) -> Padding
 {
 	return Padding{[2]int{value, value}, [2]int{value, value}};
 }

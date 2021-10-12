@@ -56,7 +56,7 @@ Computed_Rect_Command :: struct
 {
 	using command: Rect_Command,
 	clip_index: int,
-
+	parent: int,
 }
 
 GPU_Rect_Command :: struct
