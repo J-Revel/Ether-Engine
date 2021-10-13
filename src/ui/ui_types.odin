@@ -56,7 +56,7 @@ Computed_Rect_Command :: struct
 {
 	using command: Rect_Command,
 	clip_index: int,
-	parent: int,
+	parent_element: ^UI_Element,
 }
 
 GPU_Rect_Command :: struct
@@ -138,18 +138,29 @@ Draw_Command :: union
 	Clip_Draw_Command,
 }
 
-// DEPRECATED
-Draw_List :: [dynamic]Draw_Command;
+Sub_Rect :: struct
+{
+	using rect: UI_Rect,
+	anchor: UV_Vec,
+	pivot: UV_Vec,
+}
+
+Local_Rect :: union
+{
+	Sub_Rect, // defined by size and offset from the anchor point
+	Padding, // defined by padding
+}
 
 Layout :: struct
 {
-	using rect: UI_Rect,
+	rect: Local_Rect,
 	cursor: int,
 	direction: [2]int,
 	draw_commands: [dynamic]^Computed_Rect_Command,
 }
 
 Layout_Stack :: [dynamic]Layout;
+Element_Stack :: [dynamic]UI_Element;
 
 Input_State_Data :: struct
 {
@@ -185,13 +196,13 @@ UI_ID :: distinct uint;
 
 UI_Element :: struct
 {
-	using rect: UI_Rect,
+	rect: Sub_Rect,
 	id: UI_ID,
 }
 
 Content_Size_Fitter :: struct
 {
-	rect: UI_Rect,
+	max: UI_Vec,
 	layout_index_in_stack: int,
 	max_padding: UI_Vec,
 	directions: bit_set[UI_Direction],
@@ -208,9 +219,8 @@ UI_Context :: struct
 {
 	elements_under_cursor: map[Interaction_Type]UI_ID,
 	next_elements_under_cursor: map[Interaction_Type]UI_ID,
-	draw_list: Draw_List,
 	input_state: Input_State_Data,
-	current_element: UI_Element,
+	element_stack: Element_Stack,
 	layout_stack: Layout_Stack,
 	using font_loader: Font_Loader,
 	sprite_table: ^container.Table(render.Sprite),
