@@ -1,4 +1,8 @@
-package imgui;
+package custom_imgui;
+
+import "core:mem"
+import "core:strings"
+import "core:hash"
 
 scale_ui_vec_2f :: proc(v: UI_Vec, scale: [2]f32) -> (result: UI_Vec)
 {
@@ -22,15 +26,45 @@ scale_ui_vec :: proc
 
 compute_child_rect :: proc(parent: UI_Rect, child: Child_Rect) -> UI_Rect
 {
-	switch child_data in child
-	{
-		case Sub_Rect:
-			anchor_pos := parent.pos + parent.size * child_data.anchor;
-			pivot_offset := child_data.rect.size * child_data.pivot;
-			pos := anchor_pos - pivot_offset;
-			size := child_rect.size;
-			return UI_Rect{pos, size};
-		case Padding:
-			return UI_rect{parent.pos + child.top_left, parent.size - child.top_left - child.bottom_right};
+	anchor_rect := UI_Rect {
+		parent.pos + scale_ui_vec(parent.size, child.anchor_min),
+		scale_ui_vec(parent.size, child.anchor_max - child.anchor_min),
+	};
+	padding_rect := UI_Rect	{
+		pos = anchor_rect.pos + child.padding.top_left,
+		size = anchor_rect.size - child.padding.top_left - child.padding.bottom_right,
+	};
+	placed_rect := UI_Rect {
+		pos = anchor_rect.pos + child.placed.pos - scale_ui_vec(child.placed.size, child.pivot),
+		size = child.placed.size,
 	}
+
+	return UI_Rect {
+		pos = {
+			anchor_rect.size.x == 0 ? placed_rect.pos.x : padding_rect.pos.x,
+			anchor_rect.size.y == 0 ? placed_rect.pos.y : padding_rect.pos.y,
+		},
+		size = {
+			anchor_rect.size.x == 0 ? placed_rect.size.x : padding_rect.size.x,
+			anchor_rect.size.y == 0 ? placed_rect.size.y : padding_rect.size.y,
+		},
+	};
+}
+
+default_id :: proc(ui_id: UI_ID, location := #caller_location) -> UI_ID
+{
+	if ui_id == 0 do return id_from_location(location);
+	return ui_id;
+}
+
+id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UI_ID
+{
+	file_path := transmute([]byte)location.file_path;
+	to_hash := make([]byte, len(file_path) + size_of(int) * 2);
+	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path));
+	location_line := location.line;
+	additional_element_index : int = additional_element_index;
+	mem.copy(&to_hash[len(file_path)], &location_line, size_of(int));
+	mem.copy(&to_hash[len(file_path) + size_of(int)], &additional_element_index, size_of(int));
+	return UI_ID(hash.fnv32(to_hash));
 }

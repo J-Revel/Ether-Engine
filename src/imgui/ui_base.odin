@@ -1,4 +1,4 @@
-package imgui;
+package custom_imgui;
 
 import "core:log"
 import "core:hash"
@@ -13,12 +13,6 @@ import "../input"
 import "../container"
 import "../render"
 import "../util"
-
-default_id :: proc(ui_id: UI_ID, location := #caller_location) -> UI_ID
-{
-	if ui_id == 0 do return id_from_location(location);
-	return ui_id;
-}
 
 init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
 {
@@ -134,41 +128,73 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]int)
 		ui_ctx.elements_under_cursor[interaction_type] = ui_id;
 	}
 	clear(&ui_ctx.next_elements_under_cursor);
-	clear(&ui_ctx.layout_stack);
-	base_layout := Layout {
-		rect = UI_Rect {
-			pos = {0, 0},
-			size = screen_size,
-		},
-		direction = [2]int{0, 1},
-	};
-	push_layout(ui_ctx, base_layout);
+
 	reset_draw_list(&ui_ctx.ui_draw_list, screen_size);
 }
 
 draw_themed_rect :: proc(ctx: ^UI_Context, rect: Child_Rect, theme: ^Rect_Theme)
 {
-	padding_sum := UI_Vec{anchor.right + anchor.left, anchor.bottom + anchor.top};
-	rect := UI_Rect{
-		pos = ctx.current_element.pos + scale_ui_vec(ctx.current_element.size, anchor.min) + UI_Vec{anchor.left, anchor.top},
-		size = scale_ui_vec(ctx.current_element.size, (anchor.max - anchor.min)) - padding_sum,
-	};
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = rect,
 		theme = theme^,
 	});
 }
 
-rect :: proc(
+current_layout :: proc(using ctx: ^UI_Context) -> ^Layout
+{
+	assert(len(layout_stack) > 0);
+	return &layout_stack[len(layout_stack)-1];
+}
+
+allocate_element :: proc(ctx: ^UI_Context, preferred_size: UI_Vec, id: UI_ID, location := #caller_location) -> UI_Element
+{
+	layout := current_layout(ctx);
+	allocated_size := layout.allocate_element_size(layout, preferred_size);
+	element_rect := Child_Rect{
+		position = {placed = UI_Rect{{0, 0}, allocated_size }},
+	};
+	append(&ctx.hierarchy, Rect_Hierarchy_Element{element_rect, layout.element.hierarchy_index});
+	hierarchy_index := len(ctx.hierarchy) - 1;
+	return UI_Element{
+		preferred_size = preferred_size,
+		hierarchy_index = hierarchy_index,
+		id = default_id(id, location),
+	}
+}
+
+
+/* TODO
+	button implementation (simple rect for now)
+	=> add a UI_Element with (0, 0) local position and the expected rect
+*/
+button :: proc(
 	ctx: ^UI_Context,
 	size: UI_Vec,
-	theme: ^Button_Theme = nil
+	theme: ^Button_Theme = nil,
 	ui_id: UI_ID = 0,
 	location := #caller_location,
 ) -> (clicked: bool)
 {
-	used_theme := theme or_else &ctx.current_theme.button;
+	used_theme := theme == nil ? &ctx.current_theme.button : theme;
 	ui_id := default_id(ui_id, location);
+	element := allocate_element(ctx, size, ui_id);
 
-	draw_themed_rect(Sub_Rect{rect = {{0, 0}, size}}, );
+	return false;
+}
+
+basic_layout_allocate_element :: proc(layout: ^Layout, required_size: UI_Vec) -> UI_Vec
+{
+	return required_size;
+}
+
+basic_layout_place_elements :: proc(ctx: ^UI_Context, layout: ^Layout)
+{
+	cursor := 0;
+	for element in &layout.children
+	{
+		hierarchy_element := &ctx.hierarchy[element.hierarchy_index];
+		hierarchy_element.rect.placed = UI_Rect {pos = {cursor, 0}, size = element.preferred_size};
+		cursor += element.preferred_size.y;
+	}
+	layout.element.preferred_size.y = cursor;
 }

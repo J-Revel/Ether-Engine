@@ -1,4 +1,4 @@
-package imgui;
+package custom_imgui;
 
 import "../input"
 import "../render"
@@ -175,6 +175,7 @@ save_theme :: proc(path: string, theme: UI_Theme) -> Theme_Save_Error
 	return nil;
 }
 
+/*
 rect_theme_editor :: proc(using ctx: ^UI_Context, theme: ^Rect_Theme, ui_id: UI_ID = 0, location := #caller_location)
 {
 	ui_id := default_id(ui_id, location);
@@ -233,3 +234,4 @@ theme_editor :: proc(
 	}
 	return true;
 }
+*/

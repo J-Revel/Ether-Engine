@@ -1,4 +1,7 @@
-package imgui;
+package custom_imgui;
+
+import "../render"
+import "../util"
 
 UI_Vec :: [2]int;
 
@@ -77,10 +80,17 @@ Sub_Rect :: struct
 	pivot: UV_Vec,
 }
 
-Child_Rect :: union
+Child_Rect :: struct #raw_union
 {
-	Sub_Rect,
-	Padding,
+	using position: struct #raw_union
+	{
+		padding: Padding,
+		placed: UI_Rect,
+	},
+	anchor_min: UV_Vec,
+	anchor_max: UV_Vec,
+	pivot: UV_Vec,
 }
 
-Rect_Hierarchy :: [dynamic] struct{rect: Child_Rect, parent: int}
+Rect_Hierarchy_Element :: struct{rect: Child_Rect, parent: int};
+Rect_Hierarchy :: [dynamic]Rect_Hierarchy_Element;

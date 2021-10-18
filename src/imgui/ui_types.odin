@@ -1,4 +1,4 @@
-package imgui;
+package custom_imgui;
 
 import "../input"
 import "../render"
@@ -21,14 +21,37 @@ Render_System :: struct
 
 UI_Element :: struct
 {
-	using rect: Sub_Rect,
+	preferred_size: UI_Vec,
+	hierarchy_index: int,
 	id: UI_ID,
 }
 
 Layout :: struct
 {
-	place_children: proc(children: []^UI_Element),
+	element: ^UI_Element,
+	children: [dynamic]^UI_Element,
+	allocate_element_size: proc(layout: ^Layout, required_size: UI_Vec) -> UI_Vec,
+	place_elements_function: proc(layout: ^Layout),
+}
 
+UI_Context :: struct
+{
+	elements_under_cursor: map[Interaction_Type]UI_ID,
+	next_elements_under_cursor: map[Interaction_Type]UI_ID,
+	draw_list: Draw_List,
+	input_state: Input_State_Data,
+	current_element: UI_Element,
+	using font_loader: Font_Loader,
+	sprite_table: ^container.Table(render.Sprite),
+	editor_config: Editor_Config,
+	renderer: Render_System,
+	ui_draw_list: Draw_Command_List,
+	current_theme: UI_Theme,
+	active_widget_data: Active_Widget_Data,
+	hierarchy: Rect_Hierarchy,
+	rect_stack: [dynamic]int,
+	elements: [dynamic]UI_Element,
+	layout_stack: [dynamic]Layout,
 }
 
 // A command to draw a themed rect, as seen from the outside of the UI system
@@ -141,14 +164,6 @@ Cursor_Input_State :: enum u8 {
 
 Interactions :: bit_set[Interaction_Type];
 
-Content_Size_Fitter :: struct
-{
-	rect: UI_Rect,
-	layout_index_in_stack: int,
-	max_padding: UI_Vec,
-	directions: bit_set[Direction],
-}
-
 Active_Widget_Data :: union
 {
 	u8,
@@ -156,23 +171,6 @@ Active_Widget_Data :: union
 	f32,
 }
 
-UI_Context :: struct
-{
-	elements_under_cursor: map[Interaction_Type]UI_ID,
-	next_elements_under_cursor: map[Interaction_Type]UI_ID,
-	draw_list: Draw_List,
-	input_state: Input_State_Data,
-	current_element: UI_Element,
-	using font_loader: Font_Loader,
-	sprite_table: ^container.Table(render.Sprite),
-	editor_config: Editor_Config,
-	renderer: Render_System,
-	ui_draw_list: Draw_Command_List,
-	current_theme: UI_Theme,
-	content_size_fitters: [dynamic]Content_Size_Fitter,
-	active_widget_data: Active_Widget_Data,
-	hierarchy: Rect_Hierarchy,
-}
 
 Font_Loader:: struct
 {

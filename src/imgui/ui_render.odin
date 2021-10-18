@@ -1,4 +1,4 @@
-package ui;
+package custom_imgui;
 
 import "core:os"
 import "core:strings"
@@ -127,16 +127,17 @@ compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List
 	result.commands = make([]GPU_Rect_Command, len(draw_list.commands), allocator);
 	result.index = make([]u32, len(draw_list.commands) * 6, allocator);
 	hierarchy_rects := make([]UI_Rect, len(hierarchy), context.allocator);
-	for i in 0..<len(hierarchy_positions)
+	defer delete(hierarchy_rects);
+	for i in 0..<len(hierarchy)
 	{
 		parent_index := hierarchy[i].parent;
-		parent_rect := parent_index < 0 ? screen_rect : hierarchy_rects[parent_index].rect;
+		parent_rect := parent_index < 0 ? screen_rect : hierarchy_rects[parent_index];
 		hierarchy_rects[i] = compute_child_rect(parent_rect, hierarchy[i].rect);
 	}
 	for i in 0..<len(draw_list.commands)
 	{
 		rect_command := &draw_list.commands[i];
-		display_rect := compute_child_rect(hierarchy_rect[rect_command.parent], rect_command.rect);
+		display_rect := compute_child_rect(hierarchy_rects[rect_command.parent], rect_command.rect);
 		parent_position : [2]i32;
 
 		result.commands[i] = GPU_Rect_Command {
@@ -154,7 +155,7 @@ compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List
 		switch radius in rect_command.theme.corner_radius
 		{
 			case f32:
-				result.commands[i].corner_radius = i32(f32(rect_command.rect.size.y) * radius);
+				result.commands[i].corner_radius = i32(f32(display_rect.size.y) * radius);
 			case int:
 				result.commands[i].corner_radius = i32(radius);
 		}
@@ -167,7 +168,6 @@ compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List
 		result.index[i * 6 + 5] = u32(i) * (1<<16) + 2;
 	}
 	result.clips = draw_list.clips[:];
-	delete(absolute_positions);
 	return result;
 }
 
