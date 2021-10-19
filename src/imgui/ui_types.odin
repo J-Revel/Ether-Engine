@@ -19,28 +19,27 @@ Render_System :: struct
 	ubo: u32,
 }
 
-UI_Element :: struct
+Element_ID :: distinct int;
+
+Hierarchy_Element_Data :: struct
 {
 	preferred_size: UI_Vec,
-	hierarchy_index: int,
-	id: UI_ID,
 }
 
 Layout :: struct
 {
-	element: ^UI_Element,
-	children: [dynamic]^UI_Element,
-	allocate_element_size: proc(layout: ^Layout, required_size: UI_Vec) -> UI_Vec,
-	place_elements_function: proc(layout: ^Layout),
+	element: Element_ID,
+	children: [dynamic]Element_ID,
+	allocate_element_size: proc(ctx: ^UI_Context, layout: ^Layout, required_size: UI_Vec) -> UI_Vec,
+	place_elements_function: proc(ctx: ^UI_Context, layout: ^Layout),
 }
 
 UI_Context :: struct
 {
-	elements_under_cursor: map[Interaction_Type]UI_ID,
-	next_elements_under_cursor: map[Interaction_Type]UI_ID,
+	elements_under_cursor: map[Interaction_Type]UID,
+	next_elements_under_cursor: map[Interaction_Type]UID,
 	draw_list: Draw_List,
 	input_state: Input_State_Data,
-	current_element: UI_Element,
 	using font_loader: Font_Loader,
 	sprite_table: ^container.Table(render.Sprite),
 	editor_config: Editor_Config,
@@ -48,9 +47,9 @@ UI_Context :: struct
 	ui_draw_list: Draw_Command_List,
 	current_theme: UI_Theme,
 	active_widget_data: Active_Widget_Data,
-	hierarchy: Rect_Hierarchy,
+	hierarchy: Hierarchy,
+	hierarchy_data: [dynamic]Hierarchy_Element_Data,
 	rect_stack: [dynamic]int,
-	elements: [dynamic]UI_Element,
 	layout_stack: [dynamic]Layout,
 }
 
@@ -136,7 +135,7 @@ Draw_List :: [dynamic]Draw_Command;
 
 Input_State_Data :: struct
 {
-	drag_target: UI_ID,
+	drag_target: UID,
 	cursor_pos: UI_Vec,
 	last_cursor_pos: UI_Vec,
 	drag_amount: UI_Vec,
@@ -293,5 +292,5 @@ Number_Editor_Theme :: struct
 
 Theme_Editor_State :: struct
 {
-	fold_states: map[UI_ID]bool,
+	fold_states: map[UID]bool,
 }

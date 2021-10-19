@@ -6,7 +6,6 @@ import "../input"
 import "core:strconv"
 
 import freetype "../../libs/freetype"
-import imgui "../imgui"
 import "core:math/rand"
 import "core:math"
 import "core:math/linalg"
@@ -29,6 +28,7 @@ import "../objects"
 import "core:reflect"
 
 import "../ui"
+import "../imgui"
 import "../util"
 
 
@@ -46,10 +46,9 @@ Scene :: struct
     sprite_renderer: render.Sprite_Render_System,
 
 	ui_ssbo_renderer: ui.Render_System,
-	ui_draw_list: ui.Draw_Command_List,
+	imgui_ssbo_renderer: imgui.Render_System,
 
     ui_renderer: render.Sprite_Render_System,
-	ui_test_renderer: ui.UI_Render_System,
     transforms: objects.Transform_Table,
     transform_hierarchy: objects.Transform_Hierarchy,
     sprite_components: container.Table(Sprite_Component),
@@ -138,6 +137,7 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 
 time : f32 = 0;
 ui_ctx: ui.UI_Context;
+imgui_ctx: imgui.UI_Context;
 window_state := ui.Window_State {
 	rect = ui.UI_Rect{
 		size = {800, 600},
@@ -155,6 +155,8 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 
 	ui.reset_ctx(&ui_ctx, viewport.size);
 	ui.update_input_state(&ui_ctx, input_state);
+	imgui.reset_ctx(&imgui_ctx, viewport.size);
+	imgui.button(&imgui_ctx, {200, 200});
 	
 	if ui.window(&ui_ctx, &window_state, 40)
 	{
@@ -217,22 +219,21 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
 	font_texture := container.handle_get(ui_ctx.font_atlas.texture_handle);
-	if len(scene.ui_draw_list.commands) > 0
-	{
-		gpu_draw_list := ui.compute_gpu_commands(&scene.ui_draw_list, context.temp_allocator);
-		ui.render_ui_draw_list(&scene.ui_ssbo_renderer, &gpu_draw_list, viewport, font_texture);
-	}
 	if len(ui_ctx.ui_draw_list.commands) > 0
 	{
 		gpu_draw_list := ui.compute_gpu_commands(&ui_ctx.ui_draw_list, context.temp_allocator);
 		ui.render_ui_draw_list(&ui_ctx.renderer, &gpu_draw_list, viewport, font_texture);
 	}
+
+	if len(imgui_ctx.ui_draw_list.commands) > 0
+	{
+		gpu_draw_list := imgui.compute_gpu_commands(imgui.UI_Rect{{0, 0}, viewport.size}, &imgui_ctx.ui_draw_list, &imgui_ctx.hierarchy, context.temp_allocator);
+		imgui.render_ui_draw_list(&scene.imgui_ssbo_renderer, &gpu_draw_list, viewport, font_texture);
+	}
+
 	clear(&ui_ctx.ui_draw_list.commands);
 	clear(&ui_ctx.ui_draw_list.clips);
 	clear(&ui_ctx.ui_draw_list.clip_stack);
-	clear(&scene.ui_draw_list.commands);
-	clear(&scene.ui_draw_list.clips);
-	clear(&scene.ui_draw_list.clip_stack);
 
 	ui_camera := render.Camera{
 		world_pos = linalg.to_f32(viewport.size / 2),

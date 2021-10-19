@@ -21,7 +21,7 @@ GPU_Rect :: struct
 
 Color :: render.Color;
 
-UI_ID :: distinct uint;
+UID :: distinct uint;
 
 Anchor :: struct
 {
@@ -80,7 +80,7 @@ Sub_Rect :: struct
 	pivot: UV_Vec,
 }
 
-Child_Rect :: struct #raw_union
+Child_Rect :: struct
 {
 	using position: struct #raw_union
 	{
@@ -92,5 +92,5 @@ Child_Rect :: struct #raw_union
 	pivot: UV_Vec,
 }
 
-Rect_Hierarchy_Element :: struct{rect: Child_Rect, parent: int};
-Rect_Hierarchy :: [dynamic]Rect_Hierarchy_Element;
+Hierarchy_Element :: struct{rect: Child_Rect, parent: Element_ID, id: UID};
+Hierarchy :: [dynamic]Hierarchy_Element;

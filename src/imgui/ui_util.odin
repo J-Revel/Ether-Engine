@@ -24,6 +24,16 @@ scale_ui_vec :: proc
 	scale_ui_vec_2f,
 }
 
+filling_child_rect :: proc() -> Child_Rect
+{
+	return Child_Rect {
+		position = { padding = {{0, 0}, {0, 0}} },
+		anchor_min = {0, 0},
+		anchor_max = {1, 1},
+		pivot = {0, 0},
+	};
+}
+
 compute_child_rect :: proc(parent: UI_Rect, child: Child_Rect) -> UI_Rect
 {
 	anchor_rect := UI_Rect {
@@ -51,13 +61,13 @@ compute_child_rect :: proc(parent: UI_Rect, child: Child_Rect) -> UI_Rect
 	};
 }
 
-default_id :: proc(ui_id: UI_ID, location := #caller_location) -> UI_ID
+default_id :: proc(ui_id: UID, location := #caller_location) -> UID 
 {
 	if ui_id == 0 do return id_from_location(location);
 	return ui_id;
 }
 
-id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UI_ID
+id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UID
 {
 	file_path := transmute([]byte)location.file_path;
 	to_hash := make([]byte, len(file_path) + size_of(int) * 2);
@@ -66,5 +76,5 @@ id_from_location :: proc(location := #caller_location, additional_element_index:
 	additional_element_index : int = additional_element_index;
 	mem.copy(&to_hash[len(file_path)], &location_line, size_of(int));
 	mem.copy(&to_hash[len(file_path) + size_of(int)], &additional_element_index, size_of(int));
-	return UI_ID(hash.fnv32(to_hash));
+	return UID(hash.fnv32(to_hash));
 }

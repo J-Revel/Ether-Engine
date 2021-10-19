@@ -112,7 +112,7 @@ pop_clip :: proc(using draw_list: ^Draw_Command_List)
 	pop(&clip_stack);
 }
 
-add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command) -> ^Computed_Rect_Command
+add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect_Command, element: Element_ID) -> ^Computed_Rect_Command
 {
 	append(&commands, Computed_Rect_Command{
 		command = rect_command,
@@ -121,7 +121,7 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 	return &commands[len(commands) - 1];
 }
 
-compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List, hierarchy: ^Rect_Hierarchy, allocator := context.allocator) -> GPU_Command_List
+compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List, hierarchy: ^Hierarchy, allocator := context.allocator) -> GPU_Command_List
 {
 	result: GPU_Command_List;
 	result.commands = make([]GPU_Rect_Command, len(draw_list.commands), allocator);
