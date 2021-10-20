@@ -1,6 +1,6 @@
 package render
 
-import gl "shared:odin-gl"
+import gl "vendor:OpenGL"
 import "core:log"
 
 // Bindless Texture

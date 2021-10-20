@@ -5,7 +5,6 @@ import "../render"
 import "core:log"
 import "../objects"
 
-import "../../libs/imgui"
 import "core:fmt"
 
 Sprite_Component :: struct
@@ -14,7 +13,7 @@ Sprite_Component :: struct
 	sprite: render.Sprite_Handle,
 }
 
-render_sprite_components :: proc(hierarchy: ^objects.Transform_Hierarchy, render_buffer: ^render.Sprite_Render_System, table: ^container.Table(Sprite_Component))
+/*render_sprite_components :: proc(hierarchy: ^objects.Transform_Hierarchy, render_buffer: ^render.Sprite_Render_System, table: ^container.Table(Sprite_Component))
 {
 	it := container.table_iterator(table);
     for sprite_component, sprite_handle in container.table_iterate(&it)
@@ -27,4 +26,4 @@ render_sprite_components :: proc(hierarchy: ^objects.Transform_Hierarchy, render
 	    	render.render_sprite(render_buffer, sprite, transmute(render.Transform)absolute_transform, render.rgb(255, 255, 255));
     	}
     }
-}
+}*/

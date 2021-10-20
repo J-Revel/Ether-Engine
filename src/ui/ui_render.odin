@@ -5,7 +5,7 @@ import "core:strings"
 import "core:log"
 import "core:math/linalg"
 
-import gl "shared:odin-gl"
+import gl "vendor:OpenGL"
 
 import "../render"
 import "../util"
@@ -37,15 +37,14 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	assert(ok);
 	fragment_shader_src, ok = os.read_entire_file("resources/shaders/ui.frag", context.temp_allocator);
 	assert(ok);
-	vertex_cstring := &vertex_shader_src[0];
+	vertex_cstring := cstring(&vertex_shader_src[0]);
 	strlen : i32 = i32(len(vertex_shader_src));
 	gl.ShaderSource(vertex_shader, 1, &vertex_cstring, &strlen);
 	gl.CompileShader(vertex_shader);
 	
 	vert_ok: i32;
 	gl.GetShaderiv(vertex_shader, gl.COMPILE_STATUS, &vert_ok);
-	if vert_ok != gl.TRUE
-	{
+	if vert_ok == 0	{
 		error_length: i32;
 		gl.GetShaderiv(vertex_shader, gl.INFO_LOG_LENGTH, &error_length);
 		error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
@@ -54,14 +53,14 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 		panic("vertex shader compilation error");
 	}
 	
-	fragment_shader_cstring := &fragment_shader_src[0];
+	fragment_shader_cstring := cstring(&fragment_shader_src[0]);
 	strlen = i32(len(fragment_shader_src));
 	gl.ShaderSource(fragment_shader, 1, &fragment_shader_cstring, &strlen);
 	gl.CompileShader(fragment_shader);
 	
 	frag_ok: i32;
 	gl.GetShaderiv(fragment_shader, gl.COMPILE_STATUS, &frag_ok);
-	if frag_ok != gl.TRUE
+	if frag_ok == 0
 	{
 		error_length: i32;
 		gl.GetShaderiv(fragment_shader, gl.INFO_LOG_LENGTH, &error_length);
@@ -79,7 +78,7 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 
 	link_ok: i32;
     gl.GetProgramiv(render_system.shader, gl.LINK_STATUS, &link_ok);
-    if link_ok != gl.TRUE {
+    if link_ok == 0 {
 		error_length: i32;
 		gl.GetProgramiv(render_system.shader, gl.INFO_LOG_LENGTH, &error_length);
 		log.info(error_length);

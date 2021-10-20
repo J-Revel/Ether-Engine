@@ -1,9 +1,9 @@
 package render
-import sdl_image "shared:odin-sdl2/image"
-import sdl "shared:odin-sdl2"
+import sdl_image "vendor:sdl2/image"
+import sdl "vendor:sdl2"
 import "core:strings"
 import "core:log"
-import gl "shared:odin-gl";
+import gl "vendor:OpenGL";
 import "core:os"
 import "core:encoding/json"
 import "core:sort"
@@ -12,7 +12,6 @@ import "core:runtime"
 import "core:math"
 
 import "../container"
-import "../../libs/imgui"
 import "../util"
 
 @(private="package")
@@ -94,19 +93,19 @@ struct Rect
 load_texture :: proc(path: string) -> (Texture, bool)
 {
 	cstring_path := strings.clone_to_cstring(path, context.temp_allocator);
-	surface := sdl_image.load(cstring_path);
+	surface := sdl_image.Load(cstring_path);
     if surface == nil
     {
         return {}, false;
     }
-	defer sdl.free_surface(surface);
+	defer sdl.FreeSurface(surface);
 	texture_id: u32;
 	gl.GenTextures(1, &texture_id);
 	gl.BindTexture(gl.TEXTURE_2D, texture_id);
 
 	mode := gl.RGB;
  	
-	if surface.format.bytes_per_pixel == 4 do mode = gl.RGBA;
+	if surface.format.BytesPerPixel== 4 do mode = gl.RGBA;
 	 
 	gl.TexImage2D(gl.TEXTURE_2D, 0, i32(mode), surface.w, surface.h, 0, u32(mode), gl.UNSIGNED_BYTE, surface.pixels);
 	 
@@ -458,8 +457,8 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
 			vertex_shader_src = ui_vertex_shader_src;
 	}
 
-    vertex_shader_cstring := cast(^u8)strings.clone_to_cstring(vertex_shader_src, context.temp_allocator);
-    fragment_shader_cstring := cast(^u8)strings.clone_to_cstring(sprite_fragment_shader_src, context.temp_allocator);
+    vertex_shader_cstring := strings.clone_to_cstring(vertex_shader_src, context.temp_allocator);
+    fragment_shader_cstring := strings.clone_to_cstring(sprite_fragment_shader_src, context.temp_allocator);
     gl.ShaderSource(vertex_shader, 1, &vertex_shader_cstring, nil);
     gl.ShaderSource(fragment_shader, 1, &fragment_shader_cstring, nil);
     gl.CompileShader(vertex_shader);
@@ -467,7 +466,7 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
     frag_ok: i32;
     vert_ok: i32;
     gl.GetShaderiv(vertex_shader, gl.COMPILE_STATUS, &vert_ok);
-    if vert_ok != gl.TRUE {
+    if vert_ok == 0 {
     	error_length: i32;
     	gl.GetShaderiv(vertex_shader, gl.INFO_LOG_LENGTH, &error_length);
     	error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
@@ -476,7 +475,7 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
         return false;
     }
     gl.GetShaderiv(fragment_shader, gl.COMPILE_STATUS, &frag_ok);
-    if frag_ok != gl.TRUE {
+    if frag_ok == 0 {
     	error_length: i32;
     	gl.GetShaderiv(fragment_shader, gl.INFO_LOG_LENGTH, &error_length);
     	error: []u8 = make([]u8, error_length + 1, context.temp_allocator);
@@ -491,7 +490,7 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
     gl.LinkProgram(result.shader);
     ok: i32;
     gl.GetProgramiv(result.shader, gl.LINK_STATUS, &ok);
-    if ok != gl.TRUE {
+    if ok == 0 {
         log.errorf("Error linking program: {}", result.shader);
         return true;
     }
@@ -508,9 +507,9 @@ init_sprite_renderer :: proc (result: ^Render_State, render_type: Sprite_Render_
     gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_SIZE * size_of(Sprite_Vertex_Data), nil, gl.DYNAMIC_DRAW);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.elementBuffer);
     gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
-    gl.VertexAttribPointer(0, 2, gl.FLOAT, 0, size_of(Sprite_Vertex_Data), nil);
-    gl.VertexAttribPointer(1, 2, gl.FLOAT, 0, size_of(Sprite_Vertex_Data), rawptr(uintptr(size_of(vec2))));
-    gl.VertexAttribPointer(2, 4, gl.FLOAT, 0, size_of(Sprite_Vertex_Data), rawptr(uintptr(size_of(vec2) * 2)));
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, size_of(Sprite_Vertex_Data), 0);
+    gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Sprite_Vertex_Data), uintptr(size_of(vec2)));
+    gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Sprite_Vertex_Data), uintptr(size_of(vec2) * 2));
     gl.EnableVertexAttribArray(0);
     gl.EnableVertexAttribArray(1);
     gl.EnableVertexAttribArray(2);
@@ -638,7 +637,6 @@ use_texture :: proc(
 
 render_quad :: proc(render_system: ^Sprite_Render_System, pos: [2]f32, size: [2]f32, color: Color)
 {
-    imgui.text_unformatted(fmt.tprint("render_quad"));
     start_index := cast(u32) len(render_system.buffer.vertex);
     
     if container.is_valid(render_system.current_texture)
@@ -649,7 +647,6 @@ render_quad :: proc(render_system: ^Sprite_Render_System, pos: [2]f32, size: [2]
                 index_count - render_system.current_pass_index,
         });
         render_system.current_pass_index = index_count;
-        imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
         render_system.current_texture = {};
     }
 
@@ -690,23 +687,18 @@ render_rotated_quad :: proc(
 	color: Color,
 )
 {
-    imgui.text_unformatted(fmt.tprint("render_rotated_quad", render_system.current_texture.id, render_system.current_pass_index));
     start_index := cast(u32) len(render_system.buffer.vertex);
     
-    imgui.text_unformatted(fmt.tprint("current_pass_index", render_system.current_pass_index));
     if container.is_valid(render_system.current_texture)
     {
         index_count := len(render_system.buffer.index);
-        imgui.text_unformatted(fmt.tprint("index_count", index_count));
         append(&render_system.passes, Sprite_Render_Pass {
             texture = render_system.current_texture, 
             index_count = index_count - render_system.current_pass_index,
         });
         render_system.current_pass_index = index_count;
-        imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
         render_system.current_texture = {};
 
-        imgui.text_unformatted(fmt.tprint("append pass"));
     }
 
     vertex_data : Sprite_Vertex_Data;
@@ -769,8 +761,6 @@ push_quad_vertices :: proc(render_system: ^Sprite_Render_System, using rect: uti
 
 render_rounded_quad :: proc(render_system: ^Sprite_Render_System, using rect: util.Rect, corner_radius: f32, color: Color, corner_subdivisions: int = 3)
 {
-    imgui.text_unformatted(fmt.tprint("render_quad"));
-    
     if container.is_valid(render_system.current_texture)
     {
         index_count := len(render_system.buffer.index);
@@ -779,7 +769,6 @@ render_rounded_quad :: proc(render_system: ^Sprite_Render_System, using rect: ut
                 index_count - render_system.current_pass_index,
         });
         render_system.current_pass_index = index_count;
-        imgui.text_unformatted(fmt.tprint("set pass_index", render_system.current_pass_index));
         render_system.current_texture = {};
     }
 	push_quad_vertices(render_system, util.Rect{pos + [2]f32{0, corner_radius}, [2]f32{corner_radius, size.y - 2 * corner_radius}}, color);

@@ -8,7 +8,7 @@ import "core:math/linalg"
 
 import "../container"
 
-import gl "shared:odin-gl";
+import gl "vendor:OpenGL";
 
 @(private="package")
 color_fragment_shader_src :: `
@@ -106,8 +106,8 @@ init_color_renderer :: proc (result: ^Render_State) -> bool
 {
     vertexShader := gl.CreateShader(gl.VERTEX_SHADER);
     fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER);
-    vertexShaderText := cast(^u8)strings.clone_to_cstring(ui_vertex_shader_src, context.temp_allocator);
-    fragmentShaderText := cast(^u8)strings.clone_to_cstring(color_fragment_shader_src, context.temp_allocator);
+    vertexShaderText := strings.clone_to_cstring(ui_vertex_shader_src, context.temp_allocator);
+    fragmentShaderText := strings.clone_to_cstring(color_fragment_shader_src, context.temp_allocator);
     gl.ShaderSource(vertexShader, 1, &vertexShaderText, nil);
     gl.ShaderSource(fragmentShader, 1, &fragmentShaderText, nil);
     gl.CompileShader(vertexShader);
@@ -115,12 +115,12 @@ init_color_renderer :: proc (result: ^Render_State) -> bool
     fragOk: i32;
     vertOk: i32;
     gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &vertOk);
-    if vertOk != gl.TRUE {
+    if vertOk == 0 {
         log.errorf("Unable to compile vertex shader: {}", color_vertex_shader_src);
         return false;
     }
     gl.GetShaderiv(fragmentShader, gl.COMPILE_STATUS, &fragOk);
-    if fragOk != gl.TRUE || vertOk != gl.TRUE {
+    if fragOk == 0 || vertOk == 0 {
         log.errorf("Unable to compile fragment shader: {}", color_fragment_shader_src);
         return false;
     }
@@ -131,7 +131,7 @@ init_color_renderer :: proc (result: ^Render_State) -> bool
     gl.LinkProgram(result.shader);
     ok: i32;
     gl.GetProgramiv(result.shader, gl.LINK_STATUS, &ok);
-    if ok != gl.TRUE {
+    if ok == 0 {
         log.errorf("Error linking program: {}", result.shader);
         return true;
     }
@@ -148,8 +148,8 @@ init_color_renderer :: proc (result: ^Render_State) -> bool
     gl.BufferData(gl.ARRAY_BUFFER, VERTEX_BUFFER_SIZE * size_of(Color_Vertex_Data), nil, gl.DYNAMIC_DRAW);
     gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.elementBuffer);
     gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE * size_of(u32), nil, gl.DYNAMIC_DRAW);
-    gl.VertexAttribPointer(0, 2, gl.FLOAT, 0, size_of(Color_Vertex_Data), nil);
-    gl.VertexAttribPointer(1, 4, gl.FLOAT, 0, size_of(Color_Vertex_Data), rawptr(uintptr(size_of(vec2))));
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, size_of(Color_Vertex_Data), uintptr(0));
+    gl.VertexAttribPointer(1, 4, gl.FLOAT, false, size_of(Color_Vertex_Data), uintptr(size_of(vec2)));
     gl.EnableVertexAttribArray(0);
     gl.EnableVertexAttribArray(1);
 

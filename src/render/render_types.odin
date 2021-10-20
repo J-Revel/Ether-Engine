@@ -159,7 +159,6 @@ Atlas_Tree_Node :: struct
 
 Atlas_Tree :: struct
 {
-
 	nodes: [dynamic]Atlas_Tree_Node,
 	available_spaces: [dynamic]int,
 }

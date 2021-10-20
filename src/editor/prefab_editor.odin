@@ -12,7 +12,7 @@ import "core:slice"
 import "core:os"
 import "core:encoding/json"
 import sdl "shared:odin-sdl2"
-import gl "shared:odin-gl";
+import gl "vendor:OpenGL";
 
 import "../util"
 import "../render"

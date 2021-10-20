@@ -27,7 +27,7 @@ scale_ui_vec :: proc
 filling_child_rect :: proc() -> Child_Rect
 {
 	return Child_Rect {
-		position = { padding = {{0, 0}, {0, 0}} },
+		rect = {{0, 0}, {0, 0}},
 		anchor_min = {0, 0},
 		anchor_max = {1, 1},
 		pivot = {0, 0},
@@ -40,13 +40,15 @@ compute_child_rect :: proc(parent: UI_Rect, child: Child_Rect) -> UI_Rect
 		parent.pos + scale_ui_vec(parent.size, child.anchor_min),
 		scale_ui_vec(parent.size, child.anchor_max - child.anchor_min),
 	};
+
+	padding: Padding = {child.rect.pos, child.rect.size};
 	padding_rect := UI_Rect	{
-		pos = anchor_rect.pos + child.padding.top_left,
-		size = anchor_rect.size - child.padding.top_left - child.padding.bottom_right,
+		pos = anchor_rect.pos + padding.top_left,
+		size = anchor_rect.size - padding.top_left - padding.bottom_right,
 	};
 	placed_rect := UI_Rect {
-		pos = anchor_rect.pos + child.placed.pos - scale_ui_vec(child.placed.size, child.pivot),
-		size = child.placed.size,
+		pos = anchor_rect.pos + child.rect.pos - scale_ui_vec(child.rect.size, child.pivot),
+		size = child.rect.size,
 	}
 
 	return UI_Rect {

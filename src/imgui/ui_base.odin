@@ -22,6 +22,7 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
 	
 	error: Theme_Load_Error;
 	ui_ctx.current_theme, error = load_theme("config/ui/base_theme.json");
+log.info(ui_ctx.current_theme);
 	fonts := [?]render.Font_Asset{
 		ui_ctx.current_theme.text.default.font_asset, 
 		ui_ctx.current_theme.text.title.font_asset,
@@ -31,7 +32,6 @@ init_ctx :: proc(ui_ctx: ^UI_Context, sprite_database: ^render.Sprite_Database)
 	base_font := ui_ctx.loaded_fonts[ui_ctx.current_theme.text.default.font_asset];
 	ui_ctx.editor_config.line_height = int(base_font.line_height) + 4;
 	if error != nil do log.info("Error loading theme :", error);
-	log.info(ui_ctx.current_theme);
 
 	ui_ctx.current_theme.number_editor.text = &ui_ctx.current_theme.text.default;
 	ui_ctx.current_theme.number_editor.buttons = &ui_ctx.current_theme.button;
@@ -129,19 +129,7 @@ reset_ctx :: proc(ctx: ^UI_Context, screen_size: [2]int)
 	}
 	clear(&ctx.layout_stack);
 	clear(&ctx.hierarchy);
-	append(&ctx.hierarchy, Hierarchy_Element{
-			rect = Child_Rect {
-				position = {
-					placed = UI_Rect{{0, 0}, screen_size},
-				},
-				anchor_min = {0, 0},
-				anchor_max = {1, 1},
-			},
-			parent = -1,
-			id = default_id(0),
-		},
-	);
-	append(&ctx.layout_stack, Layout{0, {}, basic_layout_allocate_element , basic_layout_place_elements});
+	append(&ctx.layout_stack, Layout{-1, {}, basic_layout_allocate_element , basic_layout_place_elements});
 	clear(&ctx.next_elements_under_cursor);
 
 	reset_draw_list(&ctx.ui_draw_list, screen_size);
@@ -158,7 +146,7 @@ allocate_element :: proc(ctx: ^UI_Context, preferred_size: UI_Vec, id: UID) -> E
 	layout := current_layout(ctx);
 	allocated_size := layout.allocate_element_size(ctx, layout, preferred_size);
 	element_rect := Child_Rect{
-		position = {placed = UI_Rect{{0, 0}, allocated_size }},
+		rect = UI_Rect{{0, 0}, allocated_size },
 	};
 	append(&ctx.hierarchy, Hierarchy_Element{element_rect, layout.element, id});
 	append(&ctx.hierarchy_data, Hierarchy_Element_Data{preferred_size});
@@ -183,6 +171,7 @@ button :: proc(
 	ui_id := default_id(ui_id, location);
 	element := allocate_element(ctx, size, ui_id);
 
+	log.info(used_theme);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = filling_child_rect(),
 		theme = used_theme^.default_theme,
@@ -203,7 +192,7 @@ basic_layout_place_elements :: proc(ctx: ^UI_Context, layout: ^Layout)
 	{
 		hierarchy_element := &ctx.hierarchy[int(element)];
 		element_data := &ctx.hierarchy_data[int(element)];
-		hierarchy_element.rect.placed = UI_Rect {pos = {cursor, 0}, size = element_data.preferred_size};
+		hierarchy_element.rect.rect = UI_Rect {pos = {cursor, 0}, size = element_data.preferred_size};
 		cursor += element_data.preferred_size.y;
 	}
 	ctx.hierarchy_data[layout.element].preferred_size.y = cursor;

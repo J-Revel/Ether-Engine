@@ -19,7 +19,7 @@ import os "core:os"
 
 import json "core:encoding/json"
 
-import gl "shared:odin-gl";
+import gl "vendor:OpenGL";
 
 import "../animation"
 
@@ -78,6 +78,7 @@ init_empty_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database
 	render.init_sprite_renderer(&sprite_renderer.render_state, .World);
 	render.init_sprite_renderer(&ui_renderer.render_state, .UI);
 	ui.init_renderer(&ui_ssbo_renderer);
+	imgui.init_renderer(&imgui_ssbo_renderer);
 	//render.init_color_renderer(&color_renderer.render_state);
 
 	camera.zoom = 1;
@@ -103,6 +104,7 @@ init_main_scene :: proc(using scene: ^Scene, sprite_db: ^render.Sprite_Database)
 	//assert(font_load_ok);
 
 	ui.init_ctx(&ui_ctx, sprite_database);
+	imgui.init_ctx(&imgui_ctx, sprite_database);
 	test_sprite, _ = container.table_add(&sprite_database.sprites, render.Sprite{
 		ui_ctx.font_loader.font_atlas.texture_handle,
 		"test",
@@ -157,6 +159,7 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	ui.update_input_state(&ui_ctx, input_state);
 	imgui.reset_ctx(&imgui_ctx, viewport.size);
 	imgui.button(&imgui_ctx, {200, 200});
+	log.info(imgui_ctx.hierarchy);
 	
 	if ui.window(&ui_ctx, &window_state, 40)
 	{

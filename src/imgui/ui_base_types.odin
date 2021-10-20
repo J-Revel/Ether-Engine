@@ -82,11 +82,7 @@ Sub_Rect :: struct
 
 Child_Rect :: struct
 {
-	using position: struct #raw_union
-	{
-		padding: Padding,
-		placed: UI_Rect,
-	},
+	rect: UI_Rect,
 	anchor_min: UV_Vec,
 	anchor_max: UV_Vec,
 	pivot: UV_Vec,

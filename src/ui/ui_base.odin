@@ -298,7 +298,6 @@ pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 	{
 		// TODO : handle anchor and padding properly
 		draw_command.rect = popped_layout.rect;
-		log.info(draw_command);
 	}
 	for content_size_fitter in &content_size_fitters
 	{

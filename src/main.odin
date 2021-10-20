@@ -10,20 +10,15 @@ import "core:math/rand";
 import "core:fmt"
 import "core:time"
 
-import sdl "shared:odin-sdl2";
-import sdl_image "shared:odin-sdl2/image"
-import gl  "shared:odin-gl";
+import sdl "vendor:sdl2";
+import sdl_image "vendor:sdl2/image"
+import gl  "vendor:OpenGL";
 
-import imgui "../libs/imgui";
-import imgl  "../libs/impl/opengl";
-import imsdl "../libs/impl/sdl";
 import freetype "../libs/freetype"
 
 import render "render";
 import "util";
 import "input"
-import "gameplay"
-import "editor"
 import "ui"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
@@ -46,7 +41,7 @@ main :: proc() {
 
     log.info("Starting SDL Example...");
     
-    init_err := sdl.init(.Video | .Audio);
+    init_err := sdl.Init(.VIDEO| .AUDIO);
     defer sdl.quit();
     if init_err == 0 
     {
@@ -99,7 +94,6 @@ main :: proc() {
         input.setup_state(&input_state);
 
         show_demo_window := false;
-        io := imgui.get_io();
         screen_size: [2]int;
 
         sprite_database: render.Sprite_Database;
@@ -108,9 +102,9 @@ main :: proc() {
         sceneInstance : gameplay.Scene;
         gameplay.init_main_scene(&sceneInstance, &sprite_database);
 
-        editor_state: editor.Editor_State;
+        // editor_state: editor.Editor_State;
         show_editor := false;
-        editor.init_editor(&editor_state, &sprite_database);
+        // editor.init_editor(&editor_state, &sprite_database);
 
         last_frame_tick := time.tick_now();
         sample_frame_times: [FRAME_SAMPLE_COUNT]f32;
@@ -135,7 +129,6 @@ main :: proc() {
             input.update_mouse(&input_state, window);
             input.update_display_size(window);
 
-            imgui.new_frame();
             {
                 //info_overlay();
             }
@@ -169,13 +162,10 @@ main :: proc() {
 
             if input_state.quit do running = false;
             
-            if show_editor
-            {
-                editor.update_editor(&editor_state, viewport, &input_state);
-            }
-            imgui.render();
-
-            imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state);
+            // if show_editor
+            // {
+            //     editor.update_editor(&editor_state, viewport, &input_state);
+            // }
             sdl.gl_swap_window(window);
             frame_duration := time.tick_diff(current_tick, time.tick_now());
             time.sleep(max(0, time.Millisecond * 16 - frame_duration));
@@ -192,31 +182,3 @@ on_quit :: proc() {
     running = false;
 }
 
-info_overlay :: proc() {
-    imgui.set_next_window_pos(imgui.Vec2{10, 10});
-    imgui.set_next_window_bg_alpha(0.2);
-    overlay_flags: imgui.Window_Flags = .NoDecoration | 
-                                        .AlwaysAutoResize | 
-                                        .NoSavedSettings | 
-                                        .NoFocusOnAppearing | 
-                                        .NoNav | 
-                                        .NoMove;
-    imgui.begin("Info", nil, overlay_flags);
-    imgui.text_unformatted("Press Esc to close the application");
-    imgui.end();
-}
-
-Imgui_State :: struct {
-    opengl_state: imgl.OpenGL_State,
-}
-
-init_imgui_state :: proc(window: ^sdl.Window) -> Imgui_State {
-    using res := Imgui_State{};
-    
-    imgui.create_context();
-    imgui.style_colors_dark();
-    
-    imgl.setup_state(&res.opengl_state);
-
-    return res;
-}

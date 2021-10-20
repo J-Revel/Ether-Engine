@@ -5,7 +5,7 @@ import "core:math/linalg"
 import "core:fmt"
 import "core:runtime"
 
-import gl "shared:odin-gl"
+import gl "vendor:OpenGL"
 
 import "../../libs/freetype"
 
@@ -165,6 +165,12 @@ load_glyph :: proc(using font_atlas: ^Font_Atlas, font: ^Font, character: rune, 
 		gl.BindTexture(gl.TEXTURE_2D, texture_data.texture_id);
 		if glyph.size.x * glyph.size.y > 0
 		{
+			log.info(
+				i32(allocated_rect.pos.x),
+				i32(allocated_rect.pos.y),
+				i32(glyph.size.x), i32(glyph.size.y),
+				pixels[0],
+			);
 			gl.TexSubImage2D(
 				gl.TEXTURE_2D,
 				0,
