@@ -17,6 +17,26 @@ On ne peut connaître la position finale des éléments qu'au moment du pop_layo
 
 -> notion de commandes imbriquées ? positions/tailles relatives à une autre commande
 	-> positions absolues calculées au moment de la transformation en GPU_Commands
+
+/!\ Pas vraiment commandes imbriquées, les layouts n'ont pas forcément de commande attachée
+-> plutôt utiliser les layouts ou les elements ? => les deux devraient être utilisables en même temps
+-> utiliser les UI_Elements ? => arbre de UI_Elements, le Rect est local au parent
+-> rect local à un autre rect = pos size ou padding ? => potentiellement les deux, union
+
+Pb : on perd la simplicité d'utiliser un rect pour chaque élément 
+=> Tout doit être fait à partir d'un UI Element ?
+=> Besoin de garder en mémoire la stack d'UI Elements
+
+Par contre plus besoin de récupérer les rects de layouts => la taille suffit
+Content Size Fitter => calcul de la taille uniquement, via le max x et y des enfants
+
+à checker : propagation des content size fitters dans le use_rect_in_layout => pas besoin de propagation ?
+penser à faire des pop_element partout
+
+Idée : 
+	- le content size fitter n'est qu'un type de layout auto ?
+	- le layout de base aussi (horizontal/vertical layout) => de base tout est mis au même endroit, le layout déplace les éléments a posteriori
+	=> pb : position pas connue au moment où on veut gérer les events
 	
 layout system : input handling is deferred because the placement of the widgets is handled once the container is closed, ie removed from the stack (pop_layout)
 computes the preferred size at this moment, from the preferred size of the children that have been computed before

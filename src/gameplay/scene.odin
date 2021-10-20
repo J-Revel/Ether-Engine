@@ -212,8 +212,6 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	gl.Viewport(i32(viewport.top_left.x), i32(viewport.top_left.y), i32(viewport.size.x), i32(viewport.size.y));
 
-	ui.render_draw_list(&ui_ctx.draw_list, &scene.ui_renderer);
-
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	// render.render_buffer_content(&color_renderer, &camera);
