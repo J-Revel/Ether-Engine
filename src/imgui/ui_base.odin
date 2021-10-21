@@ -123,14 +123,11 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 reset_ctx :: proc(ctx: ^UI_Context, screen_size: [2]int)
 {
 	clear(&ctx.elements_under_cursor);
-	for interaction_type, ui_id in ctx.next_elements_under_cursor
-	{
-		ctx.elements_under_cursor[interaction_type] = ui_id;
-	}
+	clear(&ctx.interactive_elements);
 	clear(&ctx.layout_stack);
 	clear(&ctx.hierarchy);
-	append(&ctx.layout_stack, Layout{-1, {}, basic_layout_allocate_element , basic_layout_place_elements});
-	clear(&ctx.next_elements_under_cursor);
+	clear(&ctx.hierarchy_data);
+	clear(&ctx.element_stack);
 
 	reset_draw_list(&ctx.ui_draw_list, screen_size);
 }
@@ -139,6 +136,20 @@ current_layout :: proc(using ctx: ^UI_Context) -> ^Layout
 {
 	assert(len(layout_stack) > 0);
 	return &layout_stack[len(layout_stack)-1];
+}
+
+push_layout :: proc(using ctx: ^UI_Context, layout_callbacks: Layout_Callbacks)
+{
+	element: Element_ID = len(element_stack) > 0 ? element_stack[len(element_stack)-1] : -1;
+	append(&layout_stack, Layout{element = element, callbacks = layout_callbacks});
+}
+
+pop_layout :: proc(using ctx: ^UI_Context)
+{
+	assert(len(layout_stack) > 0);
+	popped_layout := layout_stack[len(layout_stack)-1];
+	popped_layout.place_elements_function(ctx, &popped_layout);
+	pop(&layout_stack);
 }
 
 allocate_element :: proc(ctx: ^UI_Context, preferred_size: UI_Vec, id: UID) -> Element_ID 
@@ -151,7 +162,37 @@ allocate_element :: proc(ctx: ^UI_Context, preferred_size: UI_Vec, id: UID) -> E
 	append(&ctx.hierarchy, Hierarchy_Element{element_rect, layout.element, id});
 	append(&ctx.hierarchy_data, Hierarchy_Element_Data{preferred_size});
 	hierarchy_index := len(ctx.hierarchy) - 1;
+	append(&layout.children, Element_ID(hierarchy_index));
 	return Element_ID(hierarchy_index);
+}
+
+update_interactions :: proc(using ctx: ^UI_Context, hierarchy_rects: []UI_Rect) -> map[Interaction_Type]UID
+{
+	result: map[Interaction_Type]UID;
+	for interaction_type, elements in interactive_elements
+	{
+		for i := len(elements)-1; i >= 0; i -= 1
+		{
+			if point_in_rect(input_state.cursor_pos, hierarchy_rects[i])
+			{
+				result[interaction_type] = hierarchy[i].id;
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+compute_hierarchy_positions :: proc(hierarchy: ^Hierarchy, screen_rect: UI_Rect, allocator := context.allocator) -> []UI_Rect
+{
+	hierarchy_rects := make([]UI_Rect, len(hierarchy), allocator);
+	for i in 0..<len(hierarchy)
+	{
+		parent_index := hierarchy[i].parent;
+		parent_rect := parent_index < 0 ? screen_rect : hierarchy_rects[parent_index];
+		hierarchy_rects[i] = compute_child_rect(parent_rect, hierarchy[i].rect);
+	}
+	return hierarchy_rects;
 }
 
 
@@ -171,7 +212,6 @@ button :: proc(
 	ui_id := default_id(ui_id, location);
 	element := allocate_element(ctx, size, ui_id);
 
-	log.info(used_theme);
 	add_rect_command(&ctx.ui_draw_list, Rect_Command{
 		rect = filling_child_rect(),
 		theme = used_theme^.default_theme,
@@ -182,18 +222,20 @@ button :: proc(
 
 basic_layout_allocate_element :: proc(ctx: ^UI_Context, layout: ^Layout, required_size: UI_Vec) -> UI_Vec
 {
+	log.info("allocate element", required_size);
 	return required_size;
 }
 
 basic_layout_place_elements :: proc(ctx: ^UI_Context, layout: ^Layout)
 {
 	cursor := 0;
+	log.info("place elements");
 	for element in &layout.children
 	{
 		hierarchy_element := &ctx.hierarchy[int(element)];
 		element_data := &ctx.hierarchy_data[int(element)];
-		hierarchy_element.rect.rect = UI_Rect {pos = {cursor, 0}, size = element_data.preferred_size};
+		hierarchy_element.rect.rect = UI_Rect {pos = {0, cursor}, size = element_data.preferred_size};
 		cursor += element_data.preferred_size.y;
 	}
-	ctx.hierarchy_data[layout.element].preferred_size.y = cursor;
+	if layout.element >= 0 do ctx.hierarchy_data[layout.element].preferred_size.y = cursor;
 }

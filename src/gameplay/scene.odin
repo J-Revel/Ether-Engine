@@ -11,7 +11,7 @@ import "core:math"
 import "core:math/linalg"
 import "core:fmt"
 
-import sdl "shared:odin-sdl2"
+import sdl "vendor:sdl2"
 
 import container "../container"
 
@@ -153,12 +153,15 @@ update_and_render :: proc(using scene: ^Scene, delta_time: f32, input_state: ^in
 	time += delta_time;
 	animation.update_animations(&animation_players, delta_time);
 
-	render_sprite_components(&transform_hierarchy, &sprite_renderer, &sprite_components);
+	//render_sprite_components(&transform_hierarchy, &sprite_renderer, &sprite_components);
 
 	ui.reset_ctx(&ui_ctx, viewport.size);
 	ui.update_input_state(&ui_ctx, input_state);
 	imgui.reset_ctx(&imgui_ctx, viewport.size);
-	imgui.button(&imgui_ctx, {200, 200});
+	imgui.push_layout(&imgui_ctx, imgui.BASIC_LAYOUT);
+	imgui.button(&imgui_ctx, {500, 200});
+	imgui.button(&imgui_ctx, {100, 200});
+	imgui.pop_layout(&imgui_ctx);
 	log.info(imgui_ctx.hierarchy);
 	
 	if ui.window(&ui_ctx, &window_state, 40)
@@ -212,6 +215,8 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	gl.Viewport(i32(viewport.top_left.x), i32(viewport.top_left.y), i32(viewport.size.x), i32(viewport.size.y));
 
+	ui.render_draw_list(&ui_ctx.draw_list, &scene.ui_renderer);
+
 	//render_wave({test_arc}, 10, 5, {1, test_result ? 1 : 0, 0, 1}, render_system);
 	
 	// render.render_buffer_content(&color_renderer, &camera);
@@ -220,6 +225,11 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 	render.render_sprite_buffer_content(&scene.sprite_renderer, &camera, viewport);
 	render.render_ui_buffer_content(&scene.ui_renderer, viewport);
 	font_texture := container.handle_get(ui_ctx.font_atlas.texture_handle);
+
+	screen_rect := imgui.UI_Rect{{0, 0}, viewport.size};
+	hierarchy_rects := imgui.compute_hierarchy_positions(&imgui_ctx.hierarchy, screen_rect, context.allocator);
+	defer delete(hierarchy_rects);
+	
 	if len(ui_ctx.ui_draw_list.commands) > 0
 	{
 		gpu_draw_list := ui.compute_gpu_commands(&ui_ctx.ui_draw_list, context.temp_allocator);
@@ -228,7 +238,7 @@ do_render :: proc(using scene: ^Scene, viewport: render.Viewport)
 
 	if len(imgui_ctx.ui_draw_list.commands) > 0
 	{
-		gpu_draw_list := imgui.compute_gpu_commands(imgui.UI_Rect{{0, 0}, viewport.size}, &imgui_ctx.ui_draw_list, &imgui_ctx.hierarchy, context.temp_allocator);
+		gpu_draw_list := imgui.compute_gpu_commands(screen_rect, &imgui_ctx.ui_draw_list, hierarchy_rects, context.temp_allocator);
 		imgui.render_ui_draw_list(&scene.imgui_ssbo_renderer, &gpu_draw_list, viewport, font_texture);
 	}
 

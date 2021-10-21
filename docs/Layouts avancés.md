@@ -49,3 +49,5 @@ Types of layout : most directly allocate a sub rect to their children, some adap
 	- when they are handled, they emit a preferred size that can be used or not by the layout
 	- the layout places the children properly, and can use the preferred sizes
 
+Gestion des inputs : 
+- demander une action (hover, drag, click) c'est s'enregistrer pour pouvoir recevoir l'action la frame suivante

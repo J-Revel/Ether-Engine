@@ -26,19 +26,25 @@ Hierarchy_Element_Data :: struct
 	preferred_size: UI_Vec,
 }
 
-Layout :: struct
+Layout_Callbacks :: struct
 {
-	element: Element_ID,
-	children: [dynamic]Element_ID,
 	allocate_element_size: proc(ctx: ^UI_Context, layout: ^Layout, required_size: UI_Vec) -> UI_Vec,
 	place_elements_function: proc(ctx: ^UI_Context, layout: ^Layout),
 }
 
+Layout :: struct
+{
+	element: Element_ID,
+	using callbacks: Layout_Callbacks,
+	children: [dynamic]Element_ID,
+}
+
+Interactive_Element_Register :: map[Interaction_Type] ([dynamic]Element_ID);
+
 UI_Context :: struct
 {
 	elements_under_cursor: map[Interaction_Type]UID,
-	next_elements_under_cursor: map[Interaction_Type]UID,
-	draw_list: Draw_List,
+	interactive_elements: Interactive_Element_Register,
 	input_state: Input_State_Data,
 	using font_loader: Font_Loader,
 	sprite_table: ^container.Table(render.Sprite),
@@ -49,7 +55,7 @@ UI_Context :: struct
 	active_widget_data: Active_Widget_Data,
 	hierarchy: Hierarchy,
 	hierarchy_data: [dynamic]Hierarchy_Element_Data,
-	rect_stack: [dynamic]int,
+	element_stack: [dynamic]Element_ID,
 	layout_stack: [dynamic]Layout,
 }
 
@@ -68,7 +74,7 @@ Computed_Rect_Command :: struct
 {
 	using command: Rect_Command,
 	clip_index: int,
-	parent: int,
+	parent: Element_ID,
 }
 
 GPU_Rect_Command :: struct
@@ -129,9 +135,6 @@ Draw_Command :: union
 	Rect_Draw_Command,
 	Clip_Draw_Command,
 }
-
-// DEPRECATED
-Draw_List :: [dynamic]Draw_Command;
 
 Input_State_Data :: struct
 {
@@ -294,3 +297,8 @@ Theme_Editor_State :: struct
 {
 	fold_states: map[UID]bool,
 }
+
+BASIC_LAYOUT :: Layout_Callbacks {
+	basic_layout_allocate_element,
+	basic_layout_place_elements,
+};

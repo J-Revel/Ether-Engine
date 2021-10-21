@@ -94,10 +94,11 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 
 reset_draw_list :: proc(using draw_list: ^Draw_Command_List, screen_size: [2]int)
 {
-	clips = {};
+	clear(&clips);
 	append(&clips, UI_Rect{{0, 0}, screen_size});
-	clip_stack = {};
+	clear(&clip_stack);
 	append(&clip_stack, 0);
+	clear(&commands);
 }
 
 push_clip :: proc(using draw_list: ^Draw_Command_List, clip_rect: UI_Rect)
@@ -117,23 +118,16 @@ add_rect_command :: proc(using draw_list: ^Draw_Command_List, rect_command: Rect
 	append(&commands, Computed_Rect_Command{
 		command = rect_command,
 		clip_index = clip_stack[len(clip_stack) - 1],
+		parent = element,
 	});
 	return &commands[len(commands) - 1];
 }
 
-compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List, hierarchy: ^Hierarchy, allocator := context.allocator) -> GPU_Command_List
+compute_gpu_commands :: proc(screen_rect: UI_Rect, draw_list: ^Draw_Command_List, hierarchy_rects: []UI_Rect, allocator := context.allocator) -> GPU_Command_List
 {
 	result: GPU_Command_List;
 	result.commands = make([]GPU_Rect_Command, len(draw_list.commands), allocator);
 	result.index = make([]u32, len(draw_list.commands) * 6, allocator);
-	hierarchy_rects := make([]UI_Rect, len(hierarchy), context.allocator);
-	defer delete(hierarchy_rects);
-	for i in 0..<len(hierarchy)
-	{
-		parent_index := hierarchy[i].parent;
-		parent_rect := parent_index < 0 ? screen_rect : hierarchy_rects[parent_index];
-		hierarchy_rects[i] = compute_child_rect(parent_rect, hierarchy[i].rect);
-	}
 	for i in 0..<len(draw_list.commands)
 	{
 		rect_command := &draw_list.commands[i];

@@ -19,7 +19,7 @@ import freetype "../libs/freetype"
 import render "render";
 import "util";
 import "input"
-import "ui"
+import "gameplay"
 
 DESIRED_GL_MAJOR_VERSION :: 4;
 DESIRED_GL_MINOR_VERSION :: 5;
@@ -41,45 +41,44 @@ main :: proc() {
 
     log.info("Starting SDL Example...");
     
-    init_err := sdl.Init(.VIDEO| .AUDIO);
-    defer sdl.quit();
+    init_err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO);
+    defer sdl.Quit();
     if init_err == 0 
     {
 		log.info("load SDL_IMAGE");
-        sdl_image.init(.PNG);
-		freetype_library: freetype.Library;
+        sdl_image.Init(sdl_image.INIT_PNG);
 		log.info("load Freetype");
 
 		render.init_font_render();
 
         log.info("Setting up the window...");
-        window := sdl.create_window("Ether", 100, 100, 1280, 720, .Open_GL|.Mouse_Focus|.Shown|.Resizable);
+        window := sdl.CreateWindow("Ether", 100, 100, 1280, 720, sdl.WindowFlags{.OPENGL, .MOUSE_FOCUS, .SHOWN, .RESIZABLE});
         if window == nil {
-            log.debugf("Error during window creation: %s", sdl.get_error());
-            sdl.quit();
+            log.debugf("Error during window creation: %s", sdl.GetError());
+            sdl.Quit();
             return;
         }
-        defer sdl.destroy_window(window);
+        defer sdl.DestroyWindow(window);
 
         log.info("Setting up the OpenGL...");
-        sdl.gl_set_attribute(.Context_Major_Version, DESIRED_GL_MAJOR_VERSION);
-        sdl.gl_set_attribute(.Context_Minor_Version, DESIRED_GL_MINOR_VERSION);
-        sdl.gl_set_attribute(.Context_Profile_Mask, i32(sdl.GL_Context_Profile.Core));
-        sdl.gl_set_attribute(.Doublebuffer, 1);
-        sdl.gl_set_attribute(.Depth_Size, 24);
-        sdl.gl_set_attribute(.Stencil_Size, 8);
-        gl_ctx := sdl.gl_create_context(window);
+        sdl.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION);
+        sdl.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION);
+        sdl.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl.GLprofile.CORE));
+        sdl.GL_SetAttribute(.DOUBLEBUFFER, 1);
+        sdl.GL_SetAttribute(.DEPTH_SIZE, 24);
+        sdl.GL_SetAttribute(.STENCIL_SIZE, 8);
+        gl_ctx := sdl.GL_CreateContext(window);
         if gl_ctx == nil {
-            log.debugf("Error during window creation: %s", sdl.get_error());
+            log.debugf("Error during window creation: %s", sdl.GetError());
             return;
         }
-        sdl.gl_make_current(window, gl_ctx);
-        defer sdl.gl_delete_context(gl_ctx);
-        if sdl.gl_set_swap_interval(1) != 0 {
-            log.debugf("Error during window creation: %s", sdl.get_error());
+        sdl.GL_MakeCurrent(window, gl_ctx);
+        defer sdl.GL_DeleteContext(gl_ctx);
+        if sdl.GL_SetSwapInterval(1) != 0 {
+            log.debugf("Error during window creation: %s", sdl.GetError());
             return;
         }
-		load_proc := proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.gl_get_proc_address(name);
+		load_proc := proc(p: rawptr, name: cstring) do (cast(^rawptr)p)^ = sdl.GL_GetProcAddress(name);
         gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, load_proc);
 
 		render.load_ARB_bindless_texture(load_proc);
@@ -89,9 +88,8 @@ main :: proc() {
 		// audio.init_audio_system(&audio_system);
         gl.ClearColor(0.25, 0.25, 0.25, 1);
 
-        imgui_state := init_imgui_state(window);
         input_state : input.State;
-        input.setup_state(&input_state);
+        //input.setup_state(&input_state);
 
         show_demo_window := false;
         screen_size: [2]int;
@@ -119,7 +117,7 @@ main :: proc() {
 				err = gl.GetError();
 			}
             mx, my: i32;
-            sdl.gl_get_drawable_size(window, &mx, &my);
+            sdl.GL_GetDrawableSize(window, &mx, &my);
 
             screen_size.x = cast(int)mx;
             screen_size.y = cast(int)my;
@@ -150,12 +148,12 @@ main :: proc() {
             gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport);
             gameplay.do_render(&sceneInstance, viewport);
 
-            if input.get_key_state(&input_state, sdl.Scancode.Tab) == input.Key_State_Pressed && !show_editor
+            if input.get_key_state(&input_state, sdl.Scancode.TAB) == input.Key_State_Pressed && !show_editor
             {
                 show_editor = true;
             }
 
-            if input.get_key_state(&input_state, sdl.Scancode.Escape) == input.Key_State_Pressed
+            if input.get_key_state(&input_state, sdl.Scancode.ESCAPE) == input.Key_State_Pressed
             {
                 if show_editor do show_editor = false else do running = false;
             }
@@ -166,15 +164,14 @@ main :: proc() {
             // {
             //     editor.update_editor(&editor_state, viewport, &input_state);
             // }
-            sdl.gl_swap_window(window);
+            sdl.GL_SwapWindow(window);
             frame_duration := time.tick_diff(current_tick, time.tick_now());
             time.sleep(max(0, time.Millisecond * 16 - frame_duration));
         }
         log.info("Shutting down...");
-		freetype.Done_FreeType(freetype_library);
         
     } else {
-        log.debugf("Error during SDL init: (%d)%s", init_err, sdl.get_error());
+        log.debugf("Error during SDL init: (%d)%s", init_err, sdl.GetError());
     }
 }
 

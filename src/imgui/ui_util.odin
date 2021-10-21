@@ -80,3 +80,8 @@ id_from_location :: proc(location := #caller_location, additional_element_index:
 	mem.copy(&to_hash[len(file_path) + size_of(int)], &additional_element_index, size_of(int));
 	return UID(hash.fnv32(to_hash));
 }
+
+point_in_rect :: proc(pos: UI_Vec, rect: UI_Rect) -> bool
+{
+	return pos.x > rect.pos.x && pos.x < rect.pos.x + rect.size.x && pos.y > rect.pos.y && pos.y < rect.pos.y + rect.size.y;
+}

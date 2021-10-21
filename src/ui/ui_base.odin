@@ -168,28 +168,6 @@ update_input_state :: proc(ui_ctx: ^UI_Context, input_state: ^input.State)
 	}
 }
 
-simple_sub_rect :: proc(pos: UI_Vec, size: UI_Vec) -> Sub_Rect
-{
-	return Sub_Rect {
-		rect = UI_Rect { pos, size},
-	};
-}
-
-local_rect_local_point :: proc(parent_rect: UI_Rect, rect: Local_Rect, ratio: UV_Vec = {0, 0}) -> UI_Vec
-{
-	switch value in rect
-	{
-		case Sub_Rect:
-			return parent_rect.pos + scale_ui_vec_2f(parent_rect.size, value.anchor) +
-					value.pos + scale_ui_vec_2f(value.size, ratio - value.pivot);
-		case Padding:
-			rect_min := parent_rect.pos + value.top_left;
-			rect_max := parent_rect.pos + parent_rect.size - value.bottom_right;
-			return  rect_min + scale_ui_vec_2f(rect_max - rect_min, ratio);
-	}
-	return {};
-}
-
 reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]int)
 {
 	clear(&ui_ctx.elements_under_cursor);
@@ -200,7 +178,10 @@ reset_ctx :: proc(ui_ctx: ^UI_Context, screen_size: [2]int)
 	clear(&ui_ctx.next_elements_under_cursor);
 	clear(&ui_ctx.layout_stack);
 	base_layout := Layout {
-		rect = simple_sub_rect({0, 0}, screen_size),
+		rect = UI_Rect {
+			pos = {0, 0},
+			size = screen_size,
+		},
 		direction = [2]int{0, 1},
 	};
 	push_layout(ui_ctx, base_layout);
@@ -242,7 +223,6 @@ push_child_layout :: proc(using ctx: ^UI_Context, size: UI_Vec, direction: UI_Ve
 	push_layout(ctx, layout);
 }
 
-// TODO : retake label layout
 push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, label_size: int)
 {
 	layout : Layout = current_layout(ctx)^;
@@ -254,14 +234,13 @@ push_label_layout :: proc(using ctx: ^UI_Context, label: string, height: int, la
 	render_size := render.get_text_render_size(font, label);
 	text(
 		text = label, 
-		pos = UI_Vec{(label_size - render_size) / 2, height / 2}, 
+		pos = layout.rect.pos + UI_Vec{(label_size - render_size) / 2, height / 2}, 
 		alignment = {.Left, .Middle},
 		theme = text_theme,
 		ctx = ctx);
-	//layout.pos.x += label_size;
-	//layout.size.x -= label_size;
-	layout.cursor = label_size;
-	layout.direction = {1, 0};
+	layout.pos.x += label_size;
+	layout.size.x -= label_size;
+	layout.cursor = 0;
 	push_layout(ctx, layout);
 }
 
@@ -284,7 +263,7 @@ add_content_size_fitter :: proc(
 )
 {
 	append(&content_size_fitters, Content_Size_Fitter{
-		max = {0, 0},
+		rect = {},
 		layout_index_in_stack = len(layout_stack)-1,
 		max_padding = max_padding,
 		directions = directions,
@@ -300,31 +279,31 @@ pop_layout :: proc(using ctx: ^UI_Context) -> Layout
 		content_size_fitter := content_size_fitters[len(content_size_fitters)-1];
 		if content_size_fitter.layout_index_in_stack == layout_index
 		{
-			sub_rect := &popped_layout.rect.(Sub_Rect);
 			if UI_Direction.Horizontal in content_size_fitter.directions
 			{
-				// TODO : removed to disactivate content size fitter effect
-				// To be replaced by the new system
-				// sub_rect.size.x = content_size_fitter.max.x;
+				popped_layout.pos.x = content_size_fitter.rect.pos.x;
+				popped_layout.size.x = content_size_fitter.rect.size.x;
+
 			}
 			if UI_Direction.Vertical in content_size_fitter.directions
 			{
-				//sub_rect.size.y = content_size_fitter.max.y;
+				popped_layout.pos.y = content_size_fitter.rect.pos.y;
+				popped_layout.size.y = content_size_fitter.rect.size.y;
 			}
-			//popped_layout.rect.max = content_size_fitter.max_padding;
+			popped_layout.rect.size += content_size_fitter.max_padding;
 			pop(&content_size_fitters);
 		}
 	}
-	/*for draw_command in popped_layout.draw_commands
+	for draw_command in popped_layout.draw_commands
 	{
+		// TODO : handle anchor and padding properly
 		draw_command.rect = popped_layout.rect;
 	}
 	for content_size_fitter in &content_size_fitters
 	{
-		content_size_fitter.max.x = max(content_size_fitter.max.x, popped_layout.rect.(Sub_Rect).size.x);
-		content_size_fitter.max.y = max(content_size_fitter.max.y, popped_layout.rect.(Sub_Rect).size.y);
+		content_size_fitter.rect = join_rects(content_size_fitter.rect, popped_layout.rect);
 	}
-	//use_rect_in_layout(ctx, popped_layout.rect);
+	use_rect_in_layout(ctx, popped_layout.rect);
 	allocate_rect(ctx, popped_layout.rect);
 	return popped_layout;
 }
@@ -342,6 +321,59 @@ current_layout_rect :: proc(using ui_ctx: ^UI_Context) -> UI_Rect
 		pos = layout.pos + cursor_offset,
 		size = layout.size - cursor_offset,
 	};
+}
+
+rect :: proc(draw_list: ^Draw_List, rect: UI_Rect, color: Color, corner_radius: int = 0)
+{
+	uv_rect := util.Rect { size = [2]f32{1, 1}};
+	append(draw_list, Rect_Draw_Command{rect = rect, uv_rect= uv_rect, color = color, corner_radius = corner_radius});
+}
+
+rect_border :: proc(draw_list: ^Draw_List, rect: UI_Rect, color: Color, thickness: int = 1)
+{
+	uv_rect:= util.Rect { size = [2]f32{1, 1}};
+	append(draw_list, Rect_Draw_Command{
+		rect = UI_Rect{linalg.to_int(rect.pos), UI_Vec{rect.size.x, thickness}},
+		uv_rect = uv_rect,
+		color = color,
+		corner_radius = 0,
+	});
+
+	append(draw_list, Rect_Draw_Command{
+		rect = UI_Rect{rect.pos, UI_Vec{thickness, rect.size.y}},
+		uv_rect = uv_rect,
+		color = color,
+		corner_radius = 0,
+	});
+	append(draw_list, Rect_Draw_Command{
+		rect = UI_Rect{rect.pos + UI_Vec{rect.size.x - thickness, 0}, UI_Vec{thickness, rect.size.y}},
+		uv_rect = uv_rect,
+		color = color,
+		corner_radius = 0,
+	});
+	append(draw_list, Rect_Draw_Command{
+		rect = UI_Rect{rect.pos + UI_Vec{0, rect.size.y - thickness}, UI_Vec{rect.size.x, thickness}},
+		uv_rect = uv_rect,
+		color = color,
+		corner_radius = 0,
+	});
+}
+
+textured_rect :: proc(
+	rect: UI_Rect,
+	color: Color,
+	sprite: render.Sprite_Handle,
+	draw_list: ^Draw_List, 
+)
+{
+	sprite_data: ^render.Sprite = container.handle_get(sprite);
+	texture_handle := sprite_data.texture;
+	append(draw_list, Rect_Draw_Command{
+		rect = rect,
+		uv_rect = sprite_data.clip,
+		color = color,
+		texture = texture_handle,
+	});
 }
 
 id_from_location :: proc(location := #caller_location, additional_element_index: int = 0) -> UI_ID
@@ -383,7 +415,7 @@ ui_element_placed :: proc(
 	element_id: UI_ID,
 ) -> (out_state: Element_State)
 {
-	append(&ctx.element_stack, UI_Element{rect, element_id});
+	ctx.current_element = UI_Element{rect, element_id};
 	clip_index := ctx.ui_draw_list.clip_stack[len(ctx.ui_draw_list.clip_stack) - 1];
 	clip_rect := ctx.ui_draw_list.clips[clip_index];
 	mouse_over :=  ctx.input_state.cursor_pos.x > rect.pos.x 			\
@@ -433,18 +465,22 @@ ui_element_placed :: proc(
 		}
 	}
 	layout := current_layout(ctx);
-	//use_rect_in_layout(ctx, rect);
+	use_rect_in_layout(ctx, rect);
 	return;
 }
 
-use_rect_in_layout :: proc(using ctx: ^UI_Context, rect: Sub_Rect)
+use_rect_in_layout :: proc(using ctx: ^UI_Context, rect: UI_Rect)
 {
-	rect_max : int = 0;
 	for content_size_fitter in &content_size_fitters
 	{
-		local_rect_max := local_rect_local_point(rect, {1, 1});
-		content_size_fitter.max.x = max(content_size_fitter.max.x, local_rect_max.x);
-		content_size_fitter.max.y = max(content_size_fitter.max.y, local_rect_max.y);
+		if content_size_fitter.rect.size.x == 0 || content_size_fitter.rect.size.y == 0
+		{
+			content_size_fitter.rect = rect;
+		}
+		else
+		{
+			content_size_fitter.rect = join_rects(content_size_fitter.rect, rect);
+		}
 	}
 }
 
@@ -549,22 +585,24 @@ text :: proc(
 	for char in text
 	{
 		glyph, glyph_found := font_data.glyphs[char]; 
-		assert(glyph_found);
-		rect := UI_Rect{ pos = pos_cursor + glyph.bearing, size = glyph.size };
-		//textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
+		//assert(glyph_found);
+		if glyph_found
+		{
+			rect := UI_Rect{ pos = pos_cursor + glyph.bearing, size = glyph.size };
+			//textured_rect(rect, color, glyph.sprite, &ctx.draw_list);
 
-		glyph_sprite := container.handle_get(glyph.sprite);
-		texture := container.handle_get(glyph_sprite.texture);
+			glyph_sprite := container.handle_get(glyph.sprite);
+			texture := container.handle_get(glyph_sprite.texture);
 
-		add_rect_command(&ctx.ui_draw_list, Rect_Command{
-			rect = rect,
-			uv_clip = glyph_sprite.clip,
-			theme = {
-				fill_color = used_theme.color,
-			},
-			texture_id = texture.bindless_id,
-			parent_element = current_element(ctx),
-		});
+			add_rect_command(&ctx.ui_draw_list, Rect_Command{
+				rect = rect,
+				uv_clip = glyph_sprite.clip,
+				theme = {
+					fill_color = used_theme.color,
+				},
+				texture_id = texture.bindless_id,
+			});
+		}
 		pos_cursor += glyph.advance / 64;
 	}
 }
@@ -602,6 +640,13 @@ element_draw_text :: proc(
 	pos_cursor := ctx.current_element.pos + padding.top_left + UI_Vec{0, int(font_data.line_height)};
 	line_size := int(ctx.current_element.pos.x + ctx.current_element.size.x - pos_cursor.x - padding.bottom_right.x);
 	multiline_text(text, pos_cursor, line_size, alignment, theme, ctx);
+}
+
+add_and_get_draw_command :: proc(array: ^Draw_List, draw_cmd: $T) -> ^T
+{
+	added_cmd := util.append_and_get(array);
+	added_cmd^ = draw_cmd;
+	return cast(^T)added_cmd;
 }
 
 // TODO : utility functions to get an anchored / padded sub rect ?
@@ -675,7 +720,7 @@ allocate_rect :: proc(ui_ctx: ^UI_Context, rect: UI_Rect)
 	}
 }
 
-allocate_element_space :: proc(ui_ctx: ^UI_Context, size: UI_Vec) -> Sub_Rect
+allocate_element_space :: proc(ui_ctx: ^UI_Context, size: UI_Vec) -> UI_Rect
 {
 	layout := current_layout(ui_ctx);
 	result := UI_Rect{layout.pos + layout.direction * layout.cursor, size};
@@ -697,7 +742,7 @@ allocate_element_space :: proc(ui_ctx: ^UI_Context, size: UI_Vec) -> Sub_Rect
 	}
 	layout.cursor += linalg.vector_dot(result.size, layout.direction);
 	use_rect_in_layout(ui_ctx, result);
-	return Sub_Rect{rect = result};
+	return result;
 }
 
 button :: proc{ button_themed, button_placed };
@@ -829,3 +874,131 @@ vsplit_layout_weights :: proc(using ui_ctx: ^UI_Context, split_weights: []f32, s
 }
 
 round_corner_subdivisions :: 3;
+
+render_draw_list :: proc(draw_list: ^Draw_List, render_system: ^render.Sprite_Render_System)
+{
+
+	push_rect_data :: proc(render_system: ^render.Sprite_Render_System, rect: UI_Rect, clip: UV_Rect, color: render.Color)
+	{
+		vertices: [dynamic]render.Sprite_Vertex_Data;
+		indices: [dynamic]u32;
+		quad_index_list := [?]u32{0, 1, 2, 0, 2, 3};
+		start_index := u32(len(vertices));
+		pos := linalg.to_f32(rect.pos);
+		size := linalg.to_f32(rect.size);
+		vertice: render.Sprite_Vertex_Data = {pos, clip.pos, color};
+		append(&vertices, vertice);
+		vertice.pos.x = pos.x + size.x;
+		vertice.uv.x = clip.pos.x + clip.size.x;
+		append(&vertices, vertice);
+		vertice.pos.y = pos.y + size.y;
+		vertice.uv.y = clip.pos.y + clip.size.y;
+		append(&vertices, vertice);
+		vertice.pos.x = pos.x;
+		vertice.uv.x = clip.pos.x;
+		append(&vertices, vertice);
+		for index_offset in quad_index_list
+		{
+			append(&indices, start_index + index_offset);
+		}
+		render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
+		clear(&vertices);
+		clear(&indices);
+	}
+
+	push_corner_data :: proc(render_system: ^render.Sprite_Render_System, pos: UI_Vec, dir: UI_Vec, color: Color)
+	{
+		vertices: [dynamic]render.Sprite_Vertex_Data;
+		indices: [dynamic]u32;
+		f_pos := linalg.to_f32(pos);
+		vertice: render.Sprite_Vertex_Data = {f_pos, {}, color};
+		append(&vertices, vertice);
+		for i in 0..round_corner_subdivisions
+		{
+			angle := f32(i) / f32(round_corner_subdivisions) * math.PI / 2;
+			vertice.pos = f_pos + [2]f32{f32(dir.x) * math.cos(angle), f32(dir.y) * math.sin(angle)};
+			append(&vertices, vertice);
+		}
+		for i in 0..<round_corner_subdivisions
+		{
+			append(&indices, 0);
+			append(&indices, u32(i) + 1);
+			append(&indices, u32(i) + 2);
+		}
+		render.push_mesh_data(&render_system.buffer, vertices[:], indices[:]);
+		clear(&vertices);
+		clear(&indices);
+	}
+
+	for draw_cmd in draw_list
+	{
+		switch cmd_data in draw_cmd
+		{
+			case Clip_Draw_Command:
+				
+			case Rect_Draw_Command:
+				render.use_texture(render_system, cmd_data.texture);
+				if cmd_data.corner_radius > 0
+				{
+					using cmd_data;
+					push_rect_data(
+						render_system, 
+						{
+							pos + UI_Vec{0, corner_radius},
+							UI_Vec{corner_radius, size.y - 2 * corner_radius},
+						}, 
+						cmd_data.uv_rect, 
+						cmd_data.color,
+					);
+					push_rect_data(
+						render_system, 
+						{
+							pos + UI_Vec{corner_radius, 0},
+							UI_Vec{size.x - corner_radius * 2, size.y},
+						}, 
+						uv_rect, 
+						cmd_data.color,
+					);
+					push_rect_data(
+						render_system, 
+						{
+							pos + UI_Vec{size.x - corner_radius, corner_radius}, 
+							UI_Vec{corner_radius, size.y - 2 * corner_radius},
+						}, 
+						cmd_data.uv_rect, 
+						cmd_data.color,
+					);
+					push_corner_data(
+						render_system,
+						pos + UI_Vec{corner_radius, corner_radius},
+						UI_Vec{-corner_radius, -corner_radius},
+						cmd_data.color,
+					);
+					push_corner_data(
+						render_system,
+						pos + UI_Vec{cmd_data.size.x - corner_radius, corner_radius},
+						UI_Vec{corner_radius, -corner_radius},
+						cmd_data.color,
+					);
+					push_corner_data(
+						render_system,
+						pos + UI_Vec{corner_radius, cmd_data.size.y - corner_radius},
+						UI_Vec{-corner_radius, corner_radius},
+						cmd_data.color,
+					);
+					push_corner_data(
+						render_system,
+						pos + cmd_data.size - UI_Vec{corner_radius, corner_radius},
+						UI_Vec{corner_radius, corner_radius},
+						cmd_data.color,
+					);
+				}
+				else
+				{
+					push_rect_data(render_system, {cmd_data.pos, cmd_data.size}, cmd_data.uv_rect, cmd_data.color);
+				}
+		}
+	}
+	clear(draw_list);
+}
+

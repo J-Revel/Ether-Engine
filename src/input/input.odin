@@ -134,7 +134,7 @@ update_display_size :: proc(window: ^sdl2.Window) {
         w = 0;
         h = 0;
     }
-    sdl2.GetDrawableSize(window, &display_w, &display_h);
+    sdl2.GL_GetDrawableSize(window, &display_w, &display_h);
 
     /*io := imgui.get_io();
     io.display_size = imgui.Vec2{f32(w), f32(h)};
@@ -145,7 +145,7 @@ update_display_size :: proc(window: ^sdl2.Window) {
 
 set_clipboard_text :: proc "c"(user_data : rawptr, text : cstring) {
     context = runtime.default_context();
-	sdl2.set_clipboard_text(text);
+	sdl2.SetClipboardText(text);
 }
 
 get_clipboard_text :: proc "c"(user_data : rawptr) -> cstring {
@@ -154,7 +154,7 @@ get_clipboard_text :: proc "c"(user_data : rawptr) -> cstring {
     if text_ptr != nil {
         sdl2.free(cast(^byte)text_ptr);
     }
-    text_ptr = sdl2.get_clipboard_text();
+    text_ptr = sdl2.GetClipboardText();
 
     return text_ptr;
 }
