@@ -32,6 +32,8 @@ struct Glyph_Command
 	ivec2 pos, size;
 	vec2 uv_pos, uv_size;
 	uint color;
+	uvec2 texture_id;
+	int clip_index;
 	float threshold;
 };
 
@@ -109,9 +111,9 @@ void main()
 			}
 			break;
 		case 1:
-			if(texture(sampler2D(frag_texture_id), frag_uv).x > glyph_commands[command_index].threshold)
-				out_color = frag_fill_color;
-			else out_color = vec4(0, 0, 0, 0);
+			float alpha = texture(sampler2D(frag_texture_id), frag_uv).r - glyph_commands[command_index].threshold;
+			out_color = frag_fill_color;
+			out_color.w = smoothstep(-0.05, 0.05, alpha);
 			break;
 	}
 }

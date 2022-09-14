@@ -12,7 +12,7 @@ import stb_tt "vendor:stb/truetype"
 import "../render"
 import "../util"
 
-font_atlas_size: [2]int = {256, 256}
+font_atlas_size: [2]int = {1024, 1024}
 
 init_renderer:: proc(using render_system: ^Render_System) -> bool
 { 
@@ -98,16 +98,17 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
 	render_system.screen_size_attrib = gl.GetUniformLocation(render_system.shader, "screenSize")
 
 	fontinfo: stb_tt.fontinfo
-	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/arial.ttf", context.temp_allocator)
+	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
 	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
-	atlas_data, glyph_data := pack_font_characters(&fontinfo, "abcdefhijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789", font_atlas_size)
-	for i : int = 0;i<font_atlas_size.y; i+=1 {
-		for j : int = 0; j<font_atlas_size.x; j+=1 {
-			fmt.print((atlas_data[j + i * font_atlas_size.x] > 180 ? "O":" "))
-		}
-		fmt.println()
-	}
-	log.info(glyph_data)
+	font_atlas = pack_font_characters(&fontinfo, " abcdefhijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789+-*/.,;:!?&()[]{}", font_atlas_size)
+
+	// for i : int = 0;i<font_atlas_size.y; i+=1 {
+	// 	for j : int = 0; j<font_atlas_size.x; j+=1 {
+	// 		fmt.print((atlas.glyph_data[j + i * font_atlas_size.x] > 180 ? "O":" "))
+	// 	}
+	// 	fmt.println()
+	// }
+	// log.info(glyph_data)
 	return true
 }
 
@@ -116,21 +117,21 @@ pack_font_characters :: proc(
 	characters: string,
 	atlas_size: [2]int,
 	allocator := context.allocator,
-) -> (out_atlas_data: []u8, out_glyph_data: map[rune]Packed_Glyph_Data) {
+) -> (out_atlas: Font_Atlas) {
 	cursor: [2]int = {}
 	next_line_height := 0
-	out_atlas_data = make([]u8, atlas_size.x * atlas_size.y, allocator)
-	out_glyph_data = make(map[rune]Packed_Glyph_Data, 1000, allocator)
+	atlas_data := make([]u8, atlas_size.x * atlas_size.y, allocator)
+	glyph_data := make(map[rune]Packed_Glyph_Data, 1000, allocator)
 
 	for c in characters {
 		glyph_rect: I_Rect
 		glyph_offset: [2]i32
-		render_scale := stb_tt.ScaleForPixelHeight(fontinfo, 22)
+		render_scale := stb_tt.ScaleForPixelHeight(fontinfo, 40)
 		glyph_advance, glyph_bearing: i32
 		stb_tt.GetCodepointHMetrics(fontinfo, c, &glyph_advance, &glyph_bearing)
 		glyph := cast([^]u8)stb_tt.GetCodepointSDF(
-			fontinfo, render_scale, i32(c), 5, 180, 36, 
-			&glyph_rect.size.x, &glyph_rect.size.y, 
+			fontinfo, render_scale, i32(c), 20, 180, 180/20,
+			&glyph_rect.size.x, &glyph_rect.size.y,
 			&glyph_offset.x, &glyph_offset.y
 		)
 		if cursor.x + int(glyph_rect.size.x) >= atlas_size.x {
@@ -144,19 +145,43 @@ pack_font_characters :: proc(
 		
 		for i :int= 0;i<int(glyph_rect.size.y); i+=1 {
 			for j :int= 0; j<int(glyph_rect.size.x); j+=1 {
-				out_atlas_data[cursor.x + j + (cursor.y + i) * atlas_size.x] = glyph[j + i * int(glyph_rect.size.x)]
+				atlas_data[cursor.x + j + (cursor.y + i) * atlas_size.x] = glyph[j + i * int(glyph_rect.size.x)]
 			}
 		}
-		out_glyph_data[c] = Packed_Glyph_Data{
+		glyph_data[c] = Packed_Glyph_Data{
 			rect = glyph_rect,
 			offset = glyph_offset,
 			advance = glyph_advance,
 			left_side_bearing = glyph_bearing,
+			render_scale = render_scale,
 		}
 		cursor.x += int(glyph_rect.size.x)
 	}
-	return
+	return Font_Atlas{
+		glyph_data,
+		font_pack_to_texture(atlas_data, atlas_size),
+	}
 
+}
+
+font_pack_to_texture :: proc(atlas_data: []u8, atlas_size: [2]int) -> render.Texture {
+	texture_id: u32
+	gl.GenTextures(1, &texture_id)
+	gl.BindTexture(gl.TEXTURE_2D, texture_id)
+
+	gl.TexImage2D(gl.TEXTURE_2D, 0, i32(gl.RED), i32(atlas_size.x), i32(atlas_size.y), 0, u32(gl.RED), gl.UNSIGNED_BYTE, &atlas_data[0])
+	 
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	bindless_id := render.GetTextureHandleARB(texture_id)
+	render.MakeTextureHandleResidentARB(bindless_id)
+	return render.Texture{
+		texture_id = texture_id,
+		bindless_id = bindless_id,
+		resident = true,
+		size = atlas_size,
+	}
 }
 
 render_draw_commands :: proc(
@@ -189,6 +214,12 @@ render_draw_commands :: proc(
 	if len(draw_list.rect_commands) > 0
 	{
 		gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 256 * size_of(I_Rect), int(len(draw_list.rect_commands)) * size_of(Rect_Command), &draw_list.rect_commands[0])
+	}
+	gl.BindBuffer(gl.SHADER_STORAGE_BUFFER, render_system.glyph_primitive_buffer)
+	
+	if len(draw_list.glyph_commands) > 0
+	{
+		gl.BufferSubData(gl.SHADER_STORAGE_BUFFER, 0, int(len(draw_list.glyph_commands)) * size_of(Glyph_Command), &draw_list.glyph_commands[0])
 	}
 	if len(draw_list.index) > 0
 	{
@@ -234,6 +265,21 @@ add_rect_command :: proc(using draw_list: ^Command_List, rect_command: Rect_Comm
 	rect_command_count += 1
 }
 
+add_glyph_command :: proc(using draw_list: ^Command_List, glyph_command: Glyph_Command)
+{
+	append(&glyph_commands, glyph_command)
+
+	command_index: u32 = u32(glyph_command_count)
+	glyph_commands[len(glyph_commands)-1] = glyph_command
+	append(&index, command_index * (1<<16) + 0 + (1 << 2))
+	append(&index, command_index * (1<<16) + 1 + (1 << 2))
+	append(&index, command_index * (1<<16) + 2 + (1 << 2))
+	append(&index, command_index * (1<<16) + 1 + (1 << 2))
+	append(&index, command_index * (1<<16) + 3 + (1 << 2))
+	append(&index, command_index * (1<<16) + 2 + (1 << 2))
+	glyph_command_count += 1
+}
+
 reset_draw_list :: proc(using draw_list: ^Command_List, viewport: I_Rect)
 {
 	clear(&clips)
@@ -242,4 +288,5 @@ reset_draw_list :: proc(using draw_list: ^Command_List, viewport: I_Rect)
 	clear(&draw_list.glyph_commands)
 	clear(&draw_list.index)
 	rect_command_count = 0
+	glyph_command_count = 0
 }

@@ -167,7 +167,7 @@ main :: proc() {
         sample_frame_times: [FRAME_SAMPLE_COUNT]f32
         frame_index := 0
 
-        test_slider_value := 0
+        font_scale : f32 = 1
         test_scroll_value : i32 = 0
         test_window_rect := imgui.I_Rect {
             pos = {200, 100},
@@ -263,21 +263,11 @@ main :: proc() {
                     pos = {100, 70},
                     size = {50, 200},
                 },
-                &test_slider_value, 0, 100,
+                &font_scale, 0, 5,
                 &slider_theme,
                 imgui.gen_uid(),
             )
 
-            imgui.slider(
-                &imgui_state,
-                imgui.I_Rect {
-                    pos = {70, 100},
-                    size = {50, 300},
-                },
-                &test_slider_value, 0, 100,
-                &slider_theme,
-                imgui.gen_uid(),
-            )
             scrollzone_rect := imgui.window_start(
                 &imgui_state,
                 &test_window_rect,
@@ -300,6 +290,10 @@ main :: proc() {
                 imgui.button(&imgui_state, button_rect, &button_theme, imgui.gen_uid())
                 imgui.window_end(&imgui_state)
             }
+            font_atlas := &imgui_state.render_system.font_atlas
+            atlas_size := linalg.to_f32(font_atlas.atlas_texture.size)
+            glyph_cursor := [2]i32{500, 500}
+            
             
             imgui.render_frame(&imgui_state, viewport)
 

@@ -19,6 +19,8 @@ struct Glyph_Command
 	ivec2 pos, size;
 	vec2 uv_pos, uv_size;
 	uint color;
+	uvec2 texture_id;
+	int clip_index;
 	float threshold;
 };
 
@@ -74,36 +76,72 @@ void main()
 
 	Rect_Command rect_command = rect_commands[command_index];
 	Glyph_Command glyph_command = glyph_commands[command_index];
+	Rect clip;
+	vec2 pos;
+	vec2 screenPos;
+	uint r;
+	uint g;
+	uint b;
+	uint a;
 
-	Rect clip = clip_rects[rect_command.clip_index];
-	vec2 pos = rect_command.pos + rect_command.size * pos_ratio;
-	pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
-	pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
-	
-	pos_ratio = (pos - rect_command.pos) / rect_command.size;
+	switch(primitive_type) {
+		case 0:
+			clip = clip_rects[rect_command.clip_index];
+			pos = rect_command.pos + rect_command.size * pos_ratio;
+			pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
+			pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
+			
+			pos_ratio = (pos - rect_command.pos) / rect_command.size;
 
-	vec2 screenPos = pos.xy * 2 / Uniform.screen_size - vec2(1, 1);
+			screenPos = pos.xy * 2 / Uniform.screen_size - vec2(1, 1);
 
-	uint r = (rect_command.color >> 24) % 256;
-	uint g = (rect_command.color >> 16) % 256;
-	uint b = (rect_command.color >> 8) % 256;
-	uint a = (rect_command.color) % 256;
-	frag_fill_color = vec4(float(r) / 256, float(g) / 256, float(b) / 256, float(a) / 256);
+			r = (rect_command.color >> 24) % 256;
+			g = (rect_command.color >> 16) % 256;
+			b = (rect_command.color >> 8) % 256;
+			a = (rect_command.color) % 256;
+			frag_fill_color = vec4(float(r) / 256, float(g) / 256, float(b) / 256, float(a) / 256);
 
-	r = (rect_command.border_color >> 24) % 256;
-	g = (rect_command.border_color >> 16) % 256;
-	b = (rect_command.border_color >> 8) % 256;
-	a = (rect_command.border_color) % 256;
+			r = (rect_command.border_color >> 24) % 256;
+			g = (rect_command.border_color >> 16) % 256;
+			b = (rect_command.border_color >> 8) % 256;
+			a = (rect_command.border_color) % 256;
 
-	frag_border_color = vec4(float(r) / 256, float(g) / 256, float(b) / 256, float(a) / 256);
-	frag_pos_in_rect = pos - rect_command.pos - rect_command.size / 2;
+			frag_border_color = vec4(float(r) / 256, float(g) / 256, float(b) / 256, float(a) / 256);
+			frag_pos_in_rect = pos - rect_command.pos - rect_command.size / 2;
 
-	frag_rect_half_size = rect_command.size / 2;
-	frag_corner_radius = rect_command.corner_radius;
-	frag_border_thickness = rect_command.border_thickness;
+			frag_rect_half_size = rect_command.size / 2;
+			frag_corner_radius = rect_command.corner_radius;
+			frag_border_thickness = rect_command.border_thickness;
 
-	gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
+			gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
 
-	frag_uv = vec2(rect_command.uv_pos + rect_command.uv_size * pos_ratio);
-	frag_texture_id = rect_command.texture_id;
+			frag_uv = vec2(rect_command.uv_pos + rect_command.uv_size * pos_ratio);
+			frag_texture_id = rect_command.texture_id;
+			break;
+		case 1:
+			clip = clip_rects[glyph_command.clip_index];
+			pos = glyph_command.pos + glyph_command.size * pos_ratio;
+			pos.x = clamp(pos.x, clip.pos.x, clip.pos.x + clip.size.x);
+			pos.y = clamp(pos.y, clip.pos.y, clip.pos.y + clip.size.y);
+			
+			pos_ratio = (pos - glyph_command.pos) / glyph_command.size;
+
+			screenPos = pos.xy * 2 / Uniform.screen_size - vec2(1, 1);
+
+			r = (glyph_command.color >> 24) % 256;
+			g = (glyph_command.color >> 16) % 256;
+			b = (glyph_command.color >> 8) % 256;
+			a = (glyph_command.color) % 256;
+			frag_fill_color = vec4(float(r) / 256, float(g) / 256, float(b) / 256, float(a) / 256);
+
+			frag_pos_in_rect = pos - glyph_command.pos - glyph_command.size / 2;
+
+			frag_rect_half_size = glyph_command.size / 2;
+
+			gl_Position = vec4(screenPos.x, -screenPos.y, 0, 1);
+
+			frag_uv = vec2(glyph_command.uv_pos + glyph_command.uv_size * pos_ratio);
+			frag_texture_id = glyph_command.texture_id;
+			break;
+	}
 }

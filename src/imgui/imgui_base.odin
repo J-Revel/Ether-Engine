@@ -193,6 +193,8 @@ window_start :: proc (
 			dragged_element_data = nil
 	}
 
+    draw_text(ui_state, "window title", header_rect.pos + [2]i32{10, header_rect.size.y - 10}, 0.5)
+
 	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, theme.scrollzone_theme, gen_uid() ~ uid)
 }
 
@@ -233,4 +235,25 @@ pop_clip :: proc(using ui_state: ^UI_State) {
 
 get_clip :: proc (using ui_state: ^UI_State) -> I_Rect {
 	return command_list.clips[clip_stack[len(clip_stack) - 1]]
+}
+
+draw_text :: proc(using ui_state: ^UI_State, text: string, pos: [2]i32, scale: f32) {
+	glyph_cursor := pos
+	font_atlas := &ui_state.render_system.font_atlas
+	atlas_size := font_atlas.atlas_texture.size
+	for character in text {
+        glyph := font_atlas.glyph_data[character]
+        add_glyph_command(&ui_state.command_list, Glyph_Command {
+            pos = glyph_cursor + linalg.to_i32(linalg.to_f32(glyph.offset) * scale),
+            size = linalg.to_i32(linalg.to_f32(glyph.rect.size) * scale),
+            uv_pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
+            uv_size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
+            color = 0xffffffff,
+            threshold = f32(180)/f32(255),
+            texture_id = font_atlas.atlas_texture.bindless_id,
+            clip_index = 0,
+        })
+        glyph_cursor.x += i32(f32(glyph.advance) * glyph.render_scale * scale)
+        log.info(glyph.advance);
+    }	
 }
