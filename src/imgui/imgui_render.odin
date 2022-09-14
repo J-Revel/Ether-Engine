@@ -96,12 +96,6 @@ init_renderer:: proc(using render_system: ^Render_System) -> bool
         return false
     }
 	render_system.screen_size_attrib = gl.GetUniformLocation(render_system.shader, "screenSize")
-
-	fontinfo: stb_tt.fontinfo
-	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
-	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
-	font_atlas = pack_font_characters(&fontinfo, " abcdefhijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789+-*/.,;:!?&()[]{}", font_atlas_size)
-
 	// for i : int = 0;i<font_atlas_size.y; i+=1 {
 	// 	for j : int = 0; j<font_atlas_size.x; j+=1 {
 	// 		fmt.print((atlas.glyph_data[j + i * font_atlas_size.x] > 180 ? "O":" "))
@@ -117,22 +111,27 @@ pack_font_characters :: proc(
 	characters: string,
 	atlas_size: [2]int,
 	allocator := context.allocator,
-) -> (out_atlas: Font_Atlas) {
+) -> (out_atlas: Packed_Font) {
 	cursor: [2]int = {}
 	next_line_height := 0
 	atlas_data := make([]u8, atlas_size.x * atlas_size.y, allocator)
 	glyph_data := make(map[rune]Packed_Glyph_Data, 1000, allocator)
 
+	sdf_render_height : f32 = 40
+
+	ascent, descent, linegap: i32
+	stb_tt.GetFontVMetrics(fontinfo, &ascent, &descent, &linegap)
+	render_scale := stb_tt.ScaleForPixelHeight(fontinfo, sdf_render_height)
+
 	for c in characters {
 		glyph_rect: I_Rect
 		glyph_offset: [2]i32
-		render_scale := stb_tt.ScaleForPixelHeight(fontinfo, 40)
 		glyph_advance, glyph_bearing: i32
 		stb_tt.GetCodepointHMetrics(fontinfo, c, &glyph_advance, &glyph_bearing)
 		glyph := cast([^]u8)stb_tt.GetCodepointSDF(
 			fontinfo, render_scale, i32(c), 20, 180, 180/20,
 			&glyph_rect.size.x, &glyph_rect.size.y,
-			&glyph_offset.x, &glyph_offset.y
+			&glyph_offset.x, &glyph_offset.y,
 		)
 		if cursor.x + int(glyph_rect.size.x) >= atlas_size.x {
 			cursor.y = next_line_height
@@ -153,13 +152,17 @@ pack_font_characters :: proc(
 			offset = glyph_offset,
 			advance = glyph_advance,
 			left_side_bearing = glyph_bearing,
-			render_scale = render_scale,
 		}
 		cursor.x += int(glyph_rect.size.x)
 	}
-	return Font_Atlas{
-		glyph_data,
-		font_pack_to_texture(atlas_data, atlas_size),
+	return Packed_Font{
+		render_height = sdf_render_height,
+		render_scale = render_scale,
+		ascent = ascent,
+		descent = descent,
+		linegap = linegap,
+		glyph_data = glyph_data,
+		atlas_texture = font_pack_to_texture(atlas_data, atlas_size),
 	}
 
 }
@@ -249,27 +252,22 @@ render_draw_commands :: proc(
 
 add_rect_command :: proc(using draw_list: ^Command_List, rect_command: Rect_Command)
 {
-	if rect_command_count >= len(rect_commands)
-	{
-		append(&rect_commands, Rect_Command{})
-	}
+	append(&rect_commands, rect_command)
 
-	command_index: u32 = u32(rect_command_count)
-	rect_commands[rect_command_count] = rect_command
+	command_index: u32 = u32(len(rect_commands) - 1)
 	append(&index, command_index * (1<<16) + 0)
 	append(&index, command_index * (1<<16) + 1)
 	append(&index, command_index * (1<<16) + 2)
 	append(&index, command_index * (1<<16) + 1)
 	append(&index, command_index * (1<<16) + 3)
 	append(&index, command_index * (1<<16) + 2)
-	rect_command_count += 1
 }
 
 add_glyph_command :: proc(using draw_list: ^Command_List, glyph_command: Glyph_Command)
 {
 	append(&glyph_commands, glyph_command)
 
-	command_index: u32 = u32(glyph_command_count)
+	command_index: u32 = u32(len(glyph_commands) - 1)
 	glyph_commands[len(glyph_commands)-1] = glyph_command
 	append(&index, command_index * (1<<16) + 0 + (1 << 2))
 	append(&index, command_index * (1<<16) + 1 + (1 << 2))
@@ -277,7 +275,6 @@ add_glyph_command :: proc(using draw_list: ^Command_List, glyph_command: Glyph_C
 	append(&index, command_index * (1<<16) + 1 + (1 << 2))
 	append(&index, command_index * (1<<16) + 3 + (1 << 2))
 	append(&index, command_index * (1<<16) + 2 + (1 << 2))
-	glyph_command_count += 1
 }
 
 reset_draw_list :: proc(using draw_list: ^Command_List, viewport: I_Rect)
@@ -287,6 +284,4 @@ reset_draw_list :: proc(using draw_list: ^Command_List, viewport: I_Rect)
 	clear(&draw_list.rect_commands)
 	clear(&draw_list.glyph_commands)
 	clear(&draw_list.index)
-	rect_command_count = 0
-	glyph_command_count = 0
 }

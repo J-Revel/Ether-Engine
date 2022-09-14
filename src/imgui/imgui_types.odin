@@ -22,7 +22,6 @@ Render_System :: struct {
 	glyph_primitive_buffer: u32,
 	ubo: u32,
 	screen_size_attrib: i32,
-	font_atlas: Font_Atlas,
 }
 
 Rect_Theme :: struct {
@@ -43,7 +42,7 @@ Rect_Command :: struct
 
 Glyph_Command :: struct
 {
-	pos, size: [2]i32,
+	pos, size: [2]f32,
 	uv_pos, uv_size: [2]f32,
 	color: u32,
 	texture_id: u64,
@@ -57,8 +56,6 @@ Command_List :: struct
 	glyph_commands: [dynamic]Glyph_Command,
 	index: [dynamic]u32,
 	clips: [dynamic]I_Rect,
-	rect_command_count: int,
-	glyph_command_count: int,
 }
 
 Ubo_Data :: struct
@@ -82,6 +79,17 @@ UI_State :: struct
 	dragged_element: UID,
 	dragged_element_data: rawptr,
 	clip_stack: [dynamic]i32,
+	fonts: map[string]Packed_Font,
+}
+
+Packed_Font :: struct {
+	render_height: f32,
+	render_scale: f32,
+	ascent: i32,
+	descent: i32,
+	linegap: i32,
+	glyph_data: map[rune]Packed_Glyph_Data,
+	atlas_texture: render.Texture,
 }
 
 Packed_Glyph_Data :: struct {
@@ -89,12 +97,6 @@ Packed_Glyph_Data :: struct {
 	offset: [2]i32,
 	advance: i32,
 	left_side_bearing: i32,
-	render_scale: f32,
 }
 
 Button_State :: input.Key_State
-
-Font_Atlas :: struct {
-	glyph_data: map[rune]Packed_Glyph_Data,
-	atlas_texture: render.Texture,
-}

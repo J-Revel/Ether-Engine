@@ -157,10 +157,12 @@ main :: proc() {
                 corner_radius = 3,
             }
         }
+        title_text_theme: imgui.Text_Theme
         window_theme: imgui.Window_Theme = {
             &scrollzone_theme,
             30,
             &header_theme,
+            &title_text_theme,
         }
         
         last_frame_tick := time.tick_now()
@@ -290,9 +292,6 @@ main :: proc() {
                 imgui.button(&imgui_state, button_rect, &button_theme, imgui.gen_uid())
                 imgui.window_end(&imgui_state)
             }
-            font_atlas := &imgui_state.render_system.font_atlas
-            atlas_size := linalg.to_f32(font_atlas.atlas_texture.size)
-            glyph_cursor := [2]i32{500, 500}
             
             
             imgui.render_frame(&imgui_state, viewport)

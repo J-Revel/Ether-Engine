@@ -29,7 +29,7 @@ struct Rect_Command
 
 struct Glyph_Command
 {
-	ivec2 pos, size;
+	vec2 pos, size;
 	vec2 uv_pos, uv_size;
 	uint color;
 	uvec2 texture_id;

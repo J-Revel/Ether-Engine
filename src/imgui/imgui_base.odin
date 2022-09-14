@@ -6,8 +6,11 @@ import "core:strings"
 import "core:math/linalg"
 import "core:math"
 import "core:log"
+import "core:os"
 import "../util"
 import "../input"
+
+import stb_tt"vendor:stb/truetype"
 
 gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID {
     to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2)
@@ -159,10 +162,16 @@ scrollzone_end :: proc(using ui_state: ^UI_State) {
 	pop_clip(ui_state)
 }
 
+Text_Theme :: struct {
+	size: f32,
+	color: u32,
+}
+
 Window_Theme :: struct {
 	scrollzone_theme: ^Scrollzone_Theme,
 	header_thickness: i32,
 	header_theme: ^Button_Theme,
+	title_theme: ^Text_Theme,
 }
 
 window_start :: proc (
@@ -173,7 +182,7 @@ window_start :: proc (
 	theme: ^Window_Theme,
 	uid: UID,
 ) -> (out_content_rect: I_Rect) {
-
+	title_text := "popup window title"
 	header_rect, scrollzone_rect := util.rect_vsplit(rect^, theme.header_thickness)
 	header_uid := gen_uid() ~ uid
 	dragged_data := cast(^Default_Dragged_Data([2]i32))dragged_element_data
@@ -193,7 +202,12 @@ window_start :: proc (
 			dragged_element_data = nil
 	}
 
-    draw_text(ui_state, "window title", header_rect.pos + [2]i32{10, header_rect.size.y - 10}, 0.5)
+	default_font := &ui_state.fonts["default"]
+	text_pos := linalg.to_f32(header_rect.pos + [2]i32{10, header_rect.size.y - 10})
+	text_rect := compute_text_rect(default_font, title_text, linalg.to_i32(text_pos), 20)
+	rect_theme := Rect_Theme{color = 0x999999ff}
+	themed_rect(ui_state, text_rect, &rect_theme)
+    draw_text(ui_state, title_text, text_pos, &ui_state.fonts["default"], 20)
 
 	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, theme.scrollzone_theme, gen_uid() ~ uid)
 }
@@ -206,6 +220,12 @@ init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	init_renderer(&render_system)
 	reset_draw_list(&command_list, viewport)
 	append(&clip_stack, 0)
+
+	fontinfo: stb_tt.fontinfo
+	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
+	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
+	fonts["default"] = pack_font_characters(&fontinfo, " abcdefhijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789+-*/.,;:!?&()[]{}", font_atlas_size)
+
 }
 
 render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
@@ -237,23 +257,48 @@ get_clip :: proc (using ui_state: ^UI_State) -> I_Rect {
 	return command_list.clips[clip_stack[len(clip_stack) - 1]]
 }
 
-draw_text :: proc(using ui_state: ^UI_State, text: string, pos: [2]i32, scale: f32) {
-	glyph_cursor := pos
-	font_atlas := &ui_state.render_system.font_atlas
-	atlas_size := font_atlas.atlas_texture.size
+compute_text_size :: proc(font: ^Packed_Font, text: string, scale: f32) -> [2]i32{
+	glyph_cursor := [2]f32{0, 0}
+	display_scale := scale / f32(font.render_height)
+	
 	for character in text {
-        glyph := font_atlas.glyph_data[character]
+        glyph := font.glyph_data[character]
+        
+        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+    }
+	return [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent + font.descent) * font.render_scale * display_scale) }
+}
+
+compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
+	glyph_cursor := [2]f32{0, 0}
+	display_scale := scale / f32(font.render_height)
+	
+	for character in text {
+        glyph := font.glyph_data[character]
+        
+        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+    }
+	size := [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent - font.descent) * font.render_scale * display_scale) }
+	pos := render_pos + [2]i32{0, -i32(f32(font.ascent) * font.render_scale * display_scale) }
+	return I_Rect{pos, size}
+}
+
+draw_text :: proc(using ui_state: ^UI_State, text: string, pos: [2]f32, font: ^Packed_Font, scale: f32) {
+	glyph_cursor := pos
+	atlas_size := font.atlas_texture.size
+	for character in text {
+        glyph := font.glyph_data[character]
+		display_scale := scale / f32(font.render_height)
         add_glyph_command(&ui_state.command_list, Glyph_Command {
-            pos = glyph_cursor + linalg.to_i32(linalg.to_f32(glyph.offset) * scale),
-            size = linalg.to_i32(linalg.to_f32(glyph.rect.size) * scale),
+            pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
+            size = linalg.to_f32(glyph.rect.size) * display_scale,
             uv_pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
             uv_size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
             color = 0xffffffff,
             threshold = f32(180)/f32(255),
-            texture_id = font_atlas.atlas_texture.bindless_id,
+            texture_id = font.atlas_texture.bindless_id,
             clip_index = 0,
         })
-        glyph_cursor.x += i32(f32(glyph.advance) * glyph.render_scale * scale)
-        log.info(glyph.advance);
-    }	
+        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+    }
 }
