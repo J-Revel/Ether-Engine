@@ -291,6 +291,30 @@ compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, 
 	return I_Rect{pos, size}
 }
 
+get_character_at_position :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, scale: f32, mouse_pos: [2]i32) -> i32 {
+	glyph_cursor := linalg.to_f32(render_pos)
+	display_scale := scale / f32(font.render_height)
+	
+	closest_distance := max(f32)
+	closest_index : i32 = 0
+
+	for character, index in text {
+        glyph := font.glyph_data[character]
+        distance := math.abs(glyph_cursor.x - f32(mouse_pos.x))
+
+        if closest_distance > distance {
+        	closest_distance = distance
+        	closest_index = i32(index)
+        }
+
+        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+    }
+    if closest_distance > math.abs(glyph_cursor.x - f32(mouse_pos.x)) {
+    	closest_index = i32(len(text))
+    }
+	return closest_index
+}
+
 draw_text :: proc(using ui_state: ^UI_State, pos: [2]f32, text: string, theme: ^Text_Theme) {
 	glyph_cursor := pos
 	font := theme.font
@@ -332,6 +356,9 @@ text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_
 		fmt.sbprint(&new_value_builder, value[caret_position^:])
 		caret_position^ -= 1
 		return strings.to_string(new_value_builder)
+	}
+	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Pressed {
+		caret_position^ = get_character_at_position(theme.text_theme.font, value, linalg.to_i32(pos), theme.text_theme.size, linalg.to_i32(ui_state.input_state.mouse_pos))
 	}
 	caret_position^ = math.clamp(caret_position^, 0, i32(len(value)))
 
