@@ -7,10 +7,24 @@ import "core:math/linalg"
 import "core:math"
 import "core:log"
 import "core:os"
+import "core:fmt"
 import "../util"
 import "../input"
 
 import stb_tt"vendor:stb/truetype"
+
+
+init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
+	init_renderer(&render_system)
+	reset_draw_list(&command_list, viewport)
+	append(&clip_stack, 0)
+
+	fontinfo: stb_tt.fontinfo
+	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
+	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
+	fonts["default"] = pack_font_characters(&fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size)
+
+}
 
 gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID {
     to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2)
@@ -163,6 +177,7 @@ scrollzone_end :: proc(using ui_state: ^UI_State) {
 }
 
 Text_Theme :: struct {
+	font: ^Packed_Font,
 	size: f32,
 	color: u32,
 }
@@ -207,25 +222,18 @@ window_start :: proc (
 	text_rect := compute_text_rect(default_font, title_text, linalg.to_i32(text_pos), 20)
 	rect_theme := Rect_Theme{color = 0x999999ff}
 	themed_rect(ui_state, text_rect, &rect_theme)
-    draw_text(ui_state, title_text, text_pos, &ui_state.fonts["default"], 20)
+	text_theme : Text_Theme = { 
+    	font = &ui_state.fonts["default"], 
+    	size = 20,
+    	color = 0xffffffff,
+	}
+    draw_text(ui_state, text_pos, title_text, &text_theme)
 
 	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, theme.scrollzone_theme, gen_uid() ~ uid)
 }
 
 window_end :: proc(using ui_state: ^UI_State) {
 	pop_clip(ui_state)
-}
-
-init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
-	init_renderer(&render_system)
-	reset_draw_list(&command_list, viewport)
-	append(&clip_stack, 0)
-
-	fontinfo: stb_tt.fontinfo
-	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
-	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
-	fonts["default"] = pack_font_characters(&fontinfo, " abcdefhijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789+-*/.,;:!?&()[]{}", font_atlas_size)
-
 }
 
 render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
@@ -283,12 +291,13 @@ compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, 
 	return I_Rect{pos, size}
 }
 
-draw_text :: proc(using ui_state: ^UI_State, text: string, pos: [2]f32, font: ^Packed_Font, scale: f32) {
+draw_text :: proc(using ui_state: ^UI_State, pos: [2]f32, text: string, theme: ^Text_Theme) {
 	glyph_cursor := pos
+	font := theme.font
 	atlas_size := font.atlas_texture.size
 	for character in text {
         glyph := font.glyph_data[character]
-		display_scale := scale / f32(font.render_height)
+		display_scale := theme.size / f32(font.render_height)
         add_glyph_command(&ui_state.command_list, Glyph_Command {
             pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
             size = linalg.to_f32(glyph.rect.size) * display_scale,
@@ -297,8 +306,43 @@ draw_text :: proc(using ui_state: ^UI_State, text: string, pos: [2]f32, font: ^P
             color = 0xffffffff,
             threshold = f32(180)/f32(255),
             texture_id = font.atlas_texture.bindless_id,
-            clip_index = 0,
+            clip_index = clip_stack[len(clip_stack) - 1],
         })
         glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
     }
+}
+
+Text_Field_Theme :: struct {
+	text_theme: ^Text_Theme,
+	caret_theme: ^Rect_Theme,
+	caret_thickness: i32,
+}
+
+text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, allocator := context.allocator) -> (new_value: string) {
+	draw_text(ui_state, pos, value, theme.text_theme)
+	caret_pos := compute_text_rect(theme.text_theme.font, value[0:caret_position^], linalg.to_i32(pos), theme.text_theme.size)
+	caret_rect := I_Rect { caret_pos.pos + {caret_pos.size.x - theme.caret_thickness / 2, 0}, {theme.caret_thickness, caret_pos.size.y}}
+	themed_rect(ui_state, caret_rect, theme.caret_theme)
+
+	if input.get_key_state(ui_state.input_state, .RIGHT) == input.Key_State_Pressed do caret_position^ += 1
+	if input.get_key_state(ui_state.input_state, .LEFT) == input.Key_State_Pressed do caret_position^ -= 1
+	if input.get_key_state(ui_state.input_state, .BACKSPACE) == input.Key_State_Pressed {
+		new_value_builder: strings.Builder
+		fmt.sbprint(&new_value_builder, value[0:caret_position^-1])
+		fmt.sbprint(&new_value_builder, value[caret_position^:])
+		caret_position^ -= 1
+		return strings.to_string(new_value_builder)
+	}
+	caret_position^ = math.clamp(caret_position^, 0, i32(len(value)))
+
+	if len(ui_state.input_state.text_input) > 0 {
+		log.info(ui_state.input_state.text_input)
+		new_value_builder: strings.Builder
+		fmt.sbprint(&new_value_builder, value[0:caret_position^])
+			fmt.sbprint(&new_value_builder, ui_state.input_state.text_input)
+		fmt.sbprint(&new_value_builder, value[caret_position^:])
+		caret_position^ += i32(len(ui_state.input_state.text_input))
+		return strings.to_string(new_value_builder)
+	}
+	return value
 }

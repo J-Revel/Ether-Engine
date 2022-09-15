@@ -157,12 +157,27 @@ main :: proc() {
                 corner_radius = 3,
             }
         }
-        title_text_theme: imgui.Text_Theme
+        title_text_theme: imgui.Text_Theme = {
+            font = &imgui_state.fonts["default"],
+            size = 20,
+            color = 0xffffffff,
+        }
         window_theme: imgui.Window_Theme = {
             &scrollzone_theme,
             30,
             &header_theme,
             &title_text_theme,
+        }
+
+        text_field_caret_theme : imgui.Rect_Theme = {
+            color = 0xffffffff,
+            corner_radius = 3,
+        }
+
+        text_field_theme: imgui.Text_Field_Theme = {
+            &title_text_theme,
+            &text_field_caret_theme,
+            2
         }
         
         last_frame_tick := time.tick_now()
@@ -175,6 +190,9 @@ main :: proc() {
             pos = {200, 100},
             size = {500, 300},
         }
+
+        caret_position : i32 = 0
+        text_input_value := "This is a test"
 
         for running {
 			err := gl.GetError()
@@ -281,8 +299,10 @@ main :: proc() {
             {
                 scrollzone_rect.size.y = 50
                 scrollzone_rect.pos.y += 5
+                text_input_value = imgui.text_field(&imgui_state, linalg.to_f32(scrollzone_rect.pos + [2]i32{0, 10}), text_input_value, &caret_position, &text_field_theme)
+                scrollzone_rect.pos.y += 60
                 button_rect := scrollzone_rect
-                for i in 0..<10 {
+                for i in 0..<9 {
                     rect_theme := imgui.Rect_Theme {
                         color = 0x11111100 * u32(i) + 0x000000ff
                     }
@@ -290,6 +310,8 @@ main :: proc() {
                     scrollzone_rect.pos.y += 60
                 }
                 imgui.button(&imgui_state, button_rect, &button_theme, imgui.gen_uid())
+                scrollzone_rect.pos.y += scrollzone_rect.size.y
+                
                 imgui.window_end(&imgui_state)
             }
             

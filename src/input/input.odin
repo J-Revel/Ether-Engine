@@ -4,6 +4,7 @@ import sdl "vendor:sdl2"
 import "core:log"
 import runtime "core:runtime"
 import "core:math/linalg"
+import "core:strings"
 
 vec2 :: [2]f32
 ivec2 :: [2]int
@@ -31,11 +32,15 @@ State :: struct {
     key_states: [512]int,
     mouse_captured: bool,
     keyboard_captured: bool,
+    text_input: string,
 }
 
 new_frame :: proc(state: ^State) {
     current_frame += 1
-    
+    if len(state.text_input) > 0 {
+        log.info("clear input")
+    }
+    state.text_input = ""
 }
 
 get_key_state :: proc(state: ^State, key: sdl.Scancode) -> (result: Key_State)
@@ -66,6 +71,7 @@ process_events :: proc(state: ^State) {
 
             case .TEXTINPUT: {
                 text := e.text
+                state.text_input = strings.clone(string(cstring(&text.text[0])))
             }
 
             case .MOUSEBUTTONDOWN: {
