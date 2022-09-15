@@ -75,6 +75,7 @@ UI_State :: struct
 	input_state: ^input.State,
 	command_list: Command_List,
 	hovered_element: UID,
+	focused_element: UID,
 	next_hovered: UID,
 	dragged_element: UID,
 	dragged_element_data: rawptr,

@@ -299,7 +299,7 @@ main :: proc() {
             {
                 scrollzone_rect.size.y = 50
                 scrollzone_rect.pos.y += 5
-                text_input_value = imgui.text_field(&imgui_state, linalg.to_f32(scrollzone_rect.pos + [2]i32{0, 10}), text_input_value, &caret_position, &text_field_theme)
+                text_input_value = imgui.text_field(&imgui_state, linalg.to_f32(scrollzone_rect.pos + [2]i32{0, 10}), text_input_value, &caret_position, &text_field_theme, imgui.gen_uid())
                 scrollzone_rect.pos.y += 60
                 button_rect := scrollzone_rect
                 for i in 0..<9 {

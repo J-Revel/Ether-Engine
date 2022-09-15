@@ -218,16 +218,18 @@ window_start :: proc (
 	}
 
 	default_font := &ui_state.fonts["default"]
-	text_pos := linalg.to_f32(header_rect.pos + [2]i32{10, header_rect.size.y - 10})
-	text_rect := compute_text_rect(default_font, title_text, linalg.to_i32(text_pos), 20)
-	rect_theme := Rect_Theme{color = 0x999999ff}
-	themed_rect(ui_state, text_rect, &rect_theme)
 	text_theme : Text_Theme = { 
     	font = &ui_state.fonts["default"], 
     	size = 20,
     	color = 0xffffffff,
 	}
-    draw_text(ui_state, text_pos, title_text, &text_theme)
+
+	text_block_theme := Text_Block_Theme {
+		&text_theme,
+		{0.5, 0.5}
+	}
+
+    text_block(ui_state, header_rect, title_text, &text_block_theme)
 
 	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, theme.scrollzone_theme, gen_uid() ~ uid)
 }
@@ -336,13 +338,29 @@ draw_text :: proc(using ui_state: ^UI_State, pos: [2]f32, text: string, theme: ^
     }
 }
 
+
+Text_Block_Theme :: struct {
+	text_theme: ^Text_Theme,
+	alignment: [2]f32,
+}
+
+text_block :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) {
+	text_rect := compute_text_rect(theme.text_theme.font, text, rect.pos, theme.text_theme.size)
+	available_size := rect.size - text_rect.size
+	offset := linalg.to_f32(available_size) * theme.alignment
+	test_rect_theme : Rect_Theme = {
+		color = 0xffffff55,
+	}
+	draw_text(ui_state, linalg.to_f32(rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos), text, theme.text_theme)
+}
+
 Text_Field_Theme :: struct {
 	text_theme: ^Text_Theme,
 	caret_theme: ^Rect_Theme,
 	caret_thickness: i32,
 }
 
-text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, allocator := context.allocator) -> (new_value: string) {
+text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
 	draw_text(ui_state, pos, value, theme.text_theme)
 	caret_pos := compute_text_rect(theme.text_theme.font, value[0:caret_position^], linalg.to_i32(pos), theme.text_theme.size)
 	caret_rect := I_Rect { caret_pos.pos + {caret_pos.size.x - theme.caret_thickness / 2, 0}, {theme.caret_thickness, caret_pos.size.y}}
@@ -357,9 +375,11 @@ text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_
 		caret_position^ -= 1
 		return strings.to_string(new_value_builder)
 	}
-	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Pressed {
+
+	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Down {
 		caret_position^ = get_character_at_position(theme.text_theme.font, value, linalg.to_i32(pos), theme.text_theme.size, linalg.to_i32(ui_state.input_state.mouse_pos))
 	}
+
 	caret_position^ = math.clamp(caret_position^, 0, i32(len(value)))
 
 	if len(ui_state.input_state.text_input) > 0 {
