@@ -2,6 +2,7 @@ package util
 
 import "core:intrinsics"
 import "core:math"
+import "core:math/linalg"
 
 Rect :: struct($T: typeid)
 {
@@ -72,5 +73,23 @@ rect_padding :: proc(rect: Rect($T), padding: T) -> Rect(T) {
 	return Rect(T){
 		rect.pos + [2]T{padding, padding},
 		rect.size - [2]T{padding * 2, padding * 2},
+	}
+}
+
+union_bounding_rect :: proc(A: Rect($T), B: Rect(T)) -> Rect(T) {
+	top_left := [2]T{math.min(A.pos.x, B.pos.x), math.min(A.pos.y, B.pos.y)}
+	bottom_right := [2]T{math.max(A.pos.x + A.size.x, B.pos.x + B.size.x), math.max(A.pos.y + A.size.y, B.pos.y + B.size.y)}
+	return Rect(T) {
+		pos = top_left,
+		size = bottom_right - top_left,
+	}
+}
+
+round_rect_to_i32 :: proc(rect: Rect(f32)) -> Rect(i32) {
+	top_left := linalg.to_i32(rect.pos)
+	bottom_right := linalg.to_i32([2]f32{math.ceil(rect.pos.x + rect.size.x), math.ceil(rect.pos.y + rect.size.y)})
+	return Rect(i32) {
+		top_left,
+		bottom_right - top_left,
 	}
 }

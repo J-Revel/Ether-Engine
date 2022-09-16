@@ -174,8 +174,13 @@ main :: proc() {
             corner_radius = 3,
         }
 
-        text_field_theme: imgui.Text_Field_Theme = {
+        text_block_theme : imgui.Text_Block_Theme = {
             &title_text_theme,
+            {0, 0.5},
+        }
+
+        text_field_theme: imgui.Text_Field_Theme = {
+            &text_block_theme,
             &text_field_caret_theme,
             2
         }
@@ -299,7 +304,9 @@ main :: proc() {
             {
                 scrollzone_rect.size.y = 50
                 scrollzone_rect.pos.y += 5
-                text_input_value = imgui.text_field(&imgui_state, linalg.to_f32(scrollzone_rect.pos + [2]i32{0, 10}), text_input_value, &caret_position, &text_field_theme, imgui.gen_uid())
+                text_field_rect := scrollzone_rect
+                text_field_rect.size.y = 60
+                text_input_value = imgui.text_field(&imgui_state, text_field_rect, text_input_value, &caret_position, &text_field_theme, imgui.gen_uid())
                 scrollzone_rect.pos.y += 60
                 button_rect := scrollzone_rect
                 for i in 0..<9 {

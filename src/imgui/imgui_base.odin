@@ -176,12 +176,6 @@ scrollzone_end :: proc(using ui_state: ^UI_State) {
 	pop_clip(ui_state)
 }
 
-Text_Theme :: struct {
-	font: ^Packed_Font,
-	size: f32,
-	color: u32,
-}
-
 Window_Theme :: struct {
 	scrollzone_theme: ^Scrollzone_Theme,
 	header_thickness: i32,
@@ -338,11 +332,54 @@ draw_text :: proc(using ui_state: ^UI_State, pos: [2]f32, text: string, theme: ^
     }
 }
 
+compute_text_render_buffer :: proc(using ui_state: ^UI_State, text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer
+{
+	glyph_cursor: [2]f32
+	font := theme.font
+	atlas_size := font.atlas_texture.size
+	result : Text_Render_Buffer = {
+		theme = theme,
+		text = text,
+		glyphs = make([]F_Rect, len(text), allocator)
+	}
+	bounding_rect: F_Rect
+	for character, index in text {
+        glyph := font.glyph_data[character]
+		display_scale := theme.size / f32(font.render_height)
+		result.glyphs[index] = F_Rect{
+			pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
+            size = linalg.to_f32(glyph.rect.size) * display_scale,
+		}
+		bounding_rect = util.union_bounding_rect(bounding_rect, result.glyphs[index])
 
-Text_Block_Theme :: struct {
-	text_theme: ^Text_Theme,
-	alignment: [2]f32,
+        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+    }
+    result.bounding_rect = util.round_rect_to_i32(bounding_rect)
+    return result
 }
+
+render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text_Render_Buffer)
+{
+	font := theme.font
+	atlas_size := font.atlas_texture.size
+	for character, index in text {
+        glyph := font.glyph_data[character]
+		display_scale := theme.size / f32(font.render_height)
+        add_glyph_command(&ui_state.command_list, Glyph_Command {
+            pos = glyphs[index].pos,
+            size = glyphs[index].size,
+            uv_pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
+            uv_size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
+            color = 0xffffffff,
+            threshold = f32(180)/f32(255),
+            texture_id = font.atlas_texture.bindless_id,
+            clip_index = clip_stack[len(clip_stack) - 1],
+        })
+    }
+}
+
+
+
 
 text_block :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) {
 	text_rect := compute_text_rect(theme.text_theme.font, text, rect.pos, theme.text_theme.size)
@@ -354,15 +391,22 @@ text_block :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme:
 	draw_text(ui_state, linalg.to_f32(rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos), text, theme.text_theme)
 }
 
+compute_text_block_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) -> I_Rect {
+	text_rect := compute_text_rect(theme.text_theme.font, text, rect.pos, theme.text_theme.size)
+	available_size := rect.size - text_rect.size
+	offset := linalg.to_f32(available_size) * theme.alignment
+	return I_Rect{linalg.to_i32(linalg.to_f32(text_rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos)), text_rect.size}
+}
+
 Text_Field_Theme :: struct {
-	text_theme: ^Text_Theme,
+	text_theme: ^Text_Block_Theme,
 	caret_theme: ^Rect_Theme,
 	caret_thickness: i32,
 }
 
-text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
-	draw_text(ui_state, pos, value, theme.text_theme)
-	caret_pos := compute_text_rect(theme.text_theme.font, value[0:caret_position^], linalg.to_i32(pos), theme.text_theme.size)
+text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
+	text_block(ui_state, rect, value, theme.text_theme)
+	caret_pos := compute_text_block_rect(ui_state, rect, value[0:caret_position^], theme.text_theme)
 	caret_rect := I_Rect { caret_pos.pos + {caret_pos.size.x - theme.caret_thickness / 2, 0}, {theme.caret_thickness, caret_pos.size.y}}
 	themed_rect(ui_state, caret_rect, theme.caret_theme)
 
@@ -377,7 +421,7 @@ text_field :: proc(using ui_state: ^UI_State, pos: [2]f32, value: string, caret_
 	}
 
 	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Down {
-		caret_position^ = get_character_at_position(theme.text_theme.font, value, linalg.to_i32(pos), theme.text_theme.size, linalg.to_i32(ui_state.input_state.mouse_pos))
+		caret_position^ = get_character_at_position(theme.text_theme.font, value, rect.pos, theme.text_theme.size, linalg.to_i32(ui_state.input_state.mouse_pos))
 	}
 
 	caret_position^ = math.clamp(caret_position^, 0, i32(len(value)))

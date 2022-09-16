@@ -101,3 +101,21 @@ Packed_Glyph_Data :: struct {
 }
 
 Button_State :: input.Key_State
+
+Text_Render_Buffer :: struct {
+	theme: ^Text_Theme,
+	text: string,
+	glyphs: []F_Rect,
+	bounding_rect: I_Rect,
+}
+
+Text_Theme :: struct {
+	font: ^Packed_Font,
+	size: f32,
+	color: u32,
+}
+
+Text_Block_Theme :: struct {
+	using text_theme: ^Text_Theme,
+	alignment: [2]f32,
+}
