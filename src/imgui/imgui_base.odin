@@ -273,6 +273,10 @@ compute_text_size :: proc(font: ^Packed_Font, text: string, scale: f32) -> [2]i3
 	return [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent + font.descent) * font.render_scale * display_scale) }
 }
 
+get_text_display_scale :: proc(theme: ^Text_Theme) -> f32 {
+	return theme.size * theme.font.render_height
+}
+
 compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
 	glyph_cursor := [2]f32{0, 0}
 	display_scale := scale / f32(font.render_height)
@@ -287,29 +291,6 @@ compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, 
 	return I_Rect{pos, size}
 }
 
-get_character_at_position :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, scale: f32, mouse_pos: [2]i32) -> i32 {
-	glyph_cursor := linalg.to_f32(render_pos)
-	display_scale := scale / f32(font.render_height)
-	
-	closest_distance := max(f32)
-	closest_index : i32 = 0
-
-	for character, index in text {
-        glyph := font.glyph_data[character]
-        distance := math.abs(glyph_cursor.x - f32(mouse_pos.x))
-
-        if closest_distance > distance {
-        	closest_distance = distance
-        	closest_index = i32(index)
-        }
-
-        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
-    }
-    if closest_distance > math.abs(glyph_cursor.x - f32(mouse_pos.x)) {
-    	closest_index = i32(len(text))
-    }
-	return closest_index
-}
 
 draw_text :: proc(using ui_state: ^UI_State, pos: [2]f32, text: string, theme: ^Text_Theme) {
 	glyph_cursor := pos
@@ -340,22 +321,54 @@ compute_text_render_buffer :: proc(using ui_state: ^UI_State, text: string, them
 	result : Text_Render_Buffer = {
 		theme = theme,
 		text = text,
-		glyphs = make([]F_Rect, len(text), allocator)
+		render_rects = make([]F_Rect, len(text), allocator),
+		caret_positions = make([][2]f32, len(text)+1, allocator),
 	}
 	bounding_rect: F_Rect
 	for character, index in text {
         glyph := font.glyph_data[character]
 		display_scale := theme.size / f32(font.render_height)
-		result.glyphs[index] = F_Rect{
+		result.render_rects[index] = F_Rect{
 			pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
             size = linalg.to_f32(glyph.rect.size) * display_scale,
 		}
-		bounding_rect = util.union_bounding_rect(bounding_rect, result.glyphs[index])
+		result.caret_positions[index] = glyph_cursor
+		bounding_rect = util.union_bounding_rect(bounding_rect, result.render_rects[index])
 
         glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
     }
+    result.caret_positions[len(result.caret_positions)-1] = glyph_cursor
     result.bounding_rect = util.round_rect_to_i32(bounding_rect)
     return result
+}
+
+place_text_buffer_in_rect :: proc(using ui_state: ^UI_State, text_buffer: ^Text_Render_Buffer, rect: I_Rect, alignment: [2]f32) {
+	available_size := rect.size - text_buffer.bounding_rect.size
+	text_buffer.offset = linalg.to_f32(rect.pos) + linalg.to_f32(available_size) * alignment - linalg.to_f32(text_buffer.bounding_rect.pos)
+}
+
+get_caret_pos :: proc(text_buffer: ^Text_Render_Buffer, caret_index: int) -> [2]f32 {
+	return text_buffer.caret_positions[caret_index] + text_buffer.offset
+}
+
+get_character_at_position :: proc(text_buffer: ^Text_Render_Buffer, position: [2]f32) -> i32 {
+	closest_manhattan_distance := max(f32)
+	closest_index : i32 = 0
+	log.info(position, text_buffer.offset)
+	test_value :: struct {
+		position : [2]f32 ,
+		distance : f32,
+	}
+	test : []test_value = make([]test_value, len(text_buffer.caret_positions))
+	for caret_position, index in text_buffer.caret_positions {
+		manhattan_distance := math.abs(position.x - (caret_position.x + text_buffer.offset.x)) + math.abs(position.y - (caret_position.y + text_buffer.offset.y))
+		test[index] = {caret_position + text_buffer.offset, manhattan_distance}
+		if manhattan_distance < closest_manhattan_distance {
+			closest_manhattan_distance = manhattan_distance
+			closest_index = i32(index)
+		}
+	}
+	return closest_index
 }
 
 render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text_Render_Buffer)
@@ -366,8 +379,8 @@ render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text
         glyph := font.glyph_data[character]
 		display_scale := theme.size / f32(font.render_height)
         add_glyph_command(&ui_state.command_list, Glyph_Command {
-            pos = glyphs[index].pos,
-            size = glyphs[index].size,
+            pos = render_rects[index].pos + offset,
+            size = render_rects[index].size,
             uv_pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
             uv_size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
             color = 0xffffffff,
@@ -377,9 +390,6 @@ render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text
         })
     }
 }
-
-
-
 
 text_block :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) {
 	text_rect := compute_text_rect(theme.text_theme.font, text, rect.pos, theme.text_theme.size)
@@ -405,10 +415,15 @@ Text_Field_Theme :: struct {
 }
 
 text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
-	text_block(ui_state, rect, value, theme.text_theme)
-	caret_pos := compute_text_block_rect(ui_state, rect, value[0:caret_position^], theme.text_theme)
-	caret_rect := I_Rect { caret_pos.pos + {caret_pos.size.x - theme.caret_thickness / 2, 0}, {theme.caret_thickness, caret_pos.size.y}}
-	themed_rect(ui_state, caret_rect, theme.caret_theme)
+	text_render_buffer := compute_text_render_buffer(ui_state, value, theme.text_theme, context.temp_allocator)
+	place_text_buffer_in_rect(ui_state, &text_render_buffer, rect, theme.text_theme.alignment)
+	render_text_buffer(ui_state, &text_render_buffer)
+	caret_pos := get_caret_pos(&text_render_buffer, int(caret_position^))
+	ascent := theme.text_theme.font.ascent
+	descent := theme.text_theme.font.descent
+	themed_rect(ui_state, I_Rect{linalg.to_i32(caret_pos) - [2]i32{0, ascent} , {theme.caret_thickness, (ascent - descent)}}, theme.caret_theme)
+	// caret_rect := F_Rect { caret_pos.pos + {caret_pos.size.x - f32(theme.caret_thickness) / 2, 0}, {f32(theme.caret_thickness), caret_pos.size.y}}
+	// themed_rect(ui_state, util.round_rect_to_i32(caret_rect), theme.caret_theme)
 
 	if input.get_key_state(ui_state.input_state, .RIGHT) == input.Key_State_Pressed do caret_position^ += 1
 	if input.get_key_state(ui_state.input_state, .LEFT) == input.Key_State_Pressed do caret_position^ -= 1
@@ -421,7 +436,7 @@ text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret
 	}
 
 	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Down {
-		caret_position^ = get_character_at_position(theme.text_theme.font, value, rect.pos, theme.text_theme.size, linalg.to_i32(ui_state.input_state.mouse_pos))
+		caret_position^ = get_character_at_position(&text_render_buffer, linalg.to_f32(ui_state.input_state.mouse_pos))
 	}
 
 	caret_position^ = math.clamp(caret_position^, 0, i32(len(value)))

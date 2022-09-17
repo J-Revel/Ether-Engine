@@ -113,7 +113,7 @@ void main()
 		case 1:
 			float alpha = texture(sampler2D(frag_texture_id), frag_uv).r - glyph_commands[command_index].threshold;
 			out_color = frag_fill_color;
-			out_color.w = smoothstep(-0.05, 0.05, alpha);
+			out_color.w = max(0.0f, smoothstep(-0.05, 0.05, alpha));
 			break;
 	}
 }

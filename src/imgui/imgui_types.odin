@@ -105,8 +105,10 @@ Button_State :: input.Key_State
 Text_Render_Buffer :: struct {
 	theme: ^Text_Theme,
 	text: string,
-	glyphs: []F_Rect,
+	render_rects: []F_Rect,
+	caret_positions: [][2]f32,
 	bounding_rect: I_Rect,
+	offset: [2]f32,
 }
 
 Text_Theme :: struct {

@@ -3,6 +3,7 @@ package util
 import "core:intrinsics"
 import "core:math"
 import "core:math/linalg"
+import "core:log"
 
 Rect :: struct($T: typeid)
 {
