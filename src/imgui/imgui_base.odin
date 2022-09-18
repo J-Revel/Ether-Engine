@@ -36,12 +36,6 @@ gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID 
     return UID(hash.djb2(to_hash))
 }
 
-Button_Theme :: struct {
-	default_theme: Rect_Theme,
-	hovered_theme: Rect_Theme,
-	clicked_theme: Rect_Theme,
-}
-
 themed_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Rect_Theme, block_hover: bool = false)
 {
 	if block_hover && util.is_in_rect(rect, linalg.to_i32(input_state.mouse_pos)) {
@@ -83,12 +77,6 @@ button :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Button_Theme, ui
 	}
 	themed_rect(ui_state, rect, displayed_theme)
 	return
-}
-
-Slider_Theme :: struct {
-	background_theme: Rect_Theme,
-	cursor_theme: Button_Theme,
-	cursor_height: i32,
 }
 
 slider :: proc(using ui_state: ^UI_State, rect: I_Rect, value: ^$T, min: T, max: T, theme: ^Slider_Theme, uid: UID) -> bool {
@@ -138,12 +126,6 @@ scrollbar :: proc(
 	slider(ui_state, bar_rect, scroll_pos, content_size - display_size, 0, &slider_theme, uid)
 }
 
-Scrollzone_Theme :: struct {
-	slider_theme: ^Slider_Theme,
-	background_theme: ^Rect_Theme,
-	bar_thickness: i32,
-}
-
 scrollzone_start :: proc (
 	using ui_state: ^UI_State,
 	rect: I_Rect,
@@ -155,10 +137,10 @@ scrollzone_start :: proc (
 	bar_rect := rect
 	bar_rect.pos.x = bar_rect.pos.x + bar_rect.size.x - theme.bar_thickness
 	bar_rect.size.x = theme.bar_thickness
-	scrollbar(ui_state, bar_rect, content_size, rect.size.y, scroll_pos, theme.slider_theme, uid)
+	scrollbar(ui_state, bar_rect, content_size, rect.size.y, scroll_pos, &theme.slider_theme, uid)
 	background_rect := rect
 	background_rect.size.x -= theme.bar_thickness
-	themed_rect(ui_state, background_rect, theme.background_theme)
+	themed_rect(ui_state, background_rect, &theme.background_theme)
 	rest_rect_theme: Rect_Theme = {
 		color = 0x883333ff,
 	}
@@ -174,13 +156,6 @@ scrollzone_start :: proc (
 
 scrollzone_end :: proc(using ui_state: ^UI_State) {
 	pop_clip(ui_state)
-}
-
-Window_Theme :: struct {
-	scrollzone_theme: ^Scrollzone_Theme,
-	header_thickness: i32,
-	header_theme: ^Button_Theme,
-	title_theme: ^Text_Theme,
 }
 
 window_start :: proc (
@@ -200,7 +175,7 @@ window_start :: proc (
 		
 		rect.pos = dragged_data.drag_start_value + mouse_delta
 	}
-	switch button(ui_state, header_rect, theme.header_theme, header_uid) {
+	switch button(ui_state, header_rect, &theme.header_theme, header_uid) {
 		case input.Key_State_Pressed:
 			new_dragged_data := new(Default_Dragged_Data([2]i32))
 			new_dragged_data.drag_start_pos = linalg.to_i32(input_state.mouse_pos)
@@ -213,19 +188,19 @@ window_start :: proc (
 
 	default_font := &ui_state.fonts["default"]
 	text_theme : Text_Theme = { 
-    	font = &ui_state.fonts["default"], 
+    	font = "default", 
     	size = 20,
     	color = 0xffffffff,
 	}
 
 	text_block_theme := Text_Block_Theme {
-		&text_theme,
+		text_theme,
 		{0.5, 0.5}
 	}
 
-    text_block(ui_state, header_rect, title_text, &text_block_theme)
+    // text_block(ui_state, header_rect, title_text, &text_block_theme)
 
-	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, theme.scrollzone_theme, gen_uid() ~ uid)
+	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, &theme.scrollzone_theme, gen_uid() ~ uid)
 }
 
 window_end :: proc(using ui_state: ^UI_State) {
@@ -243,7 +218,10 @@ render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	{
 		case input.Key_State_Released:
 			dragged_element = 0
+		case input.Key_State_Pressed:
+			focused_element = next_focused
 	}
+	next_focused = 0
 	mouse_pos := linalg.to_i32(input_state.mouse_pos)
 }
 
@@ -273,8 +251,9 @@ compute_text_size :: proc(font: ^Packed_Font, text: string, scale: f32) -> [2]i3
 	return [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent + font.descent) * font.render_scale * display_scale) }
 }
 
-get_text_display_scale :: proc(theme: ^Text_Theme) -> f32 {
-	return theme.size * theme.font.render_height
+get_text_display_scale :: proc(using ui_state: ^UI_State, theme: ^Text_Theme) -> f32 {
+	font := &fonts[theme.font]
+	return theme.size * font.render_height
 }
 
 compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
@@ -291,32 +270,9 @@ compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, 
 	return I_Rect{pos, size}
 }
 
-
-draw_text :: proc(using ui_state: ^UI_State, pos: [2]f32, text: string, theme: ^Text_Theme) {
-	glyph_cursor := pos
-	font := theme.font
-	atlas_size := font.atlas_texture.size
-	for character in text {
-        glyph := font.glyph_data[character]
-		display_scale := theme.size / f32(font.render_height)
-        add_glyph_command(&ui_state.command_list, Glyph_Command {
-            pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
-            size = linalg.to_f32(glyph.rect.size) * display_scale,
-            uv_pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
-            uv_size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
-            color = 0xffffffff,
-            threshold = f32(180)/f32(255),
-            texture_id = font.atlas_texture.bindless_id,
-            clip_index = clip_stack[len(clip_stack) - 1],
-        })
-        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
-    }
-}
-
-compute_text_render_buffer :: proc(using ui_state: ^UI_State, text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer
-{
+compute_text_render_buffer :: proc(using ui_state: ^UI_State, text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer {
 	glyph_cursor: [2]f32
-	font := theme.font
+	font := &fonts[theme.font]
 	atlas_size := font.atlas_texture.size
 	result : Text_Render_Buffer = {
 		theme = theme,
@@ -371,9 +327,10 @@ get_character_at_position :: proc(text_buffer: ^Text_Render_Buffer, position: [2
 	return closest_index
 }
 
+
 render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text_Render_Buffer)
 {
-	font := theme.font
+	font := &fonts[theme.font]
 	atlas_size := font.atlas_texture.size
 	for character, index in text {
         glyph := font.glyph_data[character]
@@ -391,64 +348,59 @@ render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text
     }
 }
 
-text_block :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) {
-	text_rect := compute_text_rect(theme.text_theme.font, text, rect.pos, theme.text_theme.size)
-	available_size := rect.size - text_rect.size
-	offset := linalg.to_f32(available_size) * theme.alignment
-	test_rect_theme : Rect_Theme = {
-		color = 0xffffff55,
-	}
-	draw_text(ui_state, linalg.to_f32(rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos), text, theme.text_theme)
-}
 
 compute_text_block_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) -> I_Rect {
-	text_rect := compute_text_rect(theme.text_theme.font, text, rect.pos, theme.text_theme.size)
+	text_rect := compute_text_rect(&fonts[theme.text_theme.font], text, rect.pos, theme.text_theme.size)
 	available_size := rect.size - text_rect.size
 	offset := linalg.to_f32(available_size) * theme.alignment
 	return I_Rect{linalg.to_i32(linalg.to_f32(text_rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos)), text_rect.size}
 }
 
-Text_Field_Theme :: struct {
-	text_theme: ^Text_Block_Theme,
-	caret_theme: ^Rect_Theme,
-	caret_thickness: i32,
-}
-
 text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
-	text_render_buffer := compute_text_render_buffer(ui_state, value, theme.text_theme, context.temp_allocator)
+
+	switch button(ui_state, rect, &theme.background_theme, uid) {
+		case input.Key_State_Pressed:
+			next_focused = uid
+	}
+	text_render_buffer := compute_text_render_buffer(ui_state, value, &theme.text_theme, context.temp_allocator)
 	place_text_buffer_in_rect(ui_state, &text_render_buffer, rect, theme.text_theme.alignment)
 	render_text_buffer(ui_state, &text_render_buffer)
 	caret_pos := get_caret_pos(&text_render_buffer, int(caret_position^))
-	ascent := theme.text_theme.font.ascent
-	descent := theme.text_theme.font.descent
-	themed_rect(ui_state, I_Rect{linalg.to_i32(caret_pos) - [2]i32{0, ascent} , {theme.caret_thickness, (ascent - descent)}}, theme.caret_theme)
+	font := &fonts[theme.text_theme.font]
+	ascent := font.ascent
+	descent := font.descent
+	display_scale := theme.text_theme.size / f32(font.render_height)
 	// caret_rect := F_Rect { caret_pos.pos + {caret_pos.size.x - f32(theme.caret_thickness) / 2, 0}, {f32(theme.caret_thickness), caret_pos.size.y}}
 	// themed_rect(ui_state, util.round_rect_to_i32(caret_rect), theme.caret_theme)
+	if focused_element == uid {
+		themed_rect(ui_state, I_Rect{linalg.to_i32(caret_pos) - [2]i32{0, i32(f32(ascent) * display_scale * font.render_scale)} , {theme.caret_thickness, i32(f32(ascent - descent) * display_scale * font.render_scale)}}, &theme.caret_theme)
 
-	if input.get_key_state(ui_state.input_state, .RIGHT) == input.Key_State_Pressed do caret_position^ += 1
-	if input.get_key_state(ui_state.input_state, .LEFT) == input.Key_State_Pressed do caret_position^ -= 1
-	if input.get_key_state(ui_state.input_state, .BACKSPACE) == input.Key_State_Pressed {
-		new_value_builder: strings.Builder
-		fmt.sbprint(&new_value_builder, value[0:caret_position^-1])
-		fmt.sbprint(&new_value_builder, value[caret_position^:])
-		caret_position^ -= 1
-		return strings.to_string(new_value_builder)
-	}
+		if input.get_key_state(ui_state.input_state, .RIGHT) == input.Key_State_Pressed do caret_position^ += 1
+		if input.get_key_state(ui_state.input_state, .LEFT) == input.Key_State_Pressed do caret_position^ -= 1
+		if input.get_key_state(ui_state.input_state, .BACKSPACE) == input.Key_State_Pressed {
+			new_value_builder: strings.Builder
+			fmt.sbprint(&new_value_builder, value[0:caret_position^-1])
+			fmt.sbprint(&new_value_builder, value[caret_position^:])
+			caret_position^ -= 1
+			return strings.to_string(new_value_builder)
+		}
 
-	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Down {
-		caret_position^ = get_character_at_position(&text_render_buffer, linalg.to_f32(ui_state.input_state.mouse_pos))
+		if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Down {
+			caret_position^ = get_character_at_position(&text_render_buffer, linalg.to_f32(ui_state.input_state.mouse_pos))
+		}
+		if len(ui_state.input_state.text_input) > 0 {
+			log.info(ui_state.input_state.text_input)
+			new_value_builder: strings.Builder
+			fmt.sbprint(&new_value_builder, value[0:caret_position^])
+				fmt.sbprint(&new_value_builder, ui_state.input_state.text_input)
+			fmt.sbprint(&new_value_builder, value[caret_position^:])
+			caret_position^ += i32(len(ui_state.input_state.text_input))
+			return strings.to_string(new_value_builder)
+		}
 	}
 
 	caret_position^ = math.clamp(caret_position^, 0, i32(len(value)))
 
-	if len(ui_state.input_state.text_input) > 0 {
-		log.info(ui_state.input_state.text_input)
-		new_value_builder: strings.Builder
-		fmt.sbprint(&new_value_builder, value[0:caret_position^])
-			fmt.sbprint(&new_value_builder, ui_state.input_state.text_input)
-		fmt.sbprint(&new_value_builder, value[caret_position^:])
-		caret_position^ += i32(len(ui_state.input_state.text_input))
-		return strings.to_string(new_value_builder)
-	}
+	
 	return value
 }

@@ -9,6 +9,7 @@ import "core:math/linalg"
 import "core:math/rand"
 import "core:fmt"
 import "core:time"
+import "core:encoding/json"
 
 import sdl "vendor:sdl2"
 import sdl_image "vendor:sdl2/image"
@@ -139,8 +140,8 @@ main :: proc() {
             color = 0x333333ff,
         }
         scrollzone_theme: imgui.Scrollzone_Theme = {
-            &slider_theme,
-            &window_background_theme,
+            slider_theme,
+            window_background_theme,
             10,
         }
         header_theme: imgui.Button_Theme = {
@@ -158,15 +159,15 @@ main :: proc() {
             }
         }
         title_text_theme: imgui.Text_Theme = {
-            font = &imgui_state.fonts["default"],
+            font = "default",
             size = 20,
             color = 0xffffffff,
         }
         window_theme: imgui.Window_Theme = {
-            &scrollzone_theme,
+            scrollzone_theme,
             30,
-            &header_theme,
-            &title_text_theme,
+            header_theme,
+            title_text_theme,
         }
 
         text_field_caret_theme : imgui.Rect_Theme = {
@@ -175,15 +176,24 @@ main :: proc() {
         }
 
         text_block_theme : imgui.Text_Block_Theme = {
-            &title_text_theme,
-            {0, 0.5},
+            title_text_theme,
+            {0.5, 0.5},
         }
 
         text_field_theme: imgui.Text_Field_Theme = {
-            &text_block_theme,
-            &text_field_caret_theme,
+            button_theme,
+            text_block_theme,
+            text_field_caret_theme,
             2
         }
+
+        editor_theme: imgui.Editor_Theme = {
+            button_theme,
+            text_field_theme,
+            window_theme,
+        }
+        data, _ := json.marshal(editor_theme, {pretty = true})
+        log.info(string(data))
         
         last_frame_tick := time.tick_now()
         sample_frame_times: [FRAME_SAMPLE_COUNT]f32

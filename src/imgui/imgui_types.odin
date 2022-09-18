@@ -77,6 +77,7 @@ UI_State :: struct
 	hovered_element: UID,
 	focused_element: UID,
 	next_hovered: UID,
+	next_focused: UID,
 	dragged_element: UID,
 	dragged_element_data: rawptr,
 	clip_stack: [dynamic]i32,
@@ -111,13 +112,51 @@ Text_Render_Buffer :: struct {
 	offset: [2]f32,
 }
 
+Button_Theme :: struct {
+	default_theme: Rect_Theme,
+	hovered_theme: Rect_Theme,
+	clicked_theme: Rect_Theme,
+}
+
+Slider_Theme :: struct {
+	background_theme: Rect_Theme,
+	cursor_theme: Button_Theme,
+	cursor_height: i32,
+}
+
+Scrollzone_Theme :: struct {
+	slider_theme: Slider_Theme,
+	background_theme: Rect_Theme,
+	bar_thickness: i32,
+}
+
 Text_Theme :: struct {
-	font: ^Packed_Font,
+	font: string,
 	size: f32,
 	color: u32,
 }
 
 Text_Block_Theme :: struct {
-	using text_theme: ^Text_Theme,
+	using text_theme: Text_Theme,
 	alignment: [2]f32,
+}
+
+Text_Field_Theme :: struct {
+	background_theme: Button_Theme,
+	text_theme: Text_Block_Theme,
+	caret_theme: Rect_Theme,
+	caret_thickness: i32,
+}
+
+Window_Theme :: struct {
+	scrollzone_theme: Scrollzone_Theme,
+	header_thickness: i32,
+	header_theme: Button_Theme,
+	title_theme: Text_Theme,
+}
+
+Editor_Theme :: struct {
+	button: Button_Theme,
+	text_field: Text_Field_Theme,
+	window: Window_Theme,
 }
