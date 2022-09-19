@@ -1,6 +1,6 @@
 package imgui
 
-render_system : Render_System = {} 
+render_system : OpenGL_Render_System = {} 
 
 demo_init :: proc()
 {

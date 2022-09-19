@@ -16,8 +16,8 @@ import sdl_image "vendor:sdl2/image"
 import gl  "vendor:OpenGL"
 
 import "input"
-import "render"
 import "imgui"
+import imgui_sdl "imgui/imgui_sdl"
 
 DESIRED_GL_MAJOR_VERSION :: 4
 DESIRED_GL_MINOR_VERSION :: 5
@@ -60,35 +60,14 @@ main :: proc() {
         }
         defer sdl.DestroyWindow(window)
 
-        log.info("Setting up the OpenGL...")
-        sdl.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
-        sdl.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
-        sdl.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl.GLprofile.CORE))
-        sdl.GL_SetAttribute(.DOUBLEBUFFER, 1)
-        sdl.GL_SetAttribute(.DEPTH_SIZE, 24)
-        sdl.GL_SetAttribute(.STENCIL_SIZE, 8)
-        gl_ctx := sdl.GL_CreateContext(window)
-        if gl_ctx == nil {
-            log.debugf("Error during window creation: %s", sdl.GetError())
-            return
-        }
-        sdl.GL_MakeCurrent(window, gl_ctx)
-        defer sdl.GL_DeleteContext(gl_ctx)
-        if sdl.GL_SetSwapInterval(1) != 0 {
-            log.debugf("Error during window creation: %s", sdl.GetError())
-            return
-        }
-		load_proc := proc(p: rawptr, name: cstring) {
-            (cast(^rawptr)p)^ = sdl.GL_GetProcAddress(name)
-        } 
-        gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, load_proc)
-
-		render.load_ARB_bindless_texture(load_proc)
+        // load_opengl(window)
+        
+		// render.load_ARB_bindless_texture(load_proc)
 		test_frequency : f32 = 440
 		
 		// audio_system: audio.Audio_System
 		// audio.init_audio_system(&audio_system)
-        gl.ClearColor(0, 0.25, 0.25, 1)
+        // gl.ClearColor(0, 0.25, 0.25, 1)
 
         // imgui_state := init_imgui_state(window)
         input_state : input.State
@@ -97,16 +76,6 @@ main :: proc() {
         // io := imgui.get_io()
         screen_size: [2]int
 
-        sprite_database: render.Sprite_Database
-        render.init_sprite_database(&sprite_database, 5000, 5000)
-
-        // sceneInstance : gameplay.Scene
-        // gameplay.init_main_scene(&sceneInstance, &sprite_database)
-
-        // editor_state: editor.Editor_State
-        // show_editor := false
-        // editor.init_editor(&editor_state, &sprite_database)
-
         imgui_state: imgui.UI_State = {
             input_state = &input_state,
         }
@@ -114,6 +83,12 @@ main :: proc() {
             {0, 0},
             default_screen_size,
         }
+        imgui_state.render_system = {
+            render_draw_commands = imgui_sdl.render_draw_commands,
+            load_texture = imgui_sdl.load_texture,
+            free_renderer = imgui_sdl.free_renderer,
+        }
+        imgui_sdl.init_renderer(window, &imgui_state.render_system)
         imgui.init_ui_state(&imgui_state, viewport)
         button_theme: imgui.Button_Theme = { 
             {
@@ -210,14 +185,11 @@ main :: proc() {
         text_input_value := "This is a test"
 
         for running {
-			err := gl.GetError()
-			for err != gl.NO_ERROR
-			{
-				log.error("OPENGL ERROR", err)
-				err = gl.GetError()
-			}
+			// handle_opengl_error()
             mx, my: i32
-            sdl.GL_GetDrawableSize(window, &mx, &my)
+
+            sdl.GetWindowSize(window, &mx, &my)
+            // sdl.GL_GetDrawableSize(window, &mx, &my)
 
             screen_size.x = cast(int)mx
             screen_size.y = cast(int)my
@@ -232,11 +204,11 @@ main :: proc() {
             //     info_overlay()
             // }
 
-            gl.Viewport(0, 0, mx, my)
-            gl.Scissor(0, 0, mx, my)
-            gl.Clear(gl.COLOR_BUFFER_BIT)
-            gl.Enable(gl.BLEND);
-	        gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+         //    gl.Viewport(0, 0, mx, my)
+         //    gl.Scissor(0, 0, mx, my)
+         //    gl.Clear(gl.COLOR_BUFFER_BIT)
+         //    gl.Enable(gl.BLEND);
+	        // gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
             current_tick := time.tick_now()
             delta_time := f32(time.duration_seconds(time.tick_diff(last_frame_tick, current_tick)))
@@ -336,7 +308,7 @@ main :: proc() {
             imgui.render_frame(&imgui_state, viewport)
 
             // imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state)
-            sdl.GL_SwapWindow(window)
+            // sdl.GL_SwapWindow(window)
             frame_duration := time.tick_diff(current_tick, time.tick_now())
             time.sleep(max(0, time.Millisecond * 16 - frame_duration))
         }
@@ -345,5 +317,41 @@ main :: proc() {
         
     } else {
         log.debugf("Error during SDL init: (%d)%s", init_err, sdl.GetError())
+    }
+}
+
+load_opengl :: proc(window: ^sdl.Window) {
+    log.info("Setting up the OpenGL...")
+    sdl.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, DESIRED_GL_MAJOR_VERSION)
+    sdl.GL_SetAttribute(.CONTEXT_MINOR_VERSION, DESIRED_GL_MINOR_VERSION)
+    sdl.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl.GLprofile.CORE))
+    sdl.GL_SetAttribute(.DOUBLEBUFFER, 1)
+    sdl.GL_SetAttribute(.DEPTH_SIZE, 24)
+    sdl.GL_SetAttribute(.STENCIL_SIZE, 8)
+    gl_ctx := sdl.GL_CreateContext(window)
+    if gl_ctx == nil {
+        log.debugf("Error during window creation: %s", sdl.GetError())
+        return
+    }
+    sdl.GL_MakeCurrent(window, gl_ctx)
+    defer sdl.GL_DeleteContext(gl_ctx)
+    if sdl.GL_SetSwapInterval(1) != 0 {
+        log.debugf("Error during window creation: %s", sdl.GetError())
+        return
+    }
+    load_proc := proc(p: rawptr, name: cstring) {
+        function := sdl.GL_GetProcAddress(name)
+        log.info(function)
+        (cast(^rawptr)p)^ = function
+    } 
+    gl.load_up_to(DESIRED_GL_MAJOR_VERSION, DESIRED_GL_MINOR_VERSION, load_proc)
+}
+
+handle_opengl_error :: proc() {
+    err := gl.GetError()
+    for err != gl.NO_ERROR
+    {
+        log.error("OPENGL ERROR", err)
+        err = gl.GetError()
     }
 }

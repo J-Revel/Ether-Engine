@@ -15,15 +15,14 @@ import stb_tt"vendor:stb/truetype"
 
 
 init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
-	init_renderer(&render_system)
+	
 	reset_draw_list(&command_list, viewport)
 	append(&clip_stack, 0)
 
 	fontinfo: stb_tt.fontinfo
 	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
 	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
-	fonts["default"] = pack_font_characters(&fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size)
-
+	fonts["default"] = pack_font_characters(ui_state, &fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size)
 }
 
 gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID {
@@ -42,8 +41,7 @@ themed_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Rect_Theme,
 		next_hovered = 0
 	}
 	add_rect_command(&ui_state.command_list, Rect_Command {
-		pos = rect.pos,
-		size = rect.size,
+		rect = rect,
 		theme = theme^,
 		clip_index = clip_stack[len(clip_stack) - 1],
 	})
@@ -208,7 +206,7 @@ window_end :: proc(using ui_state: ^UI_State) {
 }
 
 render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
-	render_draw_commands(&render_system, &command_list, viewport)
+	render_system.render_draw_commands(&ui_state.render_system, &command_list)
 	reset_draw_list(&command_list, viewport)
 	clear(&clip_stack)
 	append(&clip_stack, 0)
@@ -273,7 +271,7 @@ compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, 
 compute_text_render_buffer :: proc(using ui_state: ^UI_State, text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer {
 	glyph_cursor: [2]f32
 	font := &fonts[theme.font]
-	atlas_size := font.atlas_texture.size
+	atlas_size := font.atlas_size
 	result : Text_Render_Buffer = {
 		theme = theme,
 		text = text,
@@ -331,18 +329,22 @@ get_character_at_position :: proc(text_buffer: ^Text_Render_Buffer, position: [2
 render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text_Render_Buffer)
 {
 	font := &fonts[theme.font]
-	atlas_size := font.atlas_texture.size
+	atlas_size := font.atlas_size
 	for character, index in text {
         glyph := font.glyph_data[character]
 		display_scale := theme.size / f32(font.render_height)
         add_glyph_command(&ui_state.command_list, Glyph_Command {
-            pos = render_rects[index].pos + offset,
-            size = render_rects[index].size,
-            uv_pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
-            uv_size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
+            rect = {
+            	pos = render_rects[index].pos + offset,
+            	size = render_rects[index].size,
+        	},
+            uv_rect = {
+            	pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
+            	size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
+        	},
             color = 0xffffffff,
             threshold = f32(180)/f32(255),
-            texture_id = font.atlas_texture.bindless_id,
+            texture_id = font.atlas_texture,
             clip_index = clip_stack[len(clip_stack) - 1],
         })
     }

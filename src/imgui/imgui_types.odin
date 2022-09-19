@@ -1,8 +1,8 @@
 package imgui
 
-import "../render"
 import "../util"
 import "../input"
+import sdl "vendor:sdl2"
 
 INDEX_BUFFER_SIZE :: 50000
 SSBO_SIZE :: 10000
@@ -12,9 +12,35 @@ F_Rect :: util.Rect(f32)
 
 UID :: distinct uint
 
-Render_System :: struct {
-    current_texture: render.Texture_Handle,
+Texture_Format :: enum {
+	R,
+	RGB,
+	RGBA,
+}
 
+Texture_Data :: struct {
+	data: []u8,
+	size: [2]int,
+	texture_format: Texture_Format,
+}
+
+Texture_Handle :: distinct int
+
+Renderer_Draw_Commands_Proc :: proc(renderer: ^Renderer, draw_list: ^Command_List)
+Renderer_Free_Proc :: proc(renderer: ^Renderer)
+Renderer_Load_Texture :: proc(renderer: ^Renderer, texture_data: ^Texture_Data) -> Texture_Handle
+
+Renderer :: struct {
+	render_draw_commands: Renderer_Draw_Commands_Proc,
+	load_texture: Renderer_Load_Texture,
+	free_renderer: Renderer_Free_Proc,
+}
+
+Vulkan_Render_System :: struct {
+
+}
+
+OpenGL_Render_System :: struct {
     shader: u32,
     vao: u32,
     element_buffer: u32,
@@ -29,12 +55,11 @@ Rect_Theme :: struct {
 	border_color: u32,
 	border_thickness: i32,
 	corner_radius: i32,
-	texture_id: u64,
 }
 
 Rect_Command :: struct
 {
-	pos, size : [2]i32,
+	using rect: I_Rect,
 	uv_pos, uv_size : [2]f32,
 	using theme: Rect_Theme,
 	clip_index: i32,
@@ -42,15 +67,24 @@ Rect_Command :: struct
 
 Glyph_Command :: struct
 {
-	pos, size: [2]f32,
-	uv_pos, uv_size: [2]f32,
+	using rect: F_Rect,
+	uv_rect: F_Rect,
 	color: u32,
-	texture_id: u64,
+	texture_id: Texture_Handle,
 	clip_index: i32,
 	threshold: f32,
 }
 
-Command_List :: struct
+Render_Command :: union {
+	Rect_Command, Glyph_Command,
+}
+
+Command_List :: struct {
+	commands: [dynamic]Render_Command,
+	clips: [dynamic]I_Rect,
+}
+
+Command_List_Opengl :: struct
 {
 	rect_commands: [dynamic]Rect_Command,
 	glyph_commands: [dynamic]Glyph_Command,
@@ -71,7 +105,7 @@ Default_Dragged_Data :: struct($T: typeid) {
 
 UI_State :: struct
 {
-	render_system: Render_System,
+	render_system: Renderer,
 	input_state: ^input.State,
 	command_list: Command_List,
 	hovered_element: UID,
@@ -91,7 +125,17 @@ Packed_Font :: struct {
 	descent: i32,
 	linegap: i32,
 	glyph_data: map[rune]Packed_Glyph_Data,
-	atlas_texture: render.Texture,
+	atlas_texture: Texture_Handle,
+	atlas_size: [2]i32,
+}
+
+Texture :: struct
+{
+    path: string,
+    texture_id: u32,
+	bindless_id: u64,
+	resident: bool,
+    size: [2]int,
 }
 
 Packed_Glyph_Data :: struct {
