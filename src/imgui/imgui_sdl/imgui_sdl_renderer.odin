@@ -5,13 +5,16 @@ import sdl "vendor:sdl2"
 import "core:log"
 import "core:math/linalg"
 import "core:math"
+import "../../display"
+
 
 sdl_renderer: ^sdl.Renderer
 textures: map[imgui.Texture_Handle]^sdl.Texture
 next_handle: imgui.Texture_Handle
 
-init_renderer :: proc(window: ^sdl.Window, renderer: ^imgui.Renderer) -> bool {
-	sdl_renderer = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
+init_renderer :: proc(window: ^display.Render_Window, renderer: ^imgui.Renderer) -> bool {
+	sdl_renderer = sdl.CreateRenderer(window.sdl_window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
+	sdl.SetRenderDrawBlendMode(sdl_renderer, .BLEND)
 	return true
 }
 
@@ -28,7 +31,6 @@ render_draw_commands :: proc(
 	dst_rect := sdl.Rect {
 		0, 0, 1024, 1024
 	}
-	sdl.RenderCopy(sdl_renderer, textures[1], &src_rect, &dst_rect)
 	for command in draw_list.commands {
 		switch c in command {
 			case imgui.Rect_Command:
@@ -72,14 +74,15 @@ free_renderer :: proc(renderer: ^imgui.Renderer) {
 }
 
 load_texture :: proc(renderer: ^imgui.Renderer, texture_data: ^imgui.Texture_Data) -> imgui.Texture_Handle {
-	pixel_format: sdl.PixelFormatEnum  = .RGB888
-	rgba_texture_data := make([]u8, texture_data.size.x * texture_data.size.y * 3)
+	pixel_format: sdl.PixelFormatEnum  = .RGBA8888
+	rgba_texture_data := make([]u8, texture_data.size.x * texture_data.size.y * 4)
 	for y in 0..<texture_data.size.y {
 		for x in 0..<texture_data.size.x {
 			i := x + y * (texture_data.size.x)
-			rgba_texture_data[i * 3 + 0] = 0
-			rgba_texture_data[i * 3 + 1] = u8(y * 255 / texture_data.size.y)
-			rgba_texture_data[i * 3 + 2] = u8(x * 255 / texture_data.size.x)
+			rgba_texture_data[i * 4 + 0] = texture_data.data[i] > 180 ? 255 : 0
+			rgba_texture_data[i * 4 + 1] = 255
+			rgba_texture_data[i * 4 + 2] = 255
+			rgba_texture_data[i * 4 + 3] = 255
 		}
 	}
 	texture := sdl.CreateTexture(sdl_renderer, u32(pixel_format), .STATIC, i32(texture_data.size.x), i32(texture_data.size.y))
@@ -87,7 +90,7 @@ load_texture :: proc(renderer: ^imgui.Renderer, texture_data: ^imgui.Texture_Dat
 		log.info("Error creating texture")
 		log.info(sdl.GetError())
 	}
-	sdl.UpdateTexture(texture, nil, &rgba_texture_data[0], 4)
+	sdl.UpdateTexture(texture, nil, &rgba_texture_data[0], i32(4 * texture_data.size.x))
 	sdl.SetTextureBlendMode(texture, .BLEND)
 	next_handle += 1
 	textures[next_handle] = texture

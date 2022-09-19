@@ -9,7 +9,6 @@ import "core:strings"
 vec2 :: [2]f32
 ivec2 :: [2]int
 
-current_frame: int = 1
 
 Key_State_Flags :: enum
 {
@@ -27,71 +26,28 @@ Key_State_Up :: Key_State{}
 State :: struct {
     time: u64,
     quit: bool,
-    mouse_states: [3]int,
     mouse_pos: ivec2,
-    key_states: [512]int,
+    key_states: [Input_Key]int,
     mouse_captured: bool,
     keyboard_captured: bool,
     text_input: string,
+    current_frame: int,
 }
 
 new_frame :: proc(state: ^State) {
-    current_frame += 1
+    state.current_frame += 1
     if len(state.text_input) > 0 {
         log.info("clear input")
     }
     state.text_input = ""
 }
 
-get_key_state :: proc(state: ^State, key: sdl.Scancode) -> (result: Key_State)
+get_key_state :: proc(state: ^State, key: Input_Key) -> (result: Key_State)
 {
 	key_state := state.key_states[key]
-	if key_state == current_frame || key_state == -current_frame do incl(&result, Key_State.Just_Updated)
+	if key_state == state.current_frame || key_state == -state.current_frame do incl(&result, Key_State.Just_Updated)
 	if key_state > 0 do incl(&result, Key_State.Down)
 	return result
-}
-
-get_mouse_state :: proc(state: ^State, button: int) -> (result: Key_State)
-{
-	mouse_state := state.mouse_states[button]
-	if mouse_state == current_frame || mouse_state == -current_frame do incl(&result, Key_State.Just_Updated)
-	if mouse_state > 0 do incl(&result, Key_State.Down)
-	return result
-}
-
-process_events :: proc(state: ^State) {
-    e : sdl.Event
-    for sdl.PollEvent(&e) {
-        #partial switch e.type {
-            case .QUIT: {
-                state.quit = true
-            }
-            case .MOUSEWHEEL: {
-            }
-
-            case .TEXTINPUT: {
-                text := e.text
-                state.text_input = strings.clone(string(cstring(&text.text[0])))
-            }
-
-            case .MOUSEBUTTONDOWN: {
-                if e.button.button == 1 do state.mouse_states[0] = current_frame
-                if e.button.button == 2 do state.mouse_states[1] = current_frame
-                if e.button.button == 3 do state.mouse_states[2] = current_frame
-            }
-
-            case .MOUSEBUTTONUP: {
-                if e.button.button == 1 do state.mouse_states[0] = -current_frame
-                if e.button.button == 2 do state.mouse_states[1] = -current_frame
-                if e.button.button == 3 do state.mouse_states[2] = -current_frame
-            }
-
-            case .KEYDOWN, .KEYUP: {
-                sc := e.key.keysym.scancode
-                state.key_states[sc] = e.type == .KEYDOWN ? current_frame : -current_frame
-            }
-        }
-    }
 }
 
 update_dt :: proc(state: ^State) {
@@ -99,16 +55,6 @@ update_dt :: proc(state: ^State) {
     curr_time := sdl.GetPerformanceCounter()
     // TODO : fill io.delta_time somewhere
     state.time = curr_time
-}
-
-update_mouse :: proc(state: ^State, window: ^sdl.Window) {
-    mx, my: i32
-    sdl.GetMouseState(&mx, &my)
-    
-    // Set mouse pos if window is focused
-    if sdl.GetKeyboardFocus() == window {
-        state.mouse_pos = [2]int{int(mx), int(my)}
-    }
 }
 
 set_clipboard_text :: proc "c"(user_data : rawptr, text : cstring) {

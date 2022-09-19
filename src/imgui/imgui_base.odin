@@ -57,7 +57,7 @@ button :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Button_Theme, ui
 		out_state = input.Key_State_Up
 		if hovered_element == uid {
 			displayed_theme = &theme.hovered_theme
-		 	if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Pressed {
+		 	if input.get_key_state(ui_state.input_state, .MOUSE_LEFT) == input.Key_State_Pressed {
 				dragged_element = uid
 				out_state = input.Key_State_Pressed
 			}
@@ -66,7 +66,7 @@ button :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Button_Theme, ui
 	if dragged_element == uid {
 		if out_state != input.Key_State_Pressed {
 			out_state = input.Key_State_Down
-			if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Released {
+			if input.get_key_state(ui_state.input_state, .MOUSE_LEFT) == input.Key_State_Released {
 				out_state = input.Key_State_Released
 				dragged_element = 0
 			}
@@ -212,7 +212,7 @@ render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	append(&clip_stack, 0)
 	hovered_element = next_hovered
 	next_hovered = 0
-	switch input.get_mouse_state(ui_state.input_state, 0)
+	switch input.get_key_state(ui_state.input_state, .MOUSE_LEFT)
 	{
 		case input.Key_State_Released:
 			dragged_element = 0
@@ -387,7 +387,7 @@ text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret
 			return strings.to_string(new_value_builder)
 		}
 
-		if input.get_mouse_state(ui_state.input_state, 0) == input.Key_State_Down {
+		if input.get_key_state(ui_state.input_state, .MOUSE_LEFT) == input.Key_State_Down {
 			caret_position^ = get_character_at_position(&text_render_buffer, linalg.to_f32(ui_state.input_state.mouse_pos))
 		}
 		if len(ui_state.input_state.text_input) > 0 {

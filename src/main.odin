@@ -18,6 +18,7 @@ import gl  "vendor:OpenGL"
 import "input"
 import "imgui"
 import imgui_sdl "imgui/imgui_sdl"
+import "display"
 
 
 DESIRED_GL_MAJOR_VERSION :: 4
@@ -32,44 +33,11 @@ running := true
 vec2 :: [2]f32
 ivec2 :: [2]i32
 
-Render_Window :: struct {
-    window: ^SDL_Window,
-}
-
-sdl_init :: proc() -> Render_Window, bool {
-    init_err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)
-    if init_err == 0 
-    {
-        // log.info("load SDL_IMAGE")
-        sdl_image.Init(sdl_image.INIT_PNG)
-
-        // render.init_font_render()
-
-        // log.info("Setting up the window...")
-        
-        window := sdl.CreateWindow("Ether", 100, 100, default_screen_size.x, default_screen_size.y, sdl.WINDOW_OPENGL|sdl.WINDOW_MOUSE_FOCUS|sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE)
-        if window == nil {
-            // log.debugf("Error during window creation: %s", sdl.GetError())
-            return nil, false
-        }
-    }
-    return window, true
-}
-
-sdl_free :: proc(render_window: ^Render_Window) {
-    sdl.DestroyWindow(render_window.window)
-    sdl_image.Quit()
-    sdl.Quit()
-}
-
-sdl_update_events :: proc(render_window: ^Render_Window, input: ^input.State) {
-    
-}
 
 main :: proc() {
 
     // log.info("Starting SDL Example...")
-    render_window := sdl_init() or_return
+    render_window, err := display.init(default_screen_size)
 
     // load_opengl(window)
     
@@ -85,7 +53,6 @@ main :: proc() {
 
     // show_demo_window := false
     // io := imgui.get_io()
-    screen_size: [2]int
 
     imgui_state: imgui.UI_State = {
         input_state = &input_state,
@@ -99,7 +66,7 @@ main :: proc() {
         load_texture = imgui_sdl.load_texture,
         free_renderer = imgui_sdl.free_renderer,
     }
-    imgui_sdl.init_renderer(window, &imgui_state.render_system)
+    imgui_sdl.init_renderer(&render_window, &imgui_state.render_system)
     imgui.init_ui_state(&imgui_state, viewport)
     button_theme: imgui.Button_Theme = { 
         {
@@ -197,17 +164,13 @@ main :: proc() {
 
     for running {
 		// handle_opengl_error()
-        mx, my: i32
 
-        sdl.GetWindowSize(window, &mx, &my)
         // sdl.GL_GetDrawableSize(window, &mx, &my)
-
-        screen_size.x = cast(int)mx
-        screen_size.y = cast(int)my
         
         input.new_frame(&input_state)
-        input.process_events(&input_state)
-        input.update_mouse(&input_state, window)
+        display.update_events(&render_window, &input_state)
+        // input.process_events(&input_state)
+        // input.update_mouse(&input_state, window)
         // input.update_display_size(window)
 
         // imgui.new_frame()
@@ -231,7 +194,7 @@ main :: proc() {
         
         viewport = imgui.I_Rect{
             {0, 0},
-            {mx, my},
+            render_window.screen_size,
         }
         // gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport)
         // gameplay.do_render(&sceneInstance, viewport)
@@ -241,7 +204,7 @@ main :: proc() {
         //     show_editor = true
         // }
 
-        if input.get_key_state(&input_state, sdl.Scancode.ESCAPE) == input.Key_State_Pressed
+        if input.get_key_state(&input_state, input.Input_Key.ESCAPE) == input.Key_State_Pressed
         {
             // if show_editor {
             //     show_editor = false
