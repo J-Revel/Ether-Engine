@@ -10,8 +10,6 @@ import "../util"
 import "../input"
 import platform_layer "../platform_layer/base"
 
-editor_font: platform_layer.Font_Handle
-
 I_Rect :: util.Rect(i32)
 F_Rect :: util.Rect(f32)
 
@@ -21,7 +19,6 @@ init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	append(&clip_stack, 0)
 
 	// fontinfo: stb_tt.fontinfo
-	editor_font = platform_layer.instance.load_font("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
 }
 
 gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID {
@@ -183,12 +180,7 @@ window_start :: proc (
 			dragged_element_data = nil
 	}
 
-	default_font := &ui_state.fonts["default"]
-	text_theme : Text_Theme = { 
-    	font = "default", 
-    	size = 20,
-    	color = 0xffffffff,
-	}
+	text_theme := theme.title_theme
 
 	text_block_theme := Text_Block_Theme {
 		text_theme,
@@ -236,75 +228,49 @@ get_clip :: proc (using ui_state: ^UI_State) -> I_Rect {
 	return command_list.clips[clip_stack[len(clip_stack) - 1]]
 }
 
-compute_text_size :: proc(font: platform_layer.Font_Handle, text: string, scale: f32) -> [2]i32{
-	glyph_cursor := [2]f32{0, 0}
-	display_scale := scale / f32(font.render_height)
+// compute_text_size :: proc(font: platform_layer.Font_Handle, text: string, scale: f32) -> [2]i32{
+// 	glyph_cursor := [2]f32{0, 0}
+// 	font_metrics := platform_layer.instance.get_font_metrics(font)
+// 	display_scale := scale / f32(font_metrics.render_height)
 	
-	for character in text {
-        glyph := font.glyph_data[character]
+// 	for character in text {
+//         glyph := font.glyph_data[character]
         
-        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
-    }
-	return [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent + font.descent) * font.render_scale * display_scale) }
+//         glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+//     }
+// 	return [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent + font.descent) * font.render_scale * display_scale) }
+// }
+
+get_text_display_scale :: proc(using ui_state: ^UI_State, theme: ^platform_layer.Text_Theme) -> f32 {
+	font_metrics := platform_layer.instance.get_font_metrics(theme.font)
+	return theme.size * font_metrics.render_height
 }
 
-get_text_display_scale :: proc(using ui_state: ^UI_State, theme: ^Text_Theme) -> f32 {
-	font := &fonts[theme.font]
-	return theme.size * font.render_height
-}
-
-compute_text_rect :: proc(font: platform_layer.Font_Handle, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
-	glyph_cursor := [2]f32{0, 0}
-	display_scale := scale / f32(font.render_height)
+// compute_text_rect :: proc(font: platform_layer.Font_Handle, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
+// 	glyph_cursor := [2]f32{0, 0}
+// 	font_metrics := platform_layer.instance.get_font_metrics(theme.font)
+// 	display_scale := scale / f32(font_metrics.render_height)
 	
-	for character in text {
-        glyph := font.glyph_data[character]
+// 	for character in text {
+//         glyph := font.glyph_data[character]
         
-        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
-    }
-	size := [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent - font.descent) * font.render_scale * display_scale) }
-	pos := render_pos + [2]i32{0, -i32(f32(font.ascent) * font.render_scale * display_scale) }
-	return I_Rect{pos, size}
-}
+//         glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+//     }
+// 	size := [2]i32{ i32(glyph_cursor.x) + 1, i32(f32(font.ascent - font.descent) * font.render_scale * display_scale) }
+// 	pos := render_pos + [2]i32{0, -i32(f32(font.ascent) * font.render_scale * display_scale) }
+// 	return I_Rect{pos, size}
+// }
 
-compute_text_render_buffer :: proc(using ui_state: ^UI_State, text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer {
-	glyph_cursor: [2]f32
-	font := &fonts[theme.font]
-	atlas_size := font.atlas_size
-	result : Text_Render_Buffer = {
-		theme = theme,
-		text = text,
-		render_rects = make([]F_Rect, len(text), allocator),
-		caret_positions = make([][2]f32, len(text)+1, allocator),
-	}
-	bounding_rect: F_Rect
-	for character, index in text {
-        glyph := font.glyph_data[character]
-		display_scale := theme.size / f32(font.render_height)
-		result.render_rects[index] = F_Rect{
-			pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
-            size = linalg.to_f32(glyph.rect.size) * display_scale,
-		}
-		result.caret_positions[index] = glyph_cursor
-		bounding_rect = util.union_bounding_rect(bounding_rect, result.render_rects[index])
-
-        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
-    }
-    result.caret_positions[len(result.caret_positions)-1] = glyph_cursor
-    result.bounding_rect = util.round_rect_to_i32(bounding_rect)
-    return result
-}
-
-place_text_buffer_in_rect :: proc(using ui_state: ^UI_State, text_buffer: ^Text_Render_Buffer, rect: I_Rect, alignment: [2]f32) {
+place_text_buffer_in_rect :: proc(using ui_state: ^UI_State, text_buffer: ^platform_layer.Text_Render_Buffer, rect: I_Rect, alignment: [2]f32) {
 	available_size := rect.size - text_buffer.bounding_rect.size
 	text_buffer.offset = linalg.to_f32(rect.pos) + linalg.to_f32(available_size) * alignment - linalg.to_f32(text_buffer.bounding_rect.pos)
 }
 
-get_caret_pos :: proc(text_buffer: ^Text_Render_Buffer, caret_index: int) -> [2]f32 {
+get_caret_pos :: proc(text_buffer: ^platform_layer.Text_Render_Buffer, caret_index: int) -> [2]f32 {
 	return text_buffer.caret_positions[caret_index] + text_buffer.offset
 }
 
-get_character_at_position :: proc(text_buffer: ^Text_Render_Buffer, position: [2]f32) -> i32 {
+get_character_at_position :: proc(text_buffer: ^platform_layer.Text_Render_Buffer, position: [2]f32) -> i32 {
 	closest_manhattan_distance := max(f32)
 	closest_index : i32 = 0
 	// log.info(position, text_buffer.offset)
@@ -325,55 +291,55 @@ get_character_at_position :: proc(text_buffer: ^Text_Render_Buffer, position: [2
 }
 
 
-render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^Text_Render_Buffer)
+render_text_buffer :: proc(using ui_state: ^UI_State, using render_buffer: ^platform_layer.Text_Render_Buffer)
 {
-	font := &fonts[theme.font]
-	atlas_size := font.atlas_size
+	// atlas_size := font.atlas_size
 	for character, index in text {
-        glyph := font.glyph_data[character]
-		display_scale := theme.size / f32(font.render_height)
-        add_glyph_command(&ui_state.command_list, Glyph_Command {
+        // glyph := font.glyph_data[character]
+		// display_scale := theme.size / f32(font.render_height)
+        add_glyph_command(&ui_state.command_list, platform_layer.Glyph_Command {
             rect = {
             	pos = render_rects[index].pos + offset,
             	size = render_rects[index].size,
         	},
-            uv_rect = {
-            	pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
-            	size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
-        	},
+            character = character,
+         //    uv_rect = {
+         //    	pos = linalg.to_f32(glyph.rect.pos) / linalg.to_f32(atlas_size),
+         //    	size = linalg.to_f32(glyph.rect.size) / linalg.to_f32(atlas_size),
+        	// }
             color = 0xffffffff,
             threshold = f32(180)/f32(255),
-            texture_id = font.atlas_texture,
+            font = font,
             clip_index = clip_stack[len(clip_stack) - 1],
         })
     }
 }
 
 
-compute_text_block_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) -> I_Rect {
-	text_rect := compute_text_rect(&fonts[theme.text_theme.font], text, rect.pos, theme.text_theme.size)
-	available_size := rect.size - text_rect.size
-	offset := linalg.to_f32(available_size) * theme.alignment
-	return I_Rect{linalg.to_i32(linalg.to_f32(text_rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos)), text_rect.size}
-}
+// compute_text_block_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, text: string, theme: ^Text_Block_Theme) -> I_Rect {
+// 	text_rect := compute_text_rect(&fonts[theme.text_theme.font], text, rect.pos, theme.text_theme.size)
+// 	available_size := rect.size - text_rect.size
+// 	offset := linalg.to_f32(available_size) * theme.alignment
+// 	return I_Rect{linalg.to_i32(linalg.to_f32(text_rect.pos) + offset - linalg.to_f32(text_rect.pos - rect.pos)), text_rect.size}
+// }
 
 text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
 	switch button(ui_state, rect, &theme.background_theme, uid) {
 		case input.Key_State_Pressed:
 			next_focused = uid
 	}
-	text_render_buffer := compute_text_render_buffer(ui_state, value, &theme.text_theme, context.temp_allocator)
+	text_render_buffer := platform_layer.instance.compute_text_render_buffer(value, &theme.text_theme, context.temp_allocator)
 	place_text_buffer_in_rect(ui_state, &text_render_buffer, rect, theme.text_theme.alignment)
 	render_text_buffer(ui_state, &text_render_buffer)
 	caret_pos := get_caret_pos(&text_render_buffer, int(caret_position^))
-	font := &fonts[theme.text_theme.font]
-	ascent := font.ascent
-	descent := font.descent
-	display_scale := theme.text_theme.size / f32(font.render_height)
+	font_metrics := platform_layer.instance.get_font_metrics(theme.text_theme.font)
+	ascent := font_metrics.ascent
+	descent := font_metrics.descent
+	display_scale := theme.text_theme.size / f32(font_metrics.render_height)
 	// caret_rect := F_Rect { caret_pos.pos + {caret_pos.size.x - f32(theme.caret_thickness) / 2, 0}, {f32(theme.caret_thickness), caret_pos.size.y}}
 	// themed_rect(ui_state, util.round_rect_to_i32(caret_rect), theme.caret_theme)
 	if focused_element == uid {
-		themed_rect(ui_state, I_Rect{linalg.to_i32(caret_pos) - [2]i32{0, i32(f32(ascent) * display_scale * font.render_scale)} , {theme.caret_thickness, i32(f32(ascent - descent) * display_scale * font.render_scale)}}, &theme.caret_theme)
+		themed_rect(ui_state, I_Rect{linalg.to_i32(caret_pos) - [2]i32{0, i32(f32(ascent) * display_scale * font_metrics.render_scale)} , {theme.caret_thickness, i32(f32(ascent - descent) * display_scale * font_metrics.render_scale)}}, &theme.caret_theme)
 
 		if input.get_key_state(ui_state.input_state, .RIGHT) == input.Key_State_Pressed do caret_position^ += 1
 		if input.get_key_state(ui_state.input_state, .LEFT) == input.Key_State_Pressed do caret_position^ -= 1

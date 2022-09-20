@@ -17,8 +17,8 @@ import gl  "vendor:OpenGL"
 
 import "../../input"
 import "../../imgui"
-import imgui_sdl "../../imgui/imgui_sdl"
 import platform_layer "../base"
+
 
 
 DESIRED_GL_MAJOR_VERSION :: 4
@@ -26,6 +26,20 @@ DESIRED_GL_MINOR_VERSION :: 5
 FRAME_SAMPLE_COUNT :: 10
 
 default_screen_size :: [2]i32{1280, 720}
+
+
+Texture_Format :: enum {
+    R,
+    RGB,
+    RGBA,
+}
+
+Texture_Data :: struct {
+    data: []u8,
+    size: [2]int,
+    texture_format: Texture_Format,
+}
+
 
 
 running := true
@@ -61,12 +75,12 @@ main :: proc() {
         {0, 0},
         default_screen_size,
     }
-    imgui_state.render_system = {
-        render_draw_commands = imgui_sdl.render_draw_commands,
-        load_texture = imgui_sdl.load_texture,
-        free_renderer = imgui_sdl.free_renderer,
-    }
-    imgui_sdl.init_renderer(window, &imgui_state.render_system)
+    // imgui_state.render_system = {
+    //     render_draw_commands = imgui_sdl.render_draw_commands,
+    //     load_texture = imgui_sdl.load_texture,
+    //     free_renderer = imgui_sdl.free_renderer,
+    // }
+    // imgui_sdl.init_renderer(window, &imgui_state.render_system)
     imgui.init_ui_state(&imgui_state, viewport)
     button_theme: imgui.Button_Theme = { 
         {
@@ -89,7 +103,7 @@ main :: proc() {
         button_theme,
         10,
     }
-    window_background_theme: imgui.Rect_Theme = {
+    window_background_theme: platform_layer.Rect_Theme = {
         color = 0x333333ff,
     }
     scrollzone_theme: imgui.Scrollzone_Theme = {
@@ -111,8 +125,8 @@ main :: proc() {
             corner_radius = 3,
         }
     }
-    title_text_theme: imgui.Text_Theme = {
-        font = "default",
+    title_text_theme: platform_layer.Text_Theme = {
+        font = platform_layer.instance.load_font("resources/fonts/Roboto-Regular.ttf"),
         size = 20,
         color = 0xffffffff,
     }
@@ -123,7 +137,7 @@ main :: proc() {
         title_text_theme,
     }
 
-    text_field_caret_theme : imgui.Rect_Theme = {
+    text_field_caret_theme : platform_layer.Rect_Theme = {
         color = 0xffffffff,
         corner_radius = 3,
     }
@@ -168,7 +182,7 @@ main :: proc() {
         // sdl.GL_GetDrawableSize(window, &mx, &my)
         
         input.new_frame(&input_state)
-        platform_layer.instance.update_events(window, &input_state)
+        platform_layer.update_events(window, &input_state)
         // input.process_events(&input_state)
         // input.update_mouse(&input_state, window)
         // input.update_display_size(window)
@@ -266,7 +280,7 @@ main :: proc() {
             scrollzone_rect.pos.y += 60
             button_rect := scrollzone_rect
             for i in 0..<9 {
-                rect_theme := imgui.Rect_Theme {
+                rect_theme := platform_layer.Rect_Theme {
                     color = 0x11111100 * u32(i) + 0x000000ff
                 }
                 imgui.themed_rect(&imgui_state, scrollzone_rect, &rect_theme)

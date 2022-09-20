@@ -2,9 +2,14 @@ package windows_sdl_backend
 
 import platform_layer "../base"
 import stbtt "vendor:stb/truetype"
+import "core:math/linalg"
 
-fonts: map[Font_Handle]Packed_Font
-next_handle: Font_Handle
+fonts: map[platform_layer.Font_Handle]Packed_Font
+next_handle: platform_layer.Font_Handle
+
+font_atlas_size :: [2]int{1024, 1024}
+
+I_Rect :: platform_layer.I_Rect
 
 Packed_Font :: struct {
 	render_height: f32,
@@ -13,7 +18,7 @@ Packed_Font :: struct {
 	descent: i32,
 	linegap: i32,
 	glyph_data: map[rune]Packed_Glyph_Data,
-	atlas_texture: Texture_Handle,
+	atlas_texture: platform_layer.Texture_Handle,
 	atlas_size: [2]i32,
 }
 
@@ -24,12 +29,12 @@ Packed_Glyph_Data :: struct {
 	left_side_bearing: i32,
 }
 
-load_font :: proc(file_path: string, allocator := context.allocator) -> Font_Handle {
-	fontinfo: stb_tt.fontinfo
+load_font :: proc(file_path: string, allocator := context.allocator) -> platform_layer.Font_Handle {
+	fontinfo: stbtt.fontinfo
 	fontdata, fontdata_ok := platform_layer.instance.load_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
-	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
+	stbtt.InitFont(&fontinfo, &fontdata[0], 0)
 	next_handle += 1
-	fonts[next_handle] = pack_font_characters(ui_state, &fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size, allocator)
+	fonts[next_handle] = pack_font_characters(&fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size, allocator)
 	return next_handle
 }
 
@@ -42,8 +47,7 @@ get_font_metrics :: proc(font_handle: platform_layer.Font_Handle) {
 }
 
 pack_font_characters :: proc(
-	using ui_state: ^UI_State,
-	fontinfo: ^stb_tt.fontinfo,
+	fontinfo: ^stbtt.fontinfo,
 	characters: string,
 	atlas_size: [2]int,
 	allocator := context.allocator,
@@ -56,15 +60,15 @@ pack_font_characters :: proc(
 	sdf_render_height : f32 = 40
 
 	ascent, descent, linegap: i32
-	stb_tt.GetFontVMetrics(fontinfo, &ascent, &descent, &linegap)
-	render_scale := stb_tt.ScaleForPixelHeight(fontinfo, sdf_render_height)
+	stbtt.GetFontVMetrics(fontinfo, &ascent, &descent, &linegap)
+	render_scale := stbtt.ScaleForPixelHeight(fontinfo, sdf_render_height)
 
 	for c in characters {
 		glyph_rect: I_Rect
 		glyph_offset: [2]i32
 		glyph_advance, glyph_bearing: i32
-		stb_tt.GetCodepointHMetrics(fontinfo, c, &glyph_advance, &glyph_bearing)
-		glyph := cast([^]u8)stb_tt.GetCodepointSDF(
+		stbtt.GetCodepointHMetrics(fontinfo, c, &glyph_advance, &glyph_bearing)
+		glyph := cast([^]u8)stbtt.GetCodepointSDF(
 			fontinfo, render_scale, i32(c), 20, 180, 180/20,
 			&glyph_rect.size.x, &glyph_rect.size.y,
 			&glyph_offset.x, &glyph_offset.y,
@@ -110,7 +114,7 @@ pack_font_characters :: proc(
 
 }
 
-font_pack_to_texture :: proc(atlas_data: []u8, atlas_size: [2]int) -> Texture {
+font_pack_to_texture :: proc(atlas_data: []u8, atlas_size: [2]int) -> platform_layer.Texture_Handle {
 	texture_id: u32
 	// gl.GenTextures(1, &texture_id)
 	// gl.BindTexture(gl.TEXTURE_2D, texture_id)
@@ -128,4 +132,31 @@ font_pack_to_texture :: proc(atlas_data: []u8, atlas_size: [2]int) -> Texture {
 		resident = true,
 		size = atlas_size,
 	}
+}
+
+compute_text_render_buffer :: proc(text: string, theme: ^platform_layer.Text_Theme, allocator := context.allocator) -> platform_layer.Text_Render_Buffer {
+	glyph_cursor: [2]f32
+	atlas_size := font.atlas_size
+	result : Text_Render_Buffer = {
+		theme = theme,
+		text = text,
+		render_rects = make([]F_Rect, len(text), allocator),
+		caret_positions = make([][2]f32, len(text)+1, allocator),
+	}
+	bounding_rect: F_Rect
+	for character, index in text {
+        glyph := font.glyph_data[character]
+		display_scale := theme.size / f32(font.render_height)
+		result.render_rects[index] = F_Rect{
+			pos = glyph_cursor + linalg.to_f32(glyph.offset) * display_scale,
+            size = linalg.to_f32(glyph.rect.size) * display_scale,
+		}
+		result.caret_positions[index] = glyph_cursor
+		bounding_rect = util.union_bounding_rect(bounding_rect, result.render_rects[index])
+
+        glyph_cursor.x += f32(glyph.advance) * font.render_scale * display_scale
+    }
+    result.caret_positions[len(result.caret_positions)-1] = glyph_cursor
+    result.bounding_rect = util.round_rect_to_i32(bounding_rect)
+    return result
 }

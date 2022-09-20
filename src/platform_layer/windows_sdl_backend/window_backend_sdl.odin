@@ -22,7 +22,7 @@ Render_Window :: struct {
 }
 
 windows: map[Window_Handle]Render_Window
-next_handle: Window_Handle
+next_window_handle: Window_Handle
 
 key_map: map[sdl.Scancode]input.Input_Key
 
@@ -37,7 +37,7 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
         get_window_raw_ptr = get_sdl_window,
     }
     init_key_map()
-    next_handle += 1
+    next_window_handle += 1
     init_err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)
     if init_err == 0 
     {
@@ -53,8 +53,8 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
             // log.debugf("Error during window creation: %s", sdl.GetError())
             return {}, false
         }
-        windows[next_handle] = {window, screen_size}
-        return next_handle, true
+        windows[next_window_handle] = {window, screen_size}
+        return next_window_handle, true
     }
     return {}, false
 }

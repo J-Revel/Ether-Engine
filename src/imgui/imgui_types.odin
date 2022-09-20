@@ -10,27 +10,13 @@ SSBO_SIZE :: 10000
 
 UID :: distinct uint
 
-Texture_Format :: enum {
-	R,
-	RGB,
-	RGBA,
-}
-
-Texture_Data :: struct {
-	data: []u8,
-	size: [2]int,
-	texture_format: Texture_Format,
-}
-
 Texture_Handle :: distinct int
 
 Renderer_Draw_Commands_Proc :: proc(renderer: ^Renderer, draw_list: ^platform_layer.Command_List)
 Renderer_Free_Proc :: proc(renderer: ^Renderer)
-Renderer_Load_Texture :: proc(renderer: ^Renderer, texture_data: ^Texture_Data) -> Texture_Handle
 
 Renderer :: struct {
 	render_draw_commands: Renderer_Draw_Commands_Proc,
-	load_texture: Renderer_Load_Texture,
 	free_renderer: Renderer_Free_Proc,
 }
 
@@ -84,15 +70,6 @@ Texture :: struct
 
 Button_State :: input.Key_State
 
-Text_Render_Buffer :: struct {
-	theme: ^Text_Theme,
-	text: string,
-	render_rects: []F_Rect,
-	caret_positions: [][2]f32,
-	bounding_rect: I_Rect,
-	offset: [2]f32,
-}
-
 Button_Theme :: struct {
 	default_theme: platform_layer.Rect_Theme,
 	hovered_theme: platform_layer.Rect_Theme,
@@ -111,14 +88,8 @@ Scrollzone_Theme :: struct {
 	bar_thickness: i32,
 }
 
-Text_Theme :: struct {
-	font: string,
-	size: f32,
-	color: u32,
-}
-
 Text_Block_Theme :: struct {
-	using text_theme: Text_Theme,
+	using text_theme: platform_layer.Text_Theme,
 	alignment: [2]f32,
 }
 
@@ -133,7 +104,7 @@ Window_Theme :: struct {
 	scrollzone_theme: Scrollzone_Theme,
 	header_thickness: i32,
 	header_theme: Button_Theme,
-	title_theme: Text_Theme,
+	title_theme: platform_layer.Text_Theme,
 }
 
 Editor_Theme :: struct {

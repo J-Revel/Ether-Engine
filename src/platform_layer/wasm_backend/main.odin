@@ -105,8 +105,8 @@ main :: proc() {
             corner_radius = 3,
         }
     }
-    title_text_theme: imgui.Text_Theme = {
-        font = "default",
+    title_text_theme: platform_layer.Text_Theme = {
+        font = platform_layer.instance.load_font("resources/fonts/Roboto-Regular.ttf"),
         size = 20,
         color = 0xffffffff,
     }
