@@ -2,7 +2,6 @@ package util
 
 import "core:mem"
 import "core:runtime"
-import "core:log"
 import "core:reflect"
 import "core:fmt"
 
@@ -172,14 +171,14 @@ raw_handle_remove :: proc(handle: Raw_Handle)
 
 table_print :: proc(table: ^$A/Table($T))
 {
-	log.info("Table {");
+	// log.info("Table {");
 	it := table_iterator(table);
 	for element in table_iterate(&it)
 	{
-		log.info(element);
+		// log.info(element);
 	}
 
-	log.info("}");
+	// log.info("}");
 }
 
 table_copy :: proc(target: ^$A/Table($T), model: ^Table(T))

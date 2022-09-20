@@ -3,12 +3,10 @@ package imgui
 import "../util"
 import "../input"
 import sdl "vendor:sdl2"
+import platform_layer "../platform_layer/base"
 
 INDEX_BUFFER_SIZE :: 50000
 SSBO_SIZE :: 10000
-
-I_Rect :: util.Rect(i32)
-F_Rect :: util.Rect(f32)
 
 UID :: distinct uint
 
@@ -26,7 +24,7 @@ Texture_Data :: struct {
 
 Texture_Handle :: distinct int
 
-Renderer_Draw_Commands_Proc :: proc(renderer: ^Renderer, draw_list: ^Command_List)
+Renderer_Draw_Commands_Proc :: proc(renderer: ^Renderer, draw_list: ^platform_layer.Command_List)
 Renderer_Free_Proc :: proc(renderer: ^Renderer)
 Renderer_Load_Texture :: proc(renderer: ^Renderer, texture_data: ^Texture_Data) -> Texture_Handle
 
@@ -50,48 +48,6 @@ OpenGL_Render_System :: struct {
 	screen_size_attrib: i32,
 }
 
-Rect_Theme :: struct {
-	color: u32,
-	border_color: u32,
-	border_thickness: i32,
-	corner_radius: i32,
-}
-
-Rect_Command :: struct
-{
-	using rect: I_Rect,
-	uv_pos, uv_size : [2]f32,
-	using theme: Rect_Theme,
-	clip_index: i32,
-}
-
-Glyph_Command :: struct
-{
-	using rect: F_Rect,
-	uv_rect: F_Rect,
-	color: u32,
-	texture_id: Texture_Handle,
-	clip_index: i32,
-	threshold: f32,
-}
-
-Render_Command :: union {
-	Rect_Command, Glyph_Command,
-}
-
-Command_List :: struct {
-	commands: [dynamic]Render_Command,
-	clips: [dynamic]I_Rect,
-}
-
-Command_List_Opengl :: struct
-{
-	rect_commands: [dynamic]Rect_Command,
-	glyph_commands: [dynamic]Glyph_Command,
-	index: [dynamic]u32,
-	clips: [dynamic]I_Rect,
-}
-
 Ubo_Data :: struct
 {
 	screen_size: [2]i32,
@@ -107,7 +63,7 @@ UI_State :: struct
 {
 	render_system: Renderer,
 	input_state: ^input.State,
-	command_list: Command_List,
+	command_list: platform_layer.Command_List,
 	hovered_element: UID,
 	focused_element: UID,
 	next_hovered: UID,
@@ -115,18 +71,6 @@ UI_State :: struct
 	dragged_element: UID,
 	dragged_element_data: rawptr,
 	clip_stack: [dynamic]i32,
-	fonts: map[string]Packed_Font,
-}
-
-Packed_Font :: struct {
-	render_height: f32,
-	render_scale: f32,
-	ascent: i32,
-	descent: i32,
-	linegap: i32,
-	glyph_data: map[rune]Packed_Glyph_Data,
-	atlas_texture: Texture_Handle,
-	atlas_size: [2]i32,
 }
 
 Texture :: struct
@@ -136,13 +80,6 @@ Texture :: struct
 	bindless_id: u64,
 	resident: bool,
     size: [2]int,
-}
-
-Packed_Glyph_Data :: struct {
-	rect: I_Rect,
-	offset: [2]i32,
-	advance: i32,
-	left_side_bearing: i32,
 }
 
 Button_State :: input.Key_State
@@ -157,20 +94,20 @@ Text_Render_Buffer :: struct {
 }
 
 Button_Theme :: struct {
-	default_theme: Rect_Theme,
-	hovered_theme: Rect_Theme,
-	clicked_theme: Rect_Theme,
+	default_theme: platform_layer.Rect_Theme,
+	hovered_theme: platform_layer.Rect_Theme,
+	clicked_theme: platform_layer.Rect_Theme,
 }
 
 Slider_Theme :: struct {
-	background_theme: Rect_Theme,
+	background_theme: platform_layer.Rect_Theme,
 	cursor_theme: Button_Theme,
 	cursor_height: i32,
 }
 
 Scrollzone_Theme :: struct {
 	slider_theme: Slider_Theme,
-	background_theme: Rect_Theme,
+	background_theme: platform_layer.Rect_Theme,
 	bar_thickness: i32,
 }
 
@@ -188,7 +125,7 @@ Text_Block_Theme :: struct {
 Text_Field_Theme :: struct {
 	background_theme: Button_Theme,
 	text_theme: Text_Block_Theme,
-	caret_theme: Rect_Theme,
+	caret_theme: platform_layer.Rect_Theme,
 	caret_thickness: i32,
 }
 

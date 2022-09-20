@@ -1,7 +1,6 @@
 package windows_sdl_backend
 
 import "core:mem"
-// import "core:log"
 import "core:strings"
 import "core:runtime"
 import "core:math"
@@ -13,7 +12,6 @@ import "core:encoding/json"
 
 import "../../input"
 import "../../imgui"
-import imgui_wasm "../../imgui/imgui_wasm"
 import platform_layer "../base"
 
 
@@ -57,12 +55,12 @@ main :: proc() {
         {0, 0},
         default_screen_size,
     }
-    imgui_state.render_system = {
-        render_draw_commands = imgui_wasm.render_draw_commands,
-        load_texture = imgui_wasm.load_texture,
-        free_renderer = imgui_wasm.free_renderer,
-    }
-    imgui_wasm.init_renderer(window, &imgui_state.render_system)
+    // imgui_state.render_system = {
+    //     render_draw_commands = imgui_wasm.render_draw_commands,
+    //     load_texture = imgui_wasm.load_texture,
+    //     free_renderer = imgui_wasm.free_renderer,
+    // }
+    // imgui_wasm.init_renderer(window, &imgui_state.render_system)
     imgui.init_ui_state(&imgui_state, viewport)
     button_theme: imgui.Button_Theme = { 
         {
@@ -85,7 +83,7 @@ main :: proc() {
         button_theme,
         10,
     }
-    window_background_theme: imgui.Rect_Theme = {
+    window_background_theme: platform_layer.Rect_Theme = {
         color = 0x333333ff,
     }
     scrollzone_theme: imgui.Scrollzone_Theme = {
@@ -119,7 +117,7 @@ main :: proc() {
         title_text_theme,
     }
 
-    text_field_caret_theme : imgui.Rect_Theme = {
+    text_field_caret_theme : platform_layer.Rect_Theme = {
         color = 0xffffffff,
         corner_radius = 3,
     }
@@ -262,7 +260,7 @@ main :: proc() {
             scrollzone_rect.pos.y += 60
             button_rect := scrollzone_rect
             for i in 0..<9 {
-                rect_theme := imgui.Rect_Theme {
+                rect_theme := platform_layer.Rect_Theme {
                     color = 0x11111100 * u32(i) + 0x000000ff
                 }
                 imgui.themed_rect(&imgui_state, scrollzone_rect, &rect_theme)

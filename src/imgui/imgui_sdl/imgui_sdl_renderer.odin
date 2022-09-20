@@ -1,16 +1,12 @@
 package imgui_sdl
 
 import imgui ".."
-import sdl "vendor:sdl2"
-import "core:log"
 import "core:math/linalg"
 import "core:math"
 import platform_layer "../../platform_layer/base"
 
 
 sdl_renderer: ^sdl.Renderer
-textures: map[imgui.Texture_Handle]^sdl.Texture
-next_handle: imgui.Texture_Handle
 
 init_renderer :: proc(window: platform_layer.Window_Handle, renderer: ^imgui.Renderer) -> bool {
 	sdl_window: ^sdl.Window = cast(^sdl.Window)platform_layer.instance.get_window_raw_ptr(window)
@@ -72,28 +68,4 @@ render_draw_commands :: proc(
 
 free_renderer :: proc(renderer: ^imgui.Renderer) {
 	sdl.DestroyRenderer(sdl_renderer)
-}
-
-load_texture :: proc(renderer: ^imgui.Renderer, texture_data: ^imgui.Texture_Data) -> imgui.Texture_Handle {
-	pixel_format: sdl.PixelFormatEnum  = .RGBA8888
-	rgba_texture_data := make([]u8, texture_data.size.x * texture_data.size.y * 4)
-	for y in 0..<texture_data.size.y {
-		for x in 0..<texture_data.size.x {
-			i := x + y * (texture_data.size.x)
-			rgba_texture_data[i * 4 + 0] = texture_data.data[i] > 180 ? 255 : 0
-			rgba_texture_data[i * 4 + 1] = 255
-			rgba_texture_data[i * 4 + 2] = 255
-			rgba_texture_data[i * 4 + 3] = 255
-		}
-	}
-	texture := sdl.CreateTexture(sdl_renderer, u32(pixel_format), .STATIC, i32(texture_data.size.x), i32(texture_data.size.y))
-	if texture == nil {
-		log.info("Error creating texture")
-		log.info(sdl.GetError())
-	}
-	sdl.UpdateTexture(texture, nil, &rgba_texture_data[0], i32(4 * texture_data.size.x))
-	sdl.SetTextureBlendMode(texture, .BLEND)
-	next_handle += 1
-	textures[next_handle] = texture
-	return next_handle
 }

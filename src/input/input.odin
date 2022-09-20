@@ -1,7 +1,6 @@
 package input
 
 import sdl "vendor:sdl2"
-import "core:log"
 import runtime "core:runtime"
 import "core:math/linalg"
 import "core:strings"
@@ -37,7 +36,7 @@ State :: struct {
 new_frame :: proc(state: ^State) {
     state.current_frame += 1
     if len(state.text_input) > 0 {
-        log.info("clear input")
+        // log.info("clear input")
     }
     state.text_input = ""
 }

@@ -10,18 +10,18 @@ import "../util"
 import "../input"
 import platform_layer "../platform_layer/base"
 
-import stb_tt "vendor:stb/truetype"
+editor_font: platform_layer.Font_Handle
 
+I_Rect :: util.Rect(i32)
+F_Rect :: util.Rect(f32)
 
 init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	
 	reset_draw_list(&command_list, viewport)
 	append(&clip_stack, 0)
 
-	fontinfo: stb_tt.fontinfo
-	fontdata, fontdata_ok := platform_layer.instance.load_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
-	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
-	fonts["default"] = pack_font_characters(ui_state, &fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size)
+	// fontinfo: stb_tt.fontinfo
+	editor_font = platform_layer.instance.load_font("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
 }
 
 gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID {
@@ -34,12 +34,12 @@ gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID 
     return UID(hash.djb2(to_hash))
 }
 
-themed_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Rect_Theme, block_hover: bool = false)
+themed_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^platform_layer.Rect_Theme, block_hover: bool = false)
 {
 	if block_hover && util.is_in_rect(rect, linalg.to_i32(input_state.mouse_pos)) {
 		next_hovered = 0
 	}
-	add_rect_command(&ui_state.command_list, Rect_Command {
+	add_rect_command(&ui_state.command_list, platform_layer.Rect_Command {
 		rect = rect,
 		theme = theme^,
 		clip_index = clip_stack[len(clip_stack) - 1],
@@ -138,7 +138,7 @@ scrollzone_start :: proc (
 	background_rect := rect
 	background_rect.size.x -= theme.bar_thickness
 	themed_rect(ui_state, background_rect, &theme.background_theme)
-	rest_rect_theme: Rect_Theme = {
+	rest_rect_theme: platform_layer.Rect_Theme = {
 		color = 0x883333ff,
 	}
 	test_rect : I_Rect = {
@@ -236,7 +236,7 @@ get_clip :: proc (using ui_state: ^UI_State) -> I_Rect {
 	return command_list.clips[clip_stack[len(clip_stack) - 1]]
 }
 
-compute_text_size :: proc(font: ^Packed_Font, text: string, scale: f32) -> [2]i32{
+compute_text_size :: proc(font: platform_layer.Font_Handle, text: string, scale: f32) -> [2]i32{
 	glyph_cursor := [2]f32{0, 0}
 	display_scale := scale / f32(font.render_height)
 	
@@ -253,7 +253,7 @@ get_text_display_scale :: proc(using ui_state: ^UI_State, theme: ^Text_Theme) ->
 	return theme.size * font.render_height
 }
 
-compute_text_rect :: proc(font: ^Packed_Font, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
+compute_text_rect :: proc(font: platform_layer.Font_Handle, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
 	glyph_cursor := [2]f32{0, 0}
 	display_scale := scale / f32(font.render_height)
 	
@@ -358,7 +358,6 @@ compute_text_block_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, text: s
 }
 
 text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret_position: ^i32, theme: ^Text_Field_Theme, uid: UID, allocator := context.allocator) -> (new_value: string) {
-
 	switch button(ui_state, rect, &theme.background_theme, uid) {
 		case input.Key_State_Pressed:
 			next_focused = uid
