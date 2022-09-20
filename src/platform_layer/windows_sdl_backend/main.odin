@@ -1,4 +1,4 @@
-package main
+package windows_sdl_backend
 
 import "core:mem"
 // import "core:log"
@@ -15,10 +15,10 @@ import sdl "vendor:sdl2"
 import sdl_image "vendor:sdl2/image"
 import gl  "vendor:OpenGL"
 
-import "input"
-import "imgui"
-import imgui_sdl "imgui/imgui_sdl"
-import "display"
+import "../../input"
+import "../../imgui"
+import imgui_sdl "../../imgui/imgui_sdl"
+import platform_layer "../base"
 
 
 DESIRED_GL_MAJOR_VERSION :: 4
@@ -37,7 +37,7 @@ ivec2 :: [2]i32
 main :: proc() {
 
     // log.info("Starting SDL Example...")
-    render_window, err := display.init(default_screen_size)
+    window, err := init(default_screen_size)
 
     // load_opengl(window)
     
@@ -66,7 +66,7 @@ main :: proc() {
         load_texture = imgui_sdl.load_texture,
         free_renderer = imgui_sdl.free_renderer,
     }
-    imgui_sdl.init_renderer(&render_window, &imgui_state.render_system)
+    imgui_sdl.init_renderer(window, &imgui_state.render_system)
     imgui.init_ui_state(&imgui_state, viewport)
     button_theme: imgui.Button_Theme = { 
         {
@@ -168,7 +168,7 @@ main :: proc() {
         // sdl.GL_GetDrawableSize(window, &mx, &my)
         
         input.new_frame(&input_state)
-        display.update_events(&render_window, &input_state)
+        platform_layer.instance.update_events(window, &input_state)
         // input.process_events(&input_state)
         // input.update_mouse(&input_state, window)
         // input.update_display_size(window)
@@ -194,7 +194,7 @@ main :: proc() {
         
         viewport = imgui.I_Rect{
             {0, 0},
-            render_window.screen_size,
+            linalg.to_i32(platform_layer.instance.get_window_size(window)),
         }
         // gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport)
         // gameplay.do_render(&sceneInstance, viewport)

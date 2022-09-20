@@ -5,15 +5,16 @@ import sdl "vendor:sdl2"
 import "core:log"
 import "core:math/linalg"
 import "core:math"
-import "../../display"
+import platform_layer "../../platform_layer/base"
 
 
 sdl_renderer: ^sdl.Renderer
 textures: map[imgui.Texture_Handle]^sdl.Texture
 next_handle: imgui.Texture_Handle
 
-init_renderer :: proc(window: ^display.Render_Window, renderer: ^imgui.Renderer) -> bool {
-	sdl_renderer = sdl.CreateRenderer(window.sdl_window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
+init_renderer :: proc(window: platform_layer.Window_Handle, renderer: ^imgui.Renderer) -> bool {
+	sdl_window: ^sdl.Window = cast(^sdl.Window)platform_layer.instance.get_window_raw_ptr(window)
+	sdl_renderer = sdl.CreateRenderer(sdl_window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
 	sdl.SetRenderDrawBlendMode(sdl_renderer, .BLEND)
 	return true
 }

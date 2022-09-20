@@ -1,8 +1,6 @@
 package imgui
 
-import "core:os"
 import "core:strings"
-import "core:log"
 import "core:math/linalg"
 import "core:fmt"
 

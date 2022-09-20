@@ -5,13 +5,12 @@ import "core:mem"
 import "core:strings"
 import "core:math/linalg"
 import "core:math"
-import "core:log"
-import "core:os"
 import "core:fmt"
 import "../util"
 import "../input"
+import platform_layer "../platform_layer/base"
 
-import stb_tt"vendor:stb/truetype"
+import stb_tt "vendor:stb/truetype"
 
 
 init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
@@ -20,7 +19,7 @@ init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	append(&clip_stack, 0)
 
 	fontinfo: stb_tt.fontinfo
-	fontdata, fontdata_ok := os.read_entire_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
+	fontdata, fontdata_ok := platform_layer.instance.load_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
 	stb_tt.InitFont(&fontinfo, &fontdata[0], 0)
 	fonts["default"] = pack_font_characters(ui_state, &fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size)
 }
@@ -308,7 +307,7 @@ get_caret_pos :: proc(text_buffer: ^Text_Render_Buffer, caret_index: int) -> [2]
 get_character_at_position :: proc(text_buffer: ^Text_Render_Buffer, position: [2]f32) -> i32 {
 	closest_manhattan_distance := max(f32)
 	closest_index : i32 = 0
-	log.info(position, text_buffer.offset)
+	// log.info(position, text_buffer.offset)
 	test_value :: struct {
 		position : [2]f32 ,
 		distance : f32,
@@ -391,7 +390,7 @@ text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret
 			caret_position^ = get_character_at_position(&text_render_buffer, linalg.to_f32(ui_state.input_state.mouse_pos))
 		}
 		if len(ui_state.input_state.text_input) > 0 {
-			log.info(ui_state.input_state.text_input)
+			// log.info(ui_state.input_state.text_input)
 			new_value_builder: strings.Builder
 			fmt.sbprint(&new_value_builder, value[0:caret_position^])
 				fmt.sbprint(&new_value_builder, ui_state.input_state.text_input)

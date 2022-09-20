@@ -3,10 +3,11 @@ package imgui_wasm
 import imgui ".."
 import "core:math/linalg"
 import "core:math"
+import platform_layer "../../platform_layer/base"
 
 next_handle: imgui.Texture_Handle
 
-init_renderer :: proc(window: ^sdl.Window, renderer: ^imgui.Renderer) -> bool {
+init_renderer :: proc(window: ^platform_layer.Window_Handle, renderer: ^imgui.Renderer) -> bool {
 
 	return true
 }

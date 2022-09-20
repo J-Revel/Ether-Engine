@@ -1,22 +1,43 @@
-package window_sdl_backend
+package windows_sdl_backend
 
 import sdl "vendor:sdl2"
 import sdl_image "vendor:sdl2/image"
 import "../../input"
 import "core:strings"
 import "core:math/linalg"
+import "core:os"
+import platform_layer "../base"
 
+/*******************************
+ * COMMON PART OF PLATFORM LAYER
+ * *****************************/
 
-key_map: map[sdl.Scancode]input.Input_Key
+Window_Handle :: platform_layer.Window_Handle
+Platform_Layer :: platform_layer.Platform_Layer
+File_Error :: platform_layer.File_Error
 
 Render_Window :: struct {
     sdl_window: ^sdl.Window,
     screen_size: [2]i32,
 }
 
+windows: map[Window_Handle]Render_Window
+next_handle: Window_Handle
 
-init :: proc(screen_size: [2]i32) -> (Render_Window, bool) {
+key_map: map[sdl.Scancode]input.Input_Key
+
+
+
+init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
+    platform_layer.instance = new(platform_layer.Platform_Layer)
+    platform_layer.instance^ = platform_layer.Platform_Layer{
+        load_file = load_file,
+        update_events = update_events,
+        get_window_size = get_window_size,
+        get_window_raw_ptr = get_sdl_window,
+    }
     init_key_map()
+    next_handle += 1
     init_err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)
     if init_err == 0 
     {
@@ -32,26 +53,28 @@ init :: proc(screen_size: [2]i32) -> (Render_Window, bool) {
             // log.debugf("Error during window creation: %s", sdl.GetError())
             return {}, false
         }
-        return {window, screen_size}, true
+        windows[next_handle] = {window, screen_size}
+        return next_handle, true
     }
     return {}, false
 }
 
-free :: proc(render_window: ^Render_Window) {
-    sdl.DestroyWindow(render_window.sdl_window)
+free :: proc(window: Window_Handle) {
+    sdl.DestroyWindow(windows[window].sdl_window)
     sdl_image.Quit()
     sdl.Quit()
 }
 
-update_events :: proc(render_window: ^Render_Window, using input_state: ^input.State) {
-    sdl.GetWindowSize(render_window.sdl_window, &render_window.screen_size.x, &render_window.screen_size.y)
+update_events :: proc(window_handle: Window_Handle, using input_state: ^input.State) {
+    window := windows[window_handle]
+    sdl.GetWindowSize(window.sdl_window, &window.screen_size.x, &window.screen_size.y)
     mx, my : i32
     sdl.GetMouseState(&mx, &my)
     input_state.mouse_pos = {int(mx), int(my)}
 
     
     // Set mouse pos if window is focused
-    if sdl.GetKeyboardFocus() == render_window.sdl_window {
+    if sdl.GetKeyboardFocus() == windows[window_handle].sdl_window {
         input_state.mouse_pos = linalg.to_int(mouse_pos)
     }
     e : sdl.Event
@@ -94,6 +117,12 @@ update_events :: proc(render_window: ^Render_Window, using input_state: ^input.S
     }
 }
 
+load_file :: proc(path: string, allocator := context.allocator) -> ([]u8, File_Error) {
+    data, ok := os.read_entire_file(path, allocator)
+    if ok do return data, .None
+    return nil, .File_Not_Found
+}
+
 init_key_map :: proc() {
     key_map[.A] = input.Input_Key.A
     key_map[.B] = input.Input_Key.B
@@ -126,4 +155,12 @@ init_key_map :: proc() {
     key_map[.RIGHT] = input.Input_Key.RIGHT
     key_map[.ESCAPE] = input.Input_Key.ESCAPE
     key_map[.RETURN] = input.Input_Key.RETURN
+}
+
+get_sdl_window :: proc(window_handle: Window_Handle) -> rawptr {
+    return windows[window_handle].sdl_window
+}
+
+get_window_size :: proc(window_handle: Window_Handle) -> [2]int {
+    return linalg.to_int(windows[window_handle].screen_size)
 }
