@@ -59,15 +59,6 @@ UI_State :: struct
 	clip_stack: [dynamic]i32,
 }
 
-Texture :: struct
-{
-    path: string,
-    texture_id: u32,
-	bindless_id: u64,
-	resident: bool,
-    size: [2]int,
-}
-
 Button_State :: input.Key_State
 
 Button_Theme :: struct {

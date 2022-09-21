@@ -10,6 +10,7 @@ import "core:math/rand"
 import "core:fmt"
 import "core:time"
 import "core:encoding/json"
+import "core:log"
 
 import sdl "vendor:sdl2"
 import sdl_image "vendor:sdl2/image"
@@ -292,7 +293,7 @@ main :: proc() {
             imgui.window_end(&imgui_state)
         }
         
-        
+        log.info("Test")
         imgui.render_frame(&imgui_state, viewport)
 
         // imgl.imgui_render(imgui.get_draw_data(), imgui_state.opengl_state)

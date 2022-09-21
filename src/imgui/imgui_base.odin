@@ -197,7 +197,8 @@ window_end :: proc(using ui_state: ^UI_State) {
 }
 
 render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
-	render_system.render_draw_commands(&ui_state.render_system, &command_list)
+	log.info(command_list)
+	platform_layer.render_draw_commands(&command_list)
 	reset_draw_list(&command_list, viewport)
 	clear(&clip_stack)
 	append(&clip_stack, 0)

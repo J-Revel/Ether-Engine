@@ -40,6 +40,8 @@ free_font: proc(Texture_Handle)
 get_font_metrics: proc(Font_Handle) -> Font_Metrics
 compute_text_render_buffer: proc(text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer
 
+render_draw_commands: proc(draw_list: ^Command_List)
+
 I_Rect :: util.Rect(i32)
 F_Rect :: util.Rect(f32)
 

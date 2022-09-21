@@ -25,13 +25,18 @@ next_window_handle: Window_Handle
 
 key_map: map[sdl.Scancode]input.Input_Key
 
-
+sdl_renderer: ^sdl.Renderer
 
 init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
+    
     platform_layer.load_file = load_file
     platform_layer.update_events = update_events
     platform_layer.get_window_size = get_window_size
     platform_layer.get_window_raw_ptr = get_sdl_window
+    platform_layer.load_font = load_font
+    platform_layer.compute_text_render_buffer = compute_text_render_buffer
+    platform_layer.get_font_metrics = get_font_metrics
+    platform_layer.render_draw_commands = render_draw_commands
     
     init_key_map()
     next_window_handle += 1
@@ -50,6 +55,8 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
             // log.debugf("Error during window creation: %s", sdl.GetError())
             return {}, false
         }
+        sdl_renderer = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
+        sdl.SetRenderDrawBlendMode(sdl_renderer, .BLEND)
         windows[next_window_handle] = {window, screen_size}
         return next_window_handle, true
     }
