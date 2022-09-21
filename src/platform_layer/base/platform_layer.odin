@@ -9,18 +9,10 @@ import "../../util"
 
 Window_Handle :: distinct int
 
-Update_Event_Proc :: proc(window: Window_Handle, using input_state: ^input.State)
-Load_File_Proc :: proc(file_path: string, allocator := context.allocator) -> ([]u8, File_Error)
-Get_Window_Size_Proc :: proc(window: Window_Handle) -> [2]int
-Get_Window_Raw_Ptr_Proc :: proc(window: Window_Handle) -> rawptr
-
-
 File_Error :: enum {
     None,
     File_Not_Found,
 }
-
-instance: ^Platform_Layer
 
 
 Font_Metrics :: struct {
@@ -32,31 +24,21 @@ Font_Metrics :: struct {
 }
 
 Texture_Handle :: distinct int
-Load_Texture_Proc :: proc(file_path: string, allocator := context.allocator) -> Font_Handle
-Free_Texture_Proc :: proc(Texture_Handle)
-
 Font_Handle :: distinct int
-Load_Font_Proc :: proc(file_path: string, allocator := context.allocator) -> Font_Handle
-Free_Font_Proc :: proc(Font_Handle)
-
-Get_Font_Metrics_Proc :: proc(Font_Handle) -> Font_Metrics
-Compute_Text_Render_Buffer_Proc :: proc(text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer
 
 update_events: proc(window: Window_Handle, using input_state: ^input.State)
 
-Platform_Layer :: struct {
-    load_file: Load_File_Proc,
-    get_window_size: Get_Window_Size_Proc,
-    get_window_raw_ptr: Get_Window_Raw_Ptr_Proc,
-    
-    load_texture,
-    free_texture,
+load_file: proc(file_path: string, allocator := context.allocator) -> ([]u8, File_Error)
+get_window_size: proc(window: Window_Handle) -> [2]int
+get_window_raw_ptr: proc(window: Window_Handle) -> rawptr
 
-    load_font: Load_Font_Proc,
-    free_font: Free_Font_Proc,
-    get_font_metrics: Get_Font_Metrics_Proc,
-    compute_text_render_buffer: Compute_Text_Render_Buffer_Proc,
-}
+load_texture: proc(file_path: string, allocator := context.allocator) -> Texture_Handle
+free_texture: proc(texture_handle: Texture_Handle)
+
+load_font: proc(file_path: string, allocator := context.allocator) -> Font_Handle
+free_font: proc(Texture_Handle)
+get_font_metrics: proc(Font_Handle) -> Font_Metrics
+compute_text_render_buffer: proc(text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer
 
 I_Rect :: util.Rect(i32)
 F_Rect :: util.Rect(f32)

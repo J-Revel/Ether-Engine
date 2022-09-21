@@ -230,7 +230,7 @@ get_clip :: proc (using ui_state: ^UI_State) -> I_Rect {
 
 // compute_text_size :: proc(font: platform_layer.Font_Handle, text: string, scale: f32) -> [2]i32{
 // 	glyph_cursor := [2]f32{0, 0}
-// 	font_metrics := platform_layer.instance.get_font_metrics(font)
+// 	font_metrics := platform_layer..get_font_metrics(font)
 // 	display_scale := scale / f32(font_metrics.render_height)
 	
 // 	for character in text {
@@ -242,13 +242,13 @@ get_clip :: proc (using ui_state: ^UI_State) -> I_Rect {
 // }
 
 get_text_display_scale :: proc(using ui_state: ^UI_State, theme: ^platform_layer.Text_Theme) -> f32 {
-	font_metrics := platform_layer.instance.get_font_metrics(theme.font)
+	font_metrics := platform_layer.get_font_metrics(theme.font)
 	return theme.size * font_metrics.render_height
 }
 
 // compute_text_rect :: proc(font: platform_layer.Font_Handle, text: string, render_pos: [2]i32, scale: f32) -> I_Rect {
 // 	glyph_cursor := [2]f32{0, 0}
-// 	font_metrics := platform_layer.instance.get_font_metrics(theme.font)
+// 	font_metrics := platform_layer..get_font_metrics(theme.font)
 // 	display_scale := scale / f32(font_metrics.render_height)
 	
 // 	for character in text {
@@ -328,11 +328,11 @@ text_field :: proc(using ui_state: ^UI_State, rect: I_Rect, value: string, caret
 		case input.Key_State_Pressed:
 			next_focused = uid
 	}
-	text_render_buffer := platform_layer.instance.compute_text_render_buffer(value, &theme.text_theme, context.temp_allocator)
+	text_render_buffer := platform_layer.compute_text_render_buffer(value, &theme.text_theme, context.temp_allocator)
 	place_text_buffer_in_rect(ui_state, &text_render_buffer, rect, theme.text_theme.alignment)
 	render_text_buffer(ui_state, &text_render_buffer)
 	caret_pos := get_caret_pos(&text_render_buffer, int(caret_position^))
-	font_metrics := platform_layer.instance.get_font_metrics(theme.text_theme.font)
+	font_metrics := platform_layer.get_font_metrics(theme.text_theme.font)
 	ascent := font_metrics.ascent
 	descent := font_metrics.descent
 	display_scale := theme.text_theme.size / f32(font_metrics.render_height)

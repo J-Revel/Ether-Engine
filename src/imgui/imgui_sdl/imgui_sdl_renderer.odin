@@ -9,7 +9,7 @@ package imgui_sdl
 // sdl_renderer: ^sdl.Renderer
 
 // init_renderer :: proc(window: platform_layer.Window_Handle, renderer: ^imgui.Renderer) -> bool {
-// 	sdl_window: ^sdl.Window = cast(^sdl.Window)platform_layer.instance.get_window_raw_ptr(window)
+// 	sdl_window: ^sdl.Window = cast(^sdl.Window)platform_layer..get_window_raw_ptr(window)
 // 	sdl_renderer = sdl.CreateRenderer(sdl_window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
 // 	sdl.SetRenderDrawBlendMode(sdl_renderer, .BLEND)
 // 	return true

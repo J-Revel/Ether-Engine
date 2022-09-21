@@ -106,7 +106,7 @@ main :: proc() {
         }
     }
     title_text_theme: platform_layer.Text_Theme = {
-        font = platform_layer.instance.load_font("resources/fonts/Roboto-Regular.ttf"),
+        font = platform_layer.load_font("resources/fonts/Roboto-Regular.ttf"),
         size = 20,
         color = 0xffffffff,
     }
@@ -162,7 +162,7 @@ main :: proc() {
         // sdl.GL_GetDrawableSize(window, &mx, &my)
         
         input.new_frame(&input_state)
-        platform_layer.instance.update_events(window, &input_state)
+        platform_layer.update_events(window, &input_state)
         // input.process_events(&input_state)
         // input.update_mouse(&input_state, window)
         // input.update_display_size(window)
@@ -188,7 +188,7 @@ main :: proc() {
         
         viewport = imgui.I_Rect{
             {0, 0},
-            linalg.to_i32(platform_layer.instance.get_window_size(window)),
+            linalg.to_i32(platform_layer.get_window_size(window)),
         }
         // gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport)
         // gameplay.do_render(&sceneInstance, viewport)

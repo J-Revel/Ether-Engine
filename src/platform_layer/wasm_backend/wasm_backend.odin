@@ -12,7 +12,6 @@ import platform_layer "../base"
 
 Window_Handle :: platform_layer.Window_Handle
 Texture_Handle :: platform_layer.Texture_Handle
-Platform_Layer :: platform_layer.Platform_Layer
 File_Error :: platform_layer.File_Error
 
 next_handle: Texture_Handle
@@ -20,13 +19,10 @@ next_handle: Texture_Handle
 
 
 init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
-    platform_layer.instance = new(platform_layer.Platform_Layer)
-    platform_layer.instance^ = platform_layer.Platform_Layer{
-        load_file = load_file,
-        update_events = update_events,
-        get_window_size = get_window_size,
-        get_window_raw_ptr = get_sdl_window,
-    }
+    platform_layer.load_file = load_file
+    platform_layer.update_events = update_events
+    platform_layer.get_window_size = get_window_size
+    platform_layer.get_window_raw_ptr = get_sdl_window
     return {}, true
 }
 
