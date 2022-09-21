@@ -31,7 +31,7 @@ Packed_Glyph_Data :: struct {
 
 load_font :: proc(file_path: string, allocator := context.allocator) -> platform_layer.Font_Handle {
 	fontinfo: stbtt.fontinfo
-	fontdata, fontdata_ok := platform_layer..load_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
+	fontdata, fontdata_ok := platform_layer.load_file("resources/fonts/Roboto-Regular.ttf", context.temp_allocator)
 	stbtt.InitFont(&fontinfo, &fontdata[0], 0)
 	next_handle += 1
 	fonts[next_handle] = pack_font_characters(&fontinfo, " !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~éèàç", font_atlas_size, allocator)
@@ -108,7 +108,7 @@ pack_font_characters :: proc(
 		descent = descent,
 		linegap = linegap,
 		glyph_data = glyph_data,
-		atlas_texture = render_system->load_texture(&atlas_texture_data),
+		atlas_texture = render_system.load_texture(&atlas_texture_data),
 		atlas_size = linalg.to_i32(atlas_size),
 	}
 

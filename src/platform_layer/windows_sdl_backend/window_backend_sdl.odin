@@ -13,7 +13,6 @@ import platform_layer "../base"
  * *****************************/
 
 Window_Handle :: platform_layer.Window_Handle
-Platform_Layer :: platform_layer.Platform_Layer
 File_Error :: platform_layer.File_Error
 
 Render_Window :: struct {
@@ -29,13 +28,11 @@ key_map: map[sdl.Scancode]input.Input_Key
 
 
 init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
-    platform_layer. = new(platform_layer.Platform_Layer)
-    platform_layer.^ = platform_layer.Platform_Layer{
-        load_file = load_file,
-        update_events = update_events,
-        get_window_size = get_window_size,
-        get_window_raw_ptr = get_sdl_window,
-    }
+    platform_layer.load_file = load_file
+    platform_layer.update_events = update_events
+    platform_layer.get_window_size = get_window_size
+    platform_layer.get_window_raw_ptr = get_sdl_window
+    
     init_key_map()
     next_window_handle += 1
     init_err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)

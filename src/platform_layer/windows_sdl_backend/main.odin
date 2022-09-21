@@ -126,7 +126,7 @@ main :: proc() {
         }
     }
     title_text_theme: platform_layer.Text_Theme = {
-        font = platform_layer..load_font("resources/fonts/Roboto-Regular.ttf"),
+        font = platform_layer.load_font("resources/fonts/Roboto-Regular.ttf"),
         size = 20,
         color = 0xffffffff,
     }
@@ -208,7 +208,7 @@ main :: proc() {
         
         viewport = imgui.I_Rect{
             {0, 0},
-            linalg.to_i32(platform_layer..get_window_size(window)),
+            linalg.to_i32(platform_layer.get_window_size(window)),
         }
         // gameplay.update_and_render(&sceneInstance, delta_time, &input_state, viewport)
         // gameplay.do_render(&sceneInstance, viewport)
