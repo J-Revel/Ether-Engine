@@ -8,7 +8,7 @@ import platform_layer "../platform_layer/base"
 INDEX_BUFFER_SIZE :: 50000
 SSBO_SIZE :: 10000
 
-UID :: distinct uint
+UID :: platform_layer.UID
 
 Texture_Handle :: distinct int
 

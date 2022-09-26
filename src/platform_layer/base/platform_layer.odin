@@ -25,6 +25,7 @@ Font_Metrics :: struct {
 
 Texture_Handle :: distinct int
 Font_Handle :: distinct int
+UID :: distinct uint
 
 update_events: proc(window: Window_Handle, using input_state: ^input.State)
 
@@ -41,6 +42,8 @@ get_font_metrics: proc(Font_Handle) -> Font_Metrics
 compute_text_render_buffer: proc(text: string, theme: ^Text_Theme, allocator := context.allocator) -> Text_Render_Buffer
 
 render_draw_commands: proc(draw_list: ^Command_List)
+
+gen_uid: proc(location := #caller_location, additional_index: int = 0) -> UID
 
 I_Rect :: util.Rect(i32)
 F_Rect :: util.Rect(f32)

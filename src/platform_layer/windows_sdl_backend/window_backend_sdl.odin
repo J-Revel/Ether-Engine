@@ -37,6 +37,7 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
     platform_layer.compute_text_render_buffer = compute_text_render_buffer
     platform_layer.get_font_metrics = get_font_metrics
     platform_layer.render_draw_commands = render_draw_commands
+    platform_layer.gen_uid = gen_uid
     
     init_key_map()
     next_window_handle += 1
@@ -167,4 +168,14 @@ get_sdl_window :: proc(window_handle: Window_Handle) -> rawptr {
 
 get_window_size :: proc(window_handle: Window_Handle) -> [2]int {
     return linalg.to_int(windows[window_handle].screen_size)
+}
+
+gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> platform_layer.UID {
+    to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2)
+    mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path))
+    location_line := location.line
+    mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32))
+    additional_index_cpy := additional_index
+    mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_index_cpy, size_of(i32))
+    return UID(hash.djb2(to_hash))
 }

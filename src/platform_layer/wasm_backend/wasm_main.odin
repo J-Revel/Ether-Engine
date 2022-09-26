@@ -9,6 +9,7 @@ import "core:math/rand"
 import "core:fmt"
 import "core:time"
 import "core:encoding/json"
+import "vendor:wasm/js"
 
 import "../../input"
 import "../../imgui"
@@ -29,6 +30,11 @@ ivec2 :: [2]i32
 
 
 main :: proc() {
+    b: strings.Builder
+    strings.builder_init(&b, 0, 50, context.temp_allocator)
+    test: [50]int;
+    strings.write_string(&b, "bla")
+    js.alert("strings.to_string(b)")
 
     // log.info("Starting SDL Example...")
     window, err := init(default_screen_size)
@@ -221,7 +227,7 @@ main :: proc() {
                 size = {100, 100},
             },
             &button_theme,
-            imgui.gen_uid()
+            platform_layer.gen_uid()
         )
         imgui.button(
             &imgui_state, 
@@ -230,7 +236,7 @@ main :: proc() {
                 size = {100, 100},
             },
             &button_theme,
-            imgui.gen_uid(),
+            platform_layer.gen_uid(),
         )
         imgui.slider(
             &imgui_state,
@@ -240,7 +246,7 @@ main :: proc() {
             },
             &font_scale, 0, 5,
             &slider_theme,
-            imgui.gen_uid(),
+            platform_layer.gen_uid(),
         )
 
         scrollzone_rect := imgui.window_start(
@@ -249,14 +255,14 @@ main :: proc() {
             600,
             &test_scroll_value,
             &window_theme,
-            imgui.gen_uid(),
+            platform_layer.gen_uid(),
         )
         {
             scrollzone_rect.size.y = 50
             scrollzone_rect.pos.y += 5
             text_field_rect := scrollzone_rect
             text_field_rect.size.y = 60
-            text_input_value = imgui.text_field(&imgui_state, text_field_rect, text_input_value, &caret_position, &text_field_theme, imgui.gen_uid())
+            text_input_value = imgui.text_field(&imgui_state, text_field_rect, text_input_value, &caret_position, &text_field_theme, platform_layer.gen_uid())
             scrollzone_rect.pos.y += 60
             button_rect := scrollzone_rect
             for i in 0..<9 {
@@ -266,7 +272,7 @@ main :: proc() {
                 imgui.themed_rect(&imgui_state, scrollzone_rect, &rect_theme)
                 scrollzone_rect.pos.y += 60
             }
-            imgui.button(&imgui_state, button_rect, &button_theme, imgui.gen_uid())
+            imgui.button(&imgui_state, button_rect, &button_theme, platform_layer.gen_uid())
             scrollzone_rect.pos.y += scrollzone_rect.size.y
             
             imgui.window_end(&imgui_state)

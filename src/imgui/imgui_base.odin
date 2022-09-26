@@ -21,16 +21,6 @@ init_ui_state :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	// fontinfo: stb_tt.fontinfo
 }
 
-gen_uid :: proc(location := #caller_location, additional_index: int = 0) -> UID {
-    to_hash := make([]byte, len(transmute([]byte)location.file_path) + size_of(i32) * 2)
-	mem.copy(&to_hash[0], strings.ptr_from_string(location.file_path), len(location.file_path))
-	location_line := location.line
-	mem.copy(&to_hash[len(location.file_path)], &location_line, size_of(i32))
-	additional_index_cpy := additional_index
-	mem.copy(&to_hash[len(location.file_path) + size_of(i32)], &additional_index_cpy, size_of(i32))
-    return UID(hash.djb2(to_hash))
-}
-
 themed_rect :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^platform_layer.Rect_Theme, block_hover: bool = false)
 {
 	if block_hover && util.is_in_rect(rect, linalg.to_i32(input_state.mouse_pos)) {
@@ -162,7 +152,7 @@ window_start :: proc (
 ) -> (out_content_rect: I_Rect) {
 	title_text := "popup window title"
 	header_rect, scrollzone_rect := util.rect_vsplit(rect^, theme.header_thickness)
-	header_uid := gen_uid() ~ uid
+	header_uid := platform_layer.gen_uid() ~ uid
 	dragged_data := cast(^Default_Dragged_Data([2]i32))dragged_element_data
 	if dragged_element == header_uid {
 		mouse_delta := linalg.to_i32(input_state.mouse_pos) - dragged_data.drag_start_pos
@@ -189,7 +179,7 @@ window_start :: proc (
 
     // text_block(ui_state, header_rect, title_text, &text_block_theme)
 
-	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, &theme.scrollzone_theme, gen_uid() ~ uid)
+	return scrollzone_start(ui_state, scrollzone_rect, content_size, scroll_pos, &theme.scrollzone_theme, platform_layer.gen_uid() ~ uid)
 }
 
 window_end :: proc(using ui_state: ^UI_State) {
@@ -197,7 +187,6 @@ window_end :: proc(using ui_state: ^UI_State) {
 }
 
 render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
-	log.info(command_list)
 	platform_layer.render_draw_commands(&command_list)
 	reset_draw_list(&command_list, viewport)
 	clear(&clip_stack)
