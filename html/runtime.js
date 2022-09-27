@@ -1306,6 +1306,10 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 	return {
 		"env": {},
 		"odin_env": {
+			log: (ptr, len) => {
+				const str = wasmMemoryInterface.loadString(ptr, len);
+				console.log(str);
+			},
 			write: (fd, ptr, len) => {
 				const str = wasmMemoryInterface.loadString(ptr, len);
 				if (fd == 1) {

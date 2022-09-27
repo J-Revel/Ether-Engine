@@ -14,6 +14,7 @@ import "vendor:wasm/js"
 import "../../input"
 import "../../imgui"
 import platform_layer "../base"
+import "core:intrinsics"
 
 
 DESIRED_GL_MAJOR_VERSION :: 4
@@ -28,14 +29,60 @@ running := true
 vec2 :: [2]f32
 ivec2 :: [2]i32
 
+PAGE_SIZE :: 64 * 1024
+page_alloc :: proc(page_count: int) -> (data: []byte, err: mem.Allocator_Error) {
+    prev_page_count := intrinsics.wasm_memory_grow(0, uintptr(page_count))
+    if prev_page_count < 0 {
+        return nil, .Out_Of_Memory
+    }
+
+    ptr := ([^]u8)(uintptr(prev_page_count) * PAGE_SIZE)
+    return ptr[:page_count * PAGE_SIZE], nil
+}
+
+page_allocator :: proc() -> mem.Allocator {
+    procedure :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
+                      size, alignment: int,
+                      old_memory: rawptr, old_size: int,
+                      location := #caller_location) -> ([]byte, mem.Allocator_Error) {
+        switch mode {
+        case .Alloc:
+            assert(size % PAGE_SIZE == 0)
+            return page_alloc(size/PAGE_SIZE)
+        case .Resize, .Free, .Free_All, .Query_Info:
+            return nil, .Mode_Not_Implemented
+        case .Query_Features:
+            set := (^mem.Allocator_Mode_Set)(old_memory)
+            if set != nil {
+                set^ = {.Alloc, .Query_Features}
+            }
+        }
+
+        return nil, nil
+    }
+
+    return {
+        procedure = procedure,
+        data = nil,
+    }
+}
+
+
+print_int :: proc(x: int) {
+    test := [10]string {"0", "1", "2", "3", "4","5","6","7","8","9"}
+    for y:=x; y>0; y/=10 {
+        js.log(test[y%10])
+    }
+}
 
 main :: proc() {
-    b: strings.Builder
-    strings.builder_init(&b, 0, 50, context.temp_allocator)
-    test: [50]int;
-    strings.write_string(&b, "bla")
-    js.alert("strings.to_string(b)")
-
+    context.allocator = page_allocator()
+    prev_page_count := intrinsics.wasm_memory_grow(0, 4096)
+    print_int(intrinsics.wasm_memory_size(0))
+    
+}
+    
+test :: proc() {    
     // log.info("Starting SDL Example...")
     window, err := init(default_screen_size)
 
