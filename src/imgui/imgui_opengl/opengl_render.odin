@@ -2,16 +2,11 @@ package imgui_opengl
 
 import imgui ".."
 
-	fonts: ^map[string]Packed_Font,
-import imgui ".."
-
 opengl_render_draw_commands :: proc(
 	render_system: ^OpenGL_Render_System,
 	draw_list: ^Command_List,
 	viewport: I_Rect,
-import imgui ".."
 
-	fonts: ^map[string]Packed_Font,
 	fonts: ^map[string]Packed_Font,
 ) {
 
