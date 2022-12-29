@@ -82,7 +82,8 @@ Glyph_Command :: struct
 }
 
 Render_Command :: union {
-	Rect_Command, Glyph_Command
+	Rect_Command,
+	Glyph_Command,
 }
 
 Command_List :: struct {
