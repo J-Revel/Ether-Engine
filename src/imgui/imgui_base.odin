@@ -130,7 +130,7 @@ scrollzone_start :: proc (
 	}
 	test_rect : I_Rect = {
 		pos = rect.pos - [2]i32{0, scroll_pos^},
-		size = [2]i32{rect.size.x - theme.bar_thickness, content_size}
+		size = [2]i32{rect.size.x - theme.bar_thickness, content_size},
 	}
 	push_clip(ui_state, rect)
 	themed_rect(ui_state, test_rect, &rest_rect_theme)
@@ -174,7 +174,7 @@ window_start :: proc (
 
 	text_block_theme := Text_Block_Theme {
 		text_theme,
-		{0.5, 0.5}
+		{0.5, 0.5},
 	}
 
     // text_block(ui_state, header_rect, title_text, &text_block_theme)
