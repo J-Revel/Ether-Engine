@@ -14,9 +14,11 @@ import gl "vendor:wasm/WebGL"
 
 import "../../input"
 import "../../imgui"
+import "../../util"
 import platform_layer "../base"
 import "core:intrinsics"
 
+foreign import ethereal "ethereal"
 
 DESIRED_GL_MAJOR_VERSION :: 4
 DESIRED_GL_MINOR_VERSION :: 5
@@ -75,17 +77,19 @@ main :: proc() {
     testVec: vec2 = {12, 50}
     webgl_major, webgl_minor: i32
     gl.GetWebGLVersion(&webgl_major, &webgl_minor)
-    fmt.println(webgl_major, webgl_minor)
-    fmt.println("This is a test")
+    fmt.println("loaded webgl version", webgl_major, webgl_minor)
 
     success := js.add_event_listener("webgl2", .Click, nil, on_click, false)
-    fmt.println(success)
+    // fmt.println(success)
     success = js.add_window_event_listener(.Mouse_Move, nil, on_click, false)
-    fmt.println(success)
+    // fmt.println(success)
+    init_text_asset_database(&text_asset_db, 200)
+    load_text_asset("ui.vert", &text_asset_db)
+    load_text_asset("ui.frag", &text_asset_db)
 }
 
 on_click :: proc(e: js.Event) {
-    fmt.println(e.data.mouse.screen, e.data.mouse.client, e.data.mouse.offset, e.data.mouse.page, e.data.mouse.movement)
+    // fmt.println(e.data.mouse.screen, e.data.mouse.client, e.data.mouse.offset, e.data.mouse.page, e.data.mouse.movement)
 }
 
 Renderer :: struct {
@@ -93,38 +97,6 @@ Renderer :: struct {
     vbo: gl.Buffer,
     program: gl.Program,
 }
-
-vertex_shader_source := "
-#version 330 core
-layout (location = 0) in vec2 in_pos;
-layout (location = 1) in vec2 in_uv;
-
-out vec2 uv;
-
-uniform vec2 screenSize;
-
-void main()
-{
-    vec2 pos = in_pos / screenSize * 2 - 1;
-    uv = in_uv;
-    gl_Position = vec4(pos.x, - pos.y, 0, 1);
-}
-"
-fragment_shader_source := "
-#version 330 core
-
-uniform vec4 color;
-in vec2 uv;
-
-out vec4 out_color;
-uniform sampler2D tex;
-
-void main()
-{
-    out_color = color * texture(tex, uv);
-}
-
-"
 
 UI_Vertex_Data :: struct {
     pos: [2]f32,
@@ -134,17 +106,69 @@ UI_Vertex_Data :: struct {
 
 MAX_PASS_CAPACITY :: 100
 
-init_renderer :: proc(renderer: ^Renderer) {
+init_renderer :: proc() -> (renderer: Renderer, success: bool) {
     renderer.vao = gl.CreateVertexArray()
     renderer.vbo = gl.CreateBuffer()
-    renderer.program = CreateProgramFromStrings(vertex_shader_source, fragment_shader_source)
+    vertex_shader_source := []string{""}
+    fragment_shader_source := []string{""}
+    ok: bool
+    renderer.program, ok = gl.CreateProgramFromStrings(vertex_shader_source, fragment_shader_source)
+    if !ok do return renderer, false
+
     gl.BindVertexArray(renderer.vao)
-    gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, sizeof(UI_Vertex_Data), 0)
-    gl.VertexAttribPointer(1, 2, gl.FLOAT, false, sizeof(UI_Vertex_Data), sizeof(f32)*2)
+    gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
+    gl.VertexAttribPointer(0, 2, gl.FLOAT, false, size_of(UI_Vertex_Data), 0)
+    gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(UI_Vertex_Data), size_of(f32)*2)
     // gl.VertexAttribPointer(2, 4, gl.BYTE, false, sizeof(UI_Vertex_Data), sizeof(f32)*4)
     gl.EnableVertexAttribArray(0)
     gl.EnableVertexAttribArray(1)
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
     gl.BindVertexArray(0)
+    return renderer, true
+}
+
+Text_Asset_Handle :: distinct uint
+
+load_text_asset :: proc "contextless" (path: string, using database: ^Text_Asset_Database) -> Text_Asset_Handle {
+    @(default_calling_convention="contextless")
+    foreign ethereal {
+        @(link_name="load_text_asset")
+        _load_text_asset :: proc(asset: ^uint, path: string) ---
+    }
+    allocated_handle, ok := util.bit_array_allocate(allocated_bit_array)
+    if !ok do return {}
+    util.bit_array_set(&loaded_bit_array, allocated_handle, false)
+    _load_text_asset(&allocated_handle, path)
+    return Text_Asset_Handle(allocated_handle)
+}
+
+Text_Asset_Database :: struct {
+    allocated_bit_array: util.Bit_Array,
+    loaded_bit_array: util.Bit_Array,
+    data_size: []int,
+    data: []string,
+}
+
+text_asset_db: Text_Asset_Database
+
+init_text_asset_database :: proc(using database: ^Text_Asset_Database, capacity: int) {
+    database.allocated_bit_array = make(util.Bit_Array, (capacity + 31) / 32)
+    database.loaded_bit_array = make(util.Bit_Array, (capacity + 31) / 32)
+    database.data = make([]string, capacity)
+}
+
+@export allocate_asset_size :: proc(size: int) -> rawptr {
+    context.allocator = main_allocator
+    context.temp_allocator = temp_allocator
+    return &make([]byte, size)[0]
+}
+
+@export on_text_asset_loaded :: proc(asset_handle: uint, text: string) {
+    using text_asset_db
+    context.allocator = main_allocator
+    context.temp_allocator = temp_allocator
+    fmt.println("ON TEXT ASSET LOADED :")
+    fmt.println(asset_handle, text)
+    util.bit_array_set(&loaded_bit_array, asset_handle, true)
+    data[asset_handle] = text
 }

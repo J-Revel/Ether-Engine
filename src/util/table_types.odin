@@ -12,7 +12,7 @@ Bit_Array :: []u32;
 
 Raw_Handle :: struct
 {
-	id: int,
+	id: uint,
 	raw_table: ^Raw_Table,
 }
 

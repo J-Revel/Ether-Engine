@@ -1638,50 +1638,7 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 	};
 };
 
-async function runWasm(wasmPath, consoleElement, extraForeignImports) {
-	let wasmMemoryInterface = new WasmMemoryInterface();
 
-	let imports = odinSetupDefaultImports(wasmMemoryInterface, consoleElement);
-	let exports = {};
-
-	if (extraForeignImports !== undefined) {
-		imports = {
-			...imports,
-			...extraForeignImports,
-		};
-	}
-
-	const response = await fetch(wasmPath);
-	const file = await response.arrayBuffer();
-	const wasm = await WebAssembly.instantiate(file, imports);
-	exports = wasm.instance.exports;
-	wasmMemoryInterface.setExports(exports);
-	wasmMemoryInterface.setMemory(exports.memory);
-
-	exports._start();
-
-	if (exports.step) {
-		const odin_ctx = exports.default_context_ptr();
-
-		let prevTimeStamp = undefined;
-		const step = (currTimeStamp) => {
-			if (prevTimeStamp == undefined) {
-				prevTimeStamp = currTimeStamp;
-			}
-
-			const dt = (currTimeStamp - prevTimeStamp)*0.001;
-			prevTimeStamp = currTimeStamp;
-			exports.step(dt, odin_ctx);
-			window.requestAnimationFrame(step);
-		};
-
-		window.requestAnimationFrame(step);
-	}
-
-	exports._end();
-
-	return;
-};
 
 window.odin = {
 	// Interface Types
@@ -1690,6 +1647,5 @@ window.odin = {
 
 	// Functions
 	setupDefaultImports: odinSetupDefaultImports,
-	runWasm:             runWasm,
 };
 })();

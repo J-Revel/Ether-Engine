@@ -5,7 +5,7 @@ import "core:runtime"
 import "core:reflect"
 import "core:fmt"
 
-bit_array_clear :: proc(bit_array: ^Bit_Array)
+bit_array_clear :: proc "contextless" (bit_array: ^Bit_Array)
 {
 	for i in 0..<len(bit_array)
 	{
@@ -13,7 +13,7 @@ bit_array_clear :: proc(bit_array: ^Bit_Array)
 	}
 }
 
-bit_array_set :: proc(bit_array: ^Bit_Array, bit: uint, value: bool)
+bit_array_set :: proc "contextless" (bit_array: ^Bit_Array, bit: uint, value: bool)
 {
 	array_index := bit / 32;
 	bit_index := bit % 32;
@@ -21,16 +21,16 @@ bit_array_set :: proc(bit_array: ^Bit_Array, bit: uint, value: bool)
 	else do bit_array[array_index] &= ~(1 << bit_index); 
 }
 
-bit_array_get :: proc(bit_array: ^Bit_Array, bit: int) -> bool
+bit_array_get :: proc "contextless" (bit_array: ^Bit_Array, bit: int) -> bool
 {
 	array_index := bit / 32;
 	bit_index := bit % 32;
-	assert(array_index < len(bit_array));
+	// assert(array_index < len(bit_array));
 	value := bit_array[array_index];
 	return (value & (1 << uint(bit_index))) > 0;
 }
 
-bit_array_allocate :: proc(bit_array: Bit_Array) -> (int, bool)
+bit_array_allocate :: proc "contextless" (bit_array: Bit_Array) -> (uint, bool)
 {
 	for i in 0..<cast(uint)len(bit_array) * 32
 	{
@@ -41,7 +41,7 @@ bit_array_allocate :: proc(bit_array: Bit_Array) -> (int, bool)
 		if (value^ & bit_flag) == 0
 		{
 			value^ |= bit_flag;
-			return int(i), true;
+			return uint(i), true;
 		}
 	}
 	return 0, false;
