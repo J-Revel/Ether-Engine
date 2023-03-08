@@ -12,6 +12,13 @@ Window_Handle :: distinct int
 File_Error :: enum {
     None,
     File_Not_Found,
+    File_Access_Error,
+}
+
+File_State :: enum {
+	Pending,
+	Loaded,
+	Error,
 }
 
 
@@ -26,10 +33,14 @@ Font_Metrics :: struct {
 Texture_Handle :: distinct int
 Font_Handle :: distinct int
 UID :: distinct uint
+File_Handle :: distinct int
 
 update_events: proc(window: Window_Handle, using input_state: ^input.State)
 
-load_file: proc(file_path: string, allocator := context.allocator) -> ([]u8, File_Error)
+load_file: proc(file_path: string, allocator := context.allocator) -> File_Handle
+get_file_data: proc(file_handle: File_Handle) -> ([]u8, File_State)
+unload_file: proc(file_handle: File_Handle)
+
 get_window_size: proc(window: Window_Handle) -> [2]int
 get_window_raw_ptr: proc(window: Window_Handle) -> rawptr
 

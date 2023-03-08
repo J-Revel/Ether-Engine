@@ -12,6 +12,7 @@
     <script type="text/javascript">
 
         loaded_text_assets = [];
+        loaded_bin_assets = []
 
         function load_text_asset(asset_ptr, path_ptr, path_len) {
             let path = wasmMemoryInterface.loadString(path_ptr, path_len);
@@ -23,6 +24,19 @@
             .then(function(text) {
                 
                 loaded_text_assets.push({"asset": asset, "text": text});
+            });
+        }
+
+        function load_binary_asset(asset_ptr, path_ptr, path_len) {
+            let path = wasmMemoryInterface.loadString(path_ptr, path_len);
+            let asset = wasmMemoryInterface.loadU64(asset_ptr);
+
+            fetch(path).then(function(response) {
+                return response.arrayBuffer();
+            })
+            .then(function(arrayBuffer) {
+                
+                loaded_bin_assets.push({"asset": asset, "data": arrayBuffer});
             });
         }
 
@@ -64,6 +78,15 @@
                         let allocated_buf_ptr = exports.allocate_asset_size(allocated_buf_len);
                         wasmMemoryInterface.loadBytes(allocated_buf_ptr, allocated_buf_len).set(new TextEncoder("utf-8").encode(asset.text))
                         exports.on_text_asset_loaded(asset.asset, allocated_buf_ptr, allocated_buf_len);
+                    }
+                    loaded_text_assets.length = 0;
+
+                    for(let asset of loaded_bin_assets)
+                    {
+                        const allocated_buf_len = asset.data.length;
+                        let allocated_buf_ptr = exports.allocate_asset_size(allocated_buf_len);
+                        wasmMemoryInterface.loadBytes(allocated_buf_ptr, allocated_buf_len).set(asset.data)
+                        exports.on_file_asset_loaded(asset.asset, allocated_buf_ptr, allocated_buf_len);
                     }
                     loaded_text_assets.length = 0;
                     window.requestAnimationFrame(step);

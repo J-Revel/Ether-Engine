@@ -50,10 +50,15 @@ test_renderer: Renderer
 test_vertex: []UI_Vertex_Data = {
     {{-1, -1}, {-1, -1}},
     {{1, -1}, {1, -1}},
-    {{1, 1}, {1, -1}}
+    {{1, 1}, {1, -1}},
 }
 
 main_shader: Shader_Asset_Handle
+
+input_state : input.State
+imgui_state: imgui.UI_State = {
+    input_state = &input_state,
+}
 
 @export step :: proc()
 {
@@ -124,7 +129,7 @@ on_click :: proc(e: js.Event) {
     test_vertex = {
         {{-1, -1}, {-1, -1}},
         {{f32(mouse_pos.x), -1}, {1, -1}},
-        {{f32(mouse_pos.x), f32(mouse_pos.y)}, {1, 1}}
+        {{f32(mouse_pos.x), f32(mouse_pos.y)}, {1, 1}},
     }
     // fmt.println(e.data.mouse.screen, e.data.mouse.client, e.data.mouse.offset, e.data.mouse.page, e.data.mouse.movement)
 }

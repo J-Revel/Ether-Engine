@@ -7,6 +7,9 @@ import "core:math/linalg"
 import platform_layer "../base"
 import "core:mem"
 import "core:hash"
+import "core:fmt"
+
+import "../../util"
 
 /*******************************
  * COMMON PART OF PLATFORM LAYER
@@ -15,9 +18,10 @@ import "core:hash"
 Window_Handle :: platform_layer.Window_Handle
 Texture_Handle :: platform_layer.Texture_Handle
 File_Error :: platform_layer.File_Error
+File_State :: platform_layer.File_State
+File_Handle :: platform_layer.File_Handle
 
-next_handle: Texture_Handle
-
+next_texture_handle: Texture_Handle
 
 
 init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
@@ -38,15 +42,56 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
     return {}, true
 }
 
+File_Asset_Database :: struct {
+    allocated_bit_array: util.Bit_Array,
+    loaded_bit_array: util.Bit_Array,
+    assets: [][]u8,
+    available_chunks: [dynamic][]u8,
+    data: []u8,
+    data_cursor: int,
+}
+
+file_asset_db: File_Asset_Database
+
+init_file_asset_database :: proc(using database: ^File_Asset_Database, asset_count_capacity: int, allocated_data_size: int) {
+    database.allocated_bit_array = make(util.Bit_Array, (asset_count_capacity + 31) / 32)
+    database.loaded_bit_array = make(util.Bit_Array, (asset_count_capacity + 31) / 32)
+    database.assets = make([][]u8, asset_count_capacity)
+    database.data = make([]u8, allocated_data_size)
+
+}
+
 free :: proc(window: Window_Handle) {
+
 }
 
 update_events :: proc(window_handle: Window_Handle, using input_state: ^input.State) {
-    
 }
 
-load_file :: proc(path: string, allocator := context.allocator) -> ([]u8, File_Error) {
-    return nil, .File_Not_Found
+load_file :: proc(file_path: string, allocator := context.allocator) -> platform_layer.File_Handle {
+    using file_asset_db
+    file_handle : File_Handle = util.bit_array_allocate(&allocated_bit_array)
+    util.bit_array_set(&loaded_bit_array, false)
+
+}
+
+allocate_asset_chunk :: proc(using file_db: ^File_Asset_Database, size: int) -> []u8 {
+    for i in 0..<len(available_chunks) {
+        if len(available_chunks[i]) >= size {
+            result := available_chunks[i][0:size]
+            available_chunks[i] = available_chunks[i][size:]
+            return result
+        }
+    }
+}
+
+get_file_data :: proc(file_handle: File_Handle) -> ([]u8, File_State) {
+
+}
+
+
+unload_file :: proc(file_handle: File_Handle) {
+
 }
 
 get_sdl_window :: proc(window_handle: Window_Handle) -> rawptr {
@@ -70,7 +115,7 @@ load_texture :: proc(file_path: string, allocator := context.allocator) -> platf
     // }
     // if texture == nil {
     // }
-    next_handle += 1
+    next_texture_handle += 1
     // textures[next_handle] = texture
     return next_handle
 }
@@ -97,7 +142,21 @@ compute_text_render_buffer :: proc(text: string, theme: ^platform_layer.Text_The
 }
 
 render_draw_commands :: proc(draw_list: ^platform_layer.Command_List) {
+    vertex_buffer: [dynamic]UI_Vertex_Data
+    for render_command in draw_list.commands {
+        switch c in render_command {
+            case platform_layer.Rect_Command:
+                append(&vertex_buffer, UI_Vertex_Data{linalg.to_f32(c.pos), c.uv_pos})
+                append(&vertex_buffer, UI_Vertex_Data{linalg.to_f32(c.pos + {c.size.x, 0}), c.uv_pos + {c.uv_size.x, 0}})
+                append(&vertex_buffer, UI_Vertex_Data{linalg.to_f32(c.pos + c.size), c.uv_pos + c.uv_size})
 
+                append(&vertex_buffer, UI_Vertex_Data{linalg.to_f32(c.pos), c.uv_pos})
+                append(&vertex_buffer, UI_Vertex_Data{linalg.to_f32(c.pos + c.size), c.uv_pos + c.uv_size})
+                append(&vertex_buffer, UI_Vertex_Data{linalg.to_f32(c.pos + {0, c.size.y}), c.uv_pos + {0, c.uv_size.y}})
+            case platform_layer.Glyph_Command:
+        }
+    }
+    fmt.println(vertex_buffer)
 }
 
 get_font_metrics :: proc(platform_layer.Font_Handle) -> platform_layer.Font_Metrics {
