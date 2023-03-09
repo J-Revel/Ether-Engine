@@ -66,10 +66,16 @@ test_file_handle: platform_layer.File_Handle
     context.allocator = main_allocator
     context.temp_allocator = temp_allocator
     update_shader_asset_database(&shader_asset_db)
+    update_events({}, &input_state);
     current_tick := time.tick_now()
     t += f32(time.duration_seconds(time.tick_diff(previous_tick, current_tick)))
     previous_tick = current_tick
-    gl.ClearColor((math.cos(t) + 1)/2 * color.x, color.y, color.z, 1)
+    if .Down in input.get_key_state(&input_state, .SPACE) {
+        gl.ClearColor((math.cos(t) + 1)/2 * color.x, color.y, color.z, 1)
+    }
+    else {
+        gl.ClearColor(0, 0, 0, 1)
+    }       
     gl.Clear(gl.COLOR_BUFFER_BIT)
     render_data(&test_renderer, test_vertex)
     if !first_frame {
@@ -104,7 +110,6 @@ main :: proc() {
     gl.GetWebGLVersion(&webgl_major, &webgl_minor)
     fmt.println("loaded webgl version", webgl_major, webgl_minor)
 
-    success := js.add_event_listener("webgl2", .Mouse_Move, nil, on_click, false)
     // fmt.println(success)
     // success = js.add_window_event_listener(.Mouse_Move, nil, on_click, false)
     // fmt.println(success)
@@ -120,20 +125,6 @@ main :: proc() {
     if !ok {
         fmt.println("Could not create renderer")
     }
-
-}
-
-on_click :: proc(e: js.Event) {
-    canvas_rect := js.get_bounding_client_rect("webgl2")
-    // fmt.println(canvas_rect)
-    // fmt.println(e.data.mouse.client)
-    mouse_pos : [2]f64 = {(f64(e.data.mouse.client.y) ) / canvas_rect.width * 2 - 1, 1 - 2 * (f64(e.data.mouse.offset.x)) / canvas_rect.height}
-    test_vertex = {
-        {{-1, -1}, {-1, -1}},
-        {{f32(mouse_pos.x), -1}, {1, -1}},
-        {{f32(mouse_pos.x), f32(mouse_pos.y)}, {1, 1}},
-    }
-    // fmt.println(e.data.mouse.screen, e.data.mouse.client, e.data.mouse.offset, e.data.mouse.page, e.data.mouse.movement)
 }
 
 Renderer :: struct {

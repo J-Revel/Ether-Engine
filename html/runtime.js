@@ -1421,16 +1421,21 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 					wmi.storeI16(off(2), e.button);
 					wmi.storeU16(off(2), e.buttons);
 				} else if (e instanceof KeyboardEvent) {
-					let keyOffset = off(W*2, W);
-					let codeOffet = off(W*2, W);
-					wmi.storeU8(off(1), e.location);
+					console.log(e.code);
+					wmi.storeI64(off(8), e.charCode);
+					wmi.storeI64(off(8), e.charCode);
+					wmi.storeUint(off(W), e.code.id_ptr);
+					// let keyOffset = off(W*2, W);
+					// let codeOffet = off(W*2, W);
+					// wmi.storeU8(off(1), e.location);
 
-					wmi.storeU8(off(1), !!e.ctrlKey);
-					wmi.storeU8(off(1), !!e.shiftKey);
-					wmi.storeU8(off(1), !!e.altKey);
-					wmi.storeU8(off(1), !!e.metaKey);
+					// wmi.storeU8(off(1), !!e.ctrlKey);
+					// wmi.storeU8(off(1), !!e.shiftKey);
+					// wmi.storeU8(off(1), !!e.altKey);
+					// wmi.storeU8(off(1), !!e.metaKey);
 
-					wmi.storeU8(off(1), !!e.repeat);
+					// wmi.storeU8(off(1), !!e.repeat);
+
 				} else if (e instanceof WheelEvent) {
 					wmi.storeF64(off(8), e.deltaX);
 					wmi.storeF64(off(8), e.deltaY);

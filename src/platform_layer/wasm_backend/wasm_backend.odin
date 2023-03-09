@@ -9,6 +9,7 @@ import "core:mem"
 import "core:hash"
 import "core:fmt"
 import "core:unicode/utf8"
+import js "vendor:wasm/js"
 
 import "../../util"
 
@@ -31,11 +32,9 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
     platform_layer.load_file = load_file
     platform_layer.update_events = update_events
     platform_layer.get_window_size = get_window_size
-    platform_layer.get_window_raw_ptr = get_sdl_window
+    platform_layer.get_window_raw_ptr = get_window
     platform_layer.load_texture = load_texture
     platform_layer.free_texture = free_texture
-    platform_layer.load_font = load_font
-    platform_layer.free_font = free_font
     platform_layer.load_font = load_font
     platform_layer.free_font = free_font
     platform_layer.get_font_metrics = get_font_metrics
@@ -53,10 +52,40 @@ File_Asset_Database :: struct {
     allocators: []mem.Allocator,
 }
 
+Pending_Event_Data :: struct {
+    kind: js.Event_Kind,
+    key: string,
+}
+
+input_key_codes: map[i64]input.Input_Key
+
+pending_event_list: [200]js.Event
+pending_event_cursor := 0
+
 file_asset_db: File_Asset_Database
 
 init_backend :: proc(file_asset_capacity: int = 50) {
     init_file_asset_database(&file_asset_db, file_asset_capacity)
+    success := js.add_event_listener("webgl2", .Mouse_Move, nil, on_input_event, false)
+    success &= js.add_window_event_listener(.Key_Down, nil, on_input_event, true)
+    success &= js.add_window_event_listener(.Key_Up, nil, on_input_event, true)
+    success &= js.add_window_event_listener(.Key_Press, nil, on_input_event, true)
+    input_key_codes = map[i64]input.Input_Key{
+        48 = .NUM0, 49 = .NUM1, 50 = .NUM2, 51 = .NUM3, 52 = .NUM4, 53 = .NUM5, 54 = .NUM6, 55 = .NUM7, 56 = .NUM8, 57 = .NUM9,
+        65 = .A, 66 = .B,  67 = .C, 68 = .D, 69 = .E, 70 = .F, 71 = .G, 72 = .H, 73 = .I, 74 = .J, 75 = .K, 76 = .L, 77 = .M, 78 = .N, 79 = .O, 80 = .P, 81 = .Q, 82 = .R, 83 = .S, 84 = .T, 85 = .U, 86 = .V, 87 = .W, 88 = .X, 89 = .Y, 90 = .Z,
+        96 = .NUM0, 97 = .NUM1, 98 = .NUM2, 99 = .NUM3, 100 = .NUM4, 101 = .NUM5, 102 = .NUM6, 103 = .NUM7, 104 = .NUM8, 105 = .NUM9,
+        8 = .BACKSPACE,
+        9 = .TAB,
+        13 = .RETURN,
+        16 = .LSHIFT,
+        17 = .LCTRL,
+        18 = .LALT,
+        37 = .LEFT,
+        38 = .UP,
+        39 = .RIGHT,
+        40 = .DOWN,
+
+    }
 }
 
 init_file_asset_database :: proc(using database: ^File_Asset_Database, asset_count_capacity: int) {
@@ -67,12 +96,45 @@ init_file_asset_database :: proc(using database: ^File_Asset_Database, asset_cou
     database.allocators = make([]mem.Allocator, asset_count_capacity)
 }
 
+on_input_event :: proc(e: js.Event) {
+    pending_event_list[pending_event_cursor] = e
+    pending_event_cursor += 1
+}
+
+
 free :: proc(window: Window_Handle) {
 
 }
 
 update_events :: proc(window_handle: Window_Handle, using input_state: ^input.State) {
+    current_frame += 1
+    canvas_rect := js.get_bounding_client_rect("webgl2")
+    for i in 0..<pending_event_cursor {
+        e := pending_event_list[i]
+        #partial switch e.kind {
+            case .Mouse_Move:
+                mouse_pos : [2]f64 = {(f64(e.data.mouse.client.y) ) / canvas_rect.width * 2 - 1, 1 - 2 * (f64(e.data.mouse.offset.x)) / canvas_rect.height}
+                test_vertex = {
+                    {{-1, -1}, {-1, -1}},
+                    {{f32(mouse_pos.x), -1}, {1, -1}},
+                    {{f32(mouse_pos.x), f32(mouse_pos.y)}, {1, 1}},
+                }
+            case .Key_Down:
+                keycode, ok := input_key_codes[e.key.keyCode]
+                if ok {
+                    key_states[keycode] = current_frame
+                }
+            case .Key_Up:
+                keycode, ok := input_key_codes[e.key.keyCode]
+                if ok {
+                    key_states[keycode] = -current_frame
+                }
+            case .Key_Press:
+                fmt.println("INPUT", rune(e.key.charCode))
 
+        }
+    }
+    pending_event_cursor = 0
 }
 
 load_file :: proc(path: string, allocator := context.allocator) -> platform_layer.File_Handle {
@@ -103,7 +165,6 @@ load_file :: proc(path: string, allocator := context.allocator) -> platform_laye
 
 @export on_binary_asset_loaded :: proc(asset_handle: uint) {
     using file_asset_db
-    fmt.println("LOADED ", asset_handle)
     util.bit_array_set(&loaded_bit_array, asset_handle, true)
 }
 
@@ -125,12 +186,13 @@ unload_file :: proc(file_handle: File_Handle) {
 
 }
 
-get_sdl_window :: proc(window_handle: Window_Handle) -> rawptr {
+get_window :: proc(window_handle: Window_Handle) -> rawptr {
     return nil
 }
 
 get_window_size :: proc(window_handle: Window_Handle) -> [2]int {
-    return {}
+    canvas_rect := js.get_bounding_client_rect("webgl2")
+    return {int(canvas_rect.width), int(canvas_rect.height)}
 }
 
 load_texture :: proc(file_path: string, allocator := context.allocator) -> platform_layer.Texture_Handle {

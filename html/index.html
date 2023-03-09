@@ -61,7 +61,6 @@
                     for(let asset of loaded_bin_assets)
                     {
                         const allocated_buf_len = asset.data.byteLength;
-                        console.log(asset);
                         let allocated_buf_ptr = exports.allocate_file_asset_size(asset.asset, allocated_buf_len);
                         wasmMemoryInterface.loadBytes(allocated_buf_ptr, allocated_buf_len).set(new Uint8Array(asset.data));
                         exports.on_binary_asset_loaded(asset.asset);
