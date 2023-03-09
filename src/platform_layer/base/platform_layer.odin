@@ -33,7 +33,7 @@ Font_Metrics :: struct {
 Texture_Handle :: distinct int
 Font_Handle :: distinct int
 UID :: distinct uint
-File_Handle :: distinct int
+File_Handle :: distinct uint
 
 update_events: proc(window: Window_Handle, using input_state: ^input.State)
 

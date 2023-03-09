@@ -8,8 +8,11 @@ import platform_layer "../base"
 import "core:mem"
 import "core:hash"
 import "core:fmt"
+import "core:unicode/utf8"
 
 import "../../util"
+
+foreign import ethereal "ethereal"
 
 /*******************************
  * COMMON PART OF PLATFORM LAYER
@@ -45,20 +48,23 @@ init :: proc(screen_size: [2]i32) -> (Window_Handle, bool) {
 File_Asset_Database :: struct {
     allocated_bit_array: util.Bit_Array,
     loaded_bit_array: util.Bit_Array,
-    assets: [][]u8,
-    available_chunks: [dynamic][]u8,
-    data: []u8,
-    data_cursor: int,
+    error_bit_array: util.Bit_Array,
+    assets: [][]u8, // Assets are allocated directly with the provided allocators
+    allocators: []mem.Allocator,
 }
 
 file_asset_db: File_Asset_Database
 
-init_file_asset_database :: proc(using database: ^File_Asset_Database, asset_count_capacity: int, allocated_data_size: int) {
+init_backend :: proc(file_asset_capacity: int = 50) {
+    init_file_asset_database(&file_asset_db, file_asset_capacity)
+}
+
+init_file_asset_database :: proc(using database: ^File_Asset_Database, asset_count_capacity: int) {
     database.allocated_bit_array = make(util.Bit_Array, (asset_count_capacity + 31) / 32)
     database.loaded_bit_array = make(util.Bit_Array, (asset_count_capacity + 31) / 32)
+    database.error_bit_array = make(util.Bit_Array, (asset_count_capacity + 31) / 32)
     database.assets = make([][]u8, asset_count_capacity)
-    database.data = make([]u8, allocated_data_size)
-
+    database.allocators = make([]mem.Allocator, asset_count_capacity)
 }
 
 free :: proc(window: Window_Handle) {
@@ -66,27 +72,52 @@ free :: proc(window: Window_Handle) {
 }
 
 update_events :: proc(window_handle: Window_Handle, using input_state: ^input.State) {
+
 }
 
-load_file :: proc(file_path: string, allocator := context.allocator) -> platform_layer.File_Handle {
+load_file :: proc(path: string, allocator := context.allocator) -> platform_layer.File_Handle {
     using file_asset_db
-    file_handle : File_Handle = util.bit_array_allocate(&allocated_bit_array)
-    util.bit_array_set(&loaded_bit_array, false)
 
+    @(default_calling_convention="contextless")
+    foreign ethereal {
+        @(link_name="load_binary_asset")
+        _load_binary_asset :: proc(asset: ^u64, path: string) ---
+    }
+
+    file_handle, ok := util.bit_array_allocate(allocated_bit_array)
+    if ok {
+        util.bit_array_set(&loaded_bit_array, file_handle, false)
+        wasm_file_handle : u64 = u64(file_handle)
+        _load_binary_asset(&wasm_file_handle, path)
+        allocators[file_handle] = allocator
+        return platform_layer.File_Handle(file_handle)
+    }
+    return 0
 }
 
-allocate_asset_chunk :: proc(using file_db: ^File_Asset_Database, size: int) -> []u8 {
-    for i in 0..<len(available_chunks) {
-        if len(available_chunks[i]) >= size {
-            result := available_chunks[i][0:size]
-            available_chunks[i] = available_chunks[i][size:]
-            return result
-        }
-    }
+@export allocate_file_asset_size :: proc(file_handle: platform_layer.File_Handle, size: int) -> rawptr {
+    using file_asset_db
+    assets[int(file_handle)] = make([]byte, size, allocators[int(file_handle)])
+    return &assets[int(file_handle)][0]
+}
+
+@export on_binary_asset_loaded :: proc(asset_handle: uint) {
+    using file_asset_db
+    fmt.println("LOADED ", asset_handle)
+    util.bit_array_set(&loaded_bit_array, asset_handle, true)
 }
 
 get_file_data :: proc(file_handle: File_Handle) -> ([]u8, File_State) {
+    using file_asset_db
+    assert(util.bit_array_get(&allocated_bit_array, int(file_handle)))
+    if util.bit_array_get(&error_bit_array, int(file_handle)) {
+        return {}, .Error
+    }
+    else if util.bit_array_get(&loaded_bit_array, int(file_handle)) {
+        return assets[file_handle], .Loaded
+    }
 
+    return {}, .Pending
 }
 
 
@@ -117,7 +148,7 @@ load_texture :: proc(file_path: string, allocator := context.allocator) -> platf
     // }
     next_texture_handle += 1
     // textures[next_handle] = texture
-    return next_handle
+    return next_texture_handle
 }
 
 free_texture :: proc(texture_handle: platform_layer.Texture_Handle) {
