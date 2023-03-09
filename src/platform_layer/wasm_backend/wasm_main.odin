@@ -42,7 +42,6 @@ first_frame: bool
 start_tick : time.Tick
 previous_tick: time.Tick
 
-text_asset_db: Text_Asset_Database
 shader_asset_db: Shader_Asset_Database
 pending_shader_assets: []Shader_Loading_Asset
 test_renderer: Renderer
@@ -60,11 +59,13 @@ imgui_state: imgui.UI_State = {
     input_state = &input_state,
 }
 
+test_file_handle: platform_layer.File_Handle
+
 @export step :: proc()
 {
     context.allocator = main_allocator
     context.temp_allocator = temp_allocator
-    update_shader_asset_database(&shader_asset_db, &text_asset_db)
+    update_shader_asset_database(&shader_asset_db)
     current_tick := time.tick_now()
     t += f32(time.duration_seconds(time.tick_diff(previous_tick, current_tick)))
     previous_tick = current_tick
@@ -107,11 +108,12 @@ main :: proc() {
     // fmt.println(success)
     // success = js.add_window_event_listener(.Mouse_Move, nil, on_click, false)
     // fmt.println(success)
-    init_text_asset_database(&text_asset_db, 200)
+    init_backend()
     init_shader_asset_database(&shader_asset_db, 50)
-    main_shader = load_shader_asset(&shader_asset_db, &text_asset_db, "webgl/ui.vert", "webgl/ui.frag", )
-    // load_text_asset(&text_asset_db, "ui.vert")
-    // load_text_asset(&text_asset_db, "ui.frag")
+    main_shader = load_shader_asset(&shader_asset_db, "webgl/ui.vert", "webgl/ui.frag", )
+    fmt.println("Try Loading File")
+    test_file_handle = load_file("webgl/ui.vert", context.allocator)
+
     pending_shader_assets = make([]Shader_Loading_Asset, 50, main_allocator)
     ok: bool
     test_renderer, ok = init_renderer()
@@ -208,17 +210,9 @@ init_text_asset_database :: proc(using database: ^Text_Asset_Database, capacity:
     return &make([]byte, size)[0]
 }
 
-@export on_text_asset_loaded :: proc(asset_handle: uint, text: string) {
-    using text_asset_db
-    context.allocator = main_allocator
-    context.temp_allocator = temp_allocator
-    util.bit_array_set(&loaded_bit_array, asset_handle, true)
-    data[asset_handle] = text
-}
-
 Shader_Loading_Asset :: struct {
-    vertex_asset: Text_Asset_Handle,
-    fragment_asset: Text_Asset_Handle,
+    vertex_asset: platform_layer.File_Handle,
+    fragment_asset: platform_layer.File_Handle,
 }
 
 Shader_Asset_Handle :: distinct uint
@@ -244,36 +238,33 @@ init_shader_asset_database :: proc(using database: ^Shader_Asset_Database, capac
 
 load_shader_asset :: proc(
         using database: ^Shader_Asset_Database, 
-        text_asset_db: ^Text_Asset_Database, 
         vertex_src_path, fragment_src_path: string, 
     ) -> Shader_Asset_Handle {
     
-    vertex_asset := load_text_asset(text_asset_db, vertex_src_path)
-    fragment_asset := load_text_asset(text_asset_db, fragment_src_path)
+    vertex_asset := load_file(vertex_src_path)
+    fragment_asset := load_file(fragment_src_path)
     allocated_handle, ok := util.bit_array_allocate(allocated_bit_array)
     if !ok do return {}
     util.bit_array_set(&loaded_bit_array, allocated_handle, false)
-    loading_data[allocated_handle] = {
-        vertex_asset = vertex_asset,
-        fragment_asset = fragment_asset,
-    }
+    loading_data[allocated_handle] = { vertex_asset, fragment_asset }
     return Shader_Asset_Handle(allocated_handle)
 }
 
-update_shader_asset_database :: proc(using database: ^Shader_Asset_Database, text_database: ^Text_Asset_Database) {
+update_shader_asset_database :: proc(using database: ^Shader_Asset_Database) {
     for i in 0..<len(loaded_bit_array) {
         for j in 0..<32 {
             shader_asset_index := i*32 + j
             if util.bit_array_get(&allocated_bit_array, shader_asset_index) && !util.bit_array_get(&loaded_bit_array, shader_asset_index) {
                 fragment_src_asset := loading_data[shader_asset_index].fragment_asset
                 vertex_src_asset := loading_data[shader_asset_index].vertex_asset
-                fragment_loaded := util.bit_array_get(&text_database.loaded_bit_array, int(fragment_src_asset))
-                vertex_loaded := util.bit_array_get(&text_database.loaded_bit_array, int(vertex_src_asset))
-                if fragment_loaded && vertex_loaded {
-                    fmt.println(text_database.data[fragment_src_asset])
-                    fmt.println(text_database.data[vertex_src_asset])
-                    vertex_shader_source := []string{text_database.data[vertex_src_asset]}
-                    fragment_shader_source := []string{text_database.data[fragment_src_asset]}
+                fragment_data, fragment_asset_state := get_file_data(fragment_src_asset)
+                vertex_data, vertex_asset_state := get_file_data(vertex_src_asset)
+                // fmt.println(fragment_src_asset, fragment_asset_state, vertex_src_asset, vertex_asset_state)
+                if fragment_asset_state == .Loaded && vertex_asset_state == .Loaded {
+                    vertex_shader_source := []string{string(vertex_data)}
+                    fragment_shader_source := []string{string(fragment_data)}
+                    // fmt.println(string(vertex_data))
+                    // fmt.println(string(fragment_data))
                     ok: bool
                     data[shader_asset_index], ok = gl.CreateProgramFromStrings(vertex_shader_source, fragment_shader_source)
                     util.bit_array_set(&loaded_bit_array, uint(shader_asset_index), true)
