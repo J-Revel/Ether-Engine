@@ -1351,7 +1351,7 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 			ldexp:   (x) => Math.ldexp(x),
 		},
 		"odin_dom": {
-			init_event_raw: (ep) => {
+			init_event_raw: (ep, buf_ptr, buf_len) => {
 				const W = 4;
 				let offset = ep;
 				let off = (amount, alignment) => {
@@ -1421,10 +1421,10 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 					wmi.storeI16(off(2), e.button);
 					wmi.storeU16(off(2), e.buttons);
 				} else if (e instanceof KeyboardEvent) {
-					console.log(e.code);
 					wmi.storeI64(off(8), e.charCode);
-					wmi.storeI64(off(8), e.charCode);
-					wmi.storeUint(off(W), e.code.id_ptr);
+					wmi.loadBytes(buf_ptr, e.code.length).set(new TextEncoder("utf-8").encode(e.code))
+					wmi.storeUint(off(W), buf_ptr);
+					wmi.storeUint(off(W), e.code.length);
 					// let keyOffset = off(W*2, W);
 					// let codeOffet = off(W*2, W);
 					// wmi.storeU8(off(1), e.location);

@@ -99,6 +99,9 @@ init_file_asset_database :: proc(using database: ^File_Asset_Database, asset_cou
 on_input_event :: proc(e: js.Event) {
     pending_event_list[pending_event_cursor] = e
     pending_event_cursor += 1
+    if e.kind == .Key_Down {
+        fmt.println(e.key.code)
+    }
 }
 
 
