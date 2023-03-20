@@ -46,12 +46,6 @@ shader_asset_db: Shader_Asset_Database
 pending_shader_assets: []Shader_Loading_Asset
 test_renderer: Renderer
 
-test_vertex: []UI_Vertex_Data = {
-    {{-1, -1}, {-1, -1}},
-    {{1, -1}, {1, -1}},
-    {{1, 1}, {1, -1}},
-}
-
 main_shader: Shader_Asset_Handle
 
 input_state : input.State
@@ -74,16 +68,31 @@ test_file_handle: platform_layer.File_Handle
         gl.ClearColor((math.cos(t) + 1)/2 * color.x, color.y, color.z, 1)
     }
     else {
-        gl.ClearColor(0, 0, 0, 1)
+        gl.ClearColor(0.1, 0.1, 0.1, 1)
     }       
     gl.Clear(gl.COLOR_BUFFER_BIT)
-    render_data(&test_renderer, test_vertex)
+    canvas_rect := js.get_bounding_client_rect("webgl2")
+    xPos := f32(input_state.mouse_pos.x) 
+    yPos := f32(input_state.mouse_pos.y) 
+    button_theme: imgui.Button_Theme = {
+        {0x00ffffff, 0x00ffffff, 1, 0},
+        {0xff00ffff, 0xff00ffff, 1, 0},
+        {0xffff00ff, 0xffff00ff, 1, 0}
+    }
+    if imgui.button(&imgui_state, {{10, 10}, {200, 200}}, &button_theme, platform_layer.gen_uid()) == input.Key_State_Pressed {
+        fmt.println("BUTTON PRESSED")
+    }
+
+    screen_size = {f32(canvas_rect.width), f32(canvas_rect.height)}
+    viewport : imgui.I_Rect = {{i32(canvas_rect.x), i32(canvas_rect.y)}, {i32(canvas_rect.width), i32(canvas_rect.height)}}
+    imgui.render_frame(&imgui_state, viewport)
     if !first_frame {
         first_frame = true
     }
 }
 
 main :: proc() {
+    init()
     previous_tick = time.tick_now()
     page_allocator := js.page_allocator()
     color = {1, 0, 1}
@@ -125,18 +134,11 @@ main :: proc() {
     if !ok {
         fmt.println("Could not create renderer")
     }
-}
 
-Renderer :: struct {
-    vao: gl.VertexArrayObject,
-    vbo: gl.Buffer,
-    program: gl.Program,
-}
+    canvas_rect := js.get_bounding_client_rect("webgl2")
+    viewport : imgui.I_Rect = {{i32(canvas_rect.x), i32(canvas_rect.y)}, {i32(canvas_rect.width), i32(canvas_rect.height)}}
+    imgui.init_ui_state(&imgui_state, viewport)
 
-UI_Vertex_Data :: struct {
-    pos: [2]f32,
-    uv: [2]f32,
-    // col: [4]u8,
 }
 
 MAX_PASS_CAPACITY :: 100
@@ -150,22 +152,13 @@ init_renderer :: proc() -> (renderer: Renderer, success: bool) {
     gl.BufferData(gl.ARRAY_BUFFER, size_of(UI_Vertex_Data) * 500, nil, gl.DYNAMIC_DRAW)
     gl.VertexAttribPointer(0, 2, gl.FLOAT, false, size_of(UI_Vertex_Data), 0)
     gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(UI_Vertex_Data), size_of(f32)*2)
-    // gl.VertexAttribPointer(2, 4, gl.BYTE, false, sizeof(UI_Vertex_Data), sizeof(f32)*4)
+    gl.VertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, size_of(UI_Vertex_Data), size_of(f32)*4)
     gl.EnableVertexAttribArray(0)
     gl.EnableVertexAttribArray(1)
+    gl.EnableVertexAttribArray(2)
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
     gl.BindVertexArray(0)
     return renderer, true
-}
-
-render_data :: proc(renderer: ^Renderer, to_render: []UI_Vertex_Data) {
-    gl.BindBuffer(gl.ARRAY_BUFFER, renderer.vbo)
-    gl.UseProgram(shader_asset_db.data[main_shader])
-    gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(UI_Vertex_Data) * len(to_render), &to_render[0])
-    gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-    gl.BindVertexArray(renderer.vao)
-    gl.DrawArrays(gl.TRIANGLES, 0, 3)
-    gl.BindVertexArray(0)
 }
 
 Text_Asset_Handle :: distinct uint
@@ -210,20 +203,20 @@ Shader_Asset_Handle :: distinct uint
 
 Shader_Asset_Data :: struct {
     program: gl.Program,
-    fragment_text_asset, vertex_text_asset: Text_Asset_Handle,
+    screen_size_attrib: i32,
 }
 
 Shader_Asset_Database :: struct {
     allocated_bit_array: util.Bit_Array,
     loaded_bit_array: util.Bit_Array,
     loading_data: []Shader_Loading_Asset,
-    data: []gl.Program,
+    data: []Shader_Asset_Data,
 }
 
 init_shader_asset_database :: proc(using database: ^Shader_Asset_Database, capacity: int) {
     allocated_bit_array = make(util.Bit_Array, (capacity + 31) / 32)
     loaded_bit_array = make(util.Bit_Array, (capacity + 31) / 32)
-    data = make([]gl.Program, capacity)
+    data = make([]Shader_Asset_Data, capacity)
     loading_data = make([]Shader_Loading_Asset, capacity)
 }
 
@@ -241,11 +234,20 @@ load_shader_asset :: proc(
     return Shader_Asset_Handle(allocated_handle)
 }
 
+bind_shader :: proc(using database: ^Shader_Asset_Database, shader_handle: Shader_Asset_Handle, screen_size: [2]f32) -> bool {
+    if util.bit_array_get(&loaded_bit_array, uint(shader_handle)) {
+        gl.UseProgram(database.data[shader_handle].program)
+        gl.Uniform2f(database.data[shader_handle].screen_size_attrib, f32(screen_size.x), f32(screen_size.y))
+        return true
+    }
+    return false
+}
+
 update_shader_asset_database :: proc(using database: ^Shader_Asset_Database) {
-    for i in 0..<len(loaded_bit_array) {
-        for j in 0..<32 {
-            shader_asset_index := i*32 + j
-            if util.bit_array_get(&allocated_bit_array, shader_asset_index) && !util.bit_array_get(&loaded_bit_array, shader_asset_index) {
+    for i in 0..<uint(len(loaded_bit_array)) {
+        for j in 0..<uint(32) {
+            shader_asset_index : uint = i*32 + j
+            if util.bit_array_get(&allocated_bit_array, uint(shader_asset_index)) && !util.bit_array_get(&loaded_bit_array, shader_asset_index) {
                 fragment_src_asset := loading_data[shader_asset_index].fragment_asset
                 vertex_src_asset := loading_data[shader_asset_index].vertex_asset
                 fragment_data, fragment_asset_state := get_file_data(fragment_src_asset)
@@ -257,7 +259,10 @@ update_shader_asset_database :: proc(using database: ^Shader_Asset_Database) {
                     // fmt.println(string(vertex_data))
                     // fmt.println(string(fragment_data))
                     ok: bool
-                    data[shader_asset_index], ok = gl.CreateProgramFromStrings(vertex_shader_source, fragment_shader_source)
+                    program: gl.Program
+                    program, ok = gl.CreateProgramFromStrings(vertex_shader_source, fragment_shader_source)
+                    data[shader_asset_index] = {program, gl.GetUniformLocation(program, "screen_size")}
+                    fmt.println("LOADED Shader", shader_asset_index)
                     util.bit_array_set(&loaded_bit_array, uint(shader_asset_index), true)
                 }
             }

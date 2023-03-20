@@ -38,7 +38,7 @@ button :: proc(using ui_state: ^UI_State, rect: I_Rect, theme: ^Button_Theme, ui
 	out_state = input.Key_State_Up
 
 	mouse_pos := linalg.to_i32(input_state.mouse_pos)
-    if util.is_in_rect(rect, mouse_pos) && util.is_in_rect(get_clip(ui_state), mouse_pos) {
+ 	if util.is_in_rect(rect, mouse_pos) && util.is_in_rect(get_clip(ui_state), mouse_pos) {
 		next_hovered = uid
 		out_state = input.Key_State_Up
 		if hovered_element == uid {
@@ -188,6 +188,7 @@ window_end :: proc(using ui_state: ^UI_State) {
 
 render_frame :: proc(using ui_state: ^UI_State, viewport: I_Rect) {
 	platform_layer.render_draw_commands(&command_list)
+ 	
 	reset_draw_list(&command_list, viewport)
 	clear(&clip_stack)
 	append(&clip_stack, 0)

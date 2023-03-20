@@ -92,7 +92,7 @@ Input_Key :: enum {
 	DOWN,
 	UP,
 
-	NUMLOCKCLEAR,
+	NUMLOCK,
 	KP_DIVIDE,
 	KP_MULTIPLY,
 	KP_MINUS,

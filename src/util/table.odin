@@ -21,7 +21,7 @@ bit_array_set :: proc "contextless" (bit_array: ^Bit_Array, bit: uint, value: bo
 	else do bit_array[array_index] &= ~(1 << bit_index); 
 }
 
-bit_array_get :: proc "contextless" (bit_array: ^Bit_Array, bit: int) -> bool
+bit_array_get :: proc "contextless" (bit_array: ^Bit_Array, bit: uint) -> bool
 {
 	array_index := bit / 32;
 	bit_index := bit % 32;

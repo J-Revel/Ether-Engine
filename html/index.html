@@ -8,6 +8,7 @@
 </head>
 <body>
     <canvas id="webgl2" width="1920" height="1080"></canvas>
+    <canvas id="text_canvas" width="512" height="512"></canvas>
     <script type="text/javascript" src="runtime.js"></script>
     <script type="text/javascript">
 
@@ -23,6 +24,14 @@
             .then(function(arrayBuffer) {
                 loaded_bin_assets.push({"asset": asset, "data": arrayBuffer});
             });
+        }
+
+        function draw_text(text_ptr, text_len) {
+            var canvas2d = document.getElementById("text_canvas");
+            var ctx = canvas2d.getContext('2d');
+            let text = wasmMemoryInterface.loadString(text_ptr, text_len);
+            console.log(ctx.measureText(text))
+            ctx.fillText(text, 10, 50);
         }
 
         async function runWasm(wasmMemoryInterface, wasmPath, consoleElement, extraForeignImports) {
@@ -83,6 +92,7 @@
         odin.runWasm(wasmMemoryInterface, "ethereal.wasm", null, {
             "ethereal": {
                 "load_binary_asset": load_binary_asset,
+                "draw_text": draw_text,
             }
         });
 

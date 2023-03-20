@@ -1351,7 +1351,7 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 			ldexp:   (x) => Math.ldexp(x),
 		},
 		"odin_dom": {
-			init_event_raw: (ep, buf_ptr, buf_len) => {
+			init_event_raw: (ep) => {
 				const W = 4;
 				let offset = ep;
 				let off = (amount, alignment) => {
@@ -1400,7 +1400,7 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 				wmi.storeU8(off(1), !!e.isComposing);
 				wmi.storeU8(off(1), !!e.isTrusted);
 
-				let base = off(0, 8);
+				let base = off(8, 8);
 				if (e instanceof MouseEvent) {
 					wmi.storeI64(off(8), e.screenX);
 					wmi.storeI64(off(8), e.screenY);
@@ -1421,20 +1421,35 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 					wmi.storeI16(off(2), e.button);
 					wmi.storeU16(off(2), e.buttons);
 				} else if (e instanceof KeyboardEvent) {
-					wmi.storeI64(off(8), e.charCode);
-					wmi.loadBytes(buf_ptr, e.code.length).set(new TextEncoder("utf-8").encode(e.code))
-					wmi.storeUint(off(W), buf_ptr);
-					wmi.storeUint(off(W), e.code.length);
-					// let keyOffset = off(W*2, W);
-					// let codeOffet = off(W*2, W);
-					// wmi.storeU8(off(1), e.location);
+					wmi.storeU8(off(1), e.location);
+					wmi.storeU8(off(1), !!e.ctrlKey);
+					wmi.storeU8(off(1), !!e.shiftKey);
+					wmi.storeU8(off(1), !!e.altKey);
+					wmi.storeU8(off(1), !!e.metaKey);
 
-					// wmi.storeU8(off(1), !!e.ctrlKey);
-					// wmi.storeU8(off(1), !!e.shiftKey);
-					// wmi.storeU8(off(1), !!e.altKey);
-					// wmi.storeU8(off(1), !!e.metaKey);
+					wmi.storeU8(off(1), !!e.repeat);
 
-					// wmi.storeU8(off(1), !!e.repeat);
+					// Fill key and code string buffers
+					let v = new TextEncoder("utf-8").encode(e.key);
+					let w = new TextEncoder("utf-8").encode(e.code);
+
+					wmi.storeUint(off(4), v.length);
+					wmi.storeUint(off(4), w.length);
+
+
+					const KEYBOARD_MAX_KEY_SIZE = 16;
+					const KEYBOARD_MAX_CODE_SIZE = 16;
+					let key_ptr = off(KEYBOARD_MAX_KEY_SIZE);
+					let code_ptr = off(KEYBOARD_MAX_CODE_SIZE);
+
+
+					wmi.loadBytes(key_ptr, v.length).set(v)
+					wmi.loadBytes(code_ptr, w.length).set(w)
+
+					// Make the key and code strings point to the buffer
+					// console.log("key " + key_ptr + ", code " + code_ptr);
+					// wmi.storeUint(keyOffset, key_ptr); // WHY 96 ?
+					// wmi.storeUint(codeOffset, code_ptr); // WHY 96 ?
 
 				} else if (e instanceof WheelEvent) {
 					wmi.storeF64(off(8), e.deltaX);
@@ -1449,7 +1464,7 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 				}
 			},
 
-			add_event_listener: (id_ptr, id_len, name_ptr, name_len, name_code, data, callback, use_capture) => {
+			add_event_listener: (id_ptr, id_len, name_ptr, name_len, name_code, data, callback, use_capture, result_ptr) => {
 				let id = wasmMemoryInterface.loadString(id_ptr, id_len);
 				let name = wasmMemoryInterface.loadString(name_ptr, name_len);
 				let element = getElement(id);
@@ -1463,7 +1478,11 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 					event_temp_data.id_len = id_len;
 					event_temp_data.event = e;
 					event_temp_data.name_code = name_code;
-					wasmMemoryInterface.exports.odin_dom_do_event_callback(data, callback, odin_ctx);
+					wasmMemoryInterface.exports.odin_dom_do_event_callback(data, callback, result_ptr, odin_ctx);
+					let result = wasmMemoryInterface.loadU32(result_ptr);
+					if(result > 0)
+						e.preventDefault();
+
 				};
 				wasmMemoryInterface.listenerMap[{data: data, callback: callback}] = listener;
 				element.addEventListener(name, listener, !!use_capture);
@@ -1487,7 +1506,7 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 			},
 
 
-			add_window_event_listener: (name_ptr, name_len, name_code, data, callback, use_capture) => {
+			add_window_event_listener: (name_ptr, name_len, name_code, data, callback, use_capture, result_ptr) => {
 				let name = wasmMemoryInterface.loadString(name_ptr, name_len);
 				let element = window;
 				let listener = (e) => {
@@ -1496,7 +1515,10 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 					event_temp_data.id_len = 0;
 					event_temp_data.event = e;
 					event_temp_data.name_code = name_code;
-					wasmMemoryInterface.exports.odin_dom_do_event_callback(data, callback, odin_ctx);
+					wasmMemoryInterface.exports.odin_dom_do_event_callback(data, callback, result_ptr, odin_ctx);
+					let result = wasmMemoryInterface.loadU32(result_ptr);
+					if(result > 0)
+						e.preventDefault();
 				};
 				wasmMemoryInterface.listenerMap[{data: data, callback: callback}] = listener;
 				element.addEventListener(name, listener, !!use_capture);
