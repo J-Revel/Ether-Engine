@@ -1,6 +1,5 @@
 package windows_sdl_backend
 
-import wasm "vendor:wasm/js"
 import "../../input"
 import "core:strings"
 import "core:math/linalg"
@@ -9,8 +8,8 @@ import "core:mem"
 import "core:hash"
 import "core:fmt"
 import "core:unicode/utf8"
-import js "vendor:wasm/js"
-import gl "vendor:wasm/WebGL"
+import js "../../wasm/js"
+import gl "../../wasm/WebGL"
 
 import "../../util"
 
